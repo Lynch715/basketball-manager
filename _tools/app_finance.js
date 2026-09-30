@@ -62,7 +62,7 @@ function vFin(v){
   const row=(n,x,cls)=>`<tr><td>${n}</td><td class="n ${cls||''}">${typeof x==='number'?money(x):x}</td></tr>`;
   let cur='';
   if(!W.off){ const f=finOf(G.team);
-    cur=`<div class="card"><h3>${S.year}-${String((S.year+1)%100).padStart(2,'0')} 赛季 <span class="r">${f.final?'已结算':'按目前战绩预计'}</span></h3><table><tbody>
+    cur=`<div class="card tw"><h3>${S.year}-${String((S.year+1)%100).padStart(2,'0')} 赛季 <span class="r">${f.final?'已结算':'按目前战绩预计'}</span></h3><table><tbody>
       ${row('联盟分成（全国转播、商品）',f.rev.league)}${row(`本地收入（门票、本地转播、赞助，${TEAMS[G.team].pop} 百万人口）`,f.rev.local)}${row(`季后赛主场 ${f.hg} 场`,f.rev.playoff)}${row('奢侈税分红',f.settled?f.rev.share:'常规赛结束时结算')}
       <tr><td><b>收入合计</b></td><td class="n"><b>${money(f.revT)}</b></td></tr>
       ${row('工资（含死钱）',-f.pay,'bad')}${row(`奢侈税${f.rep?'（重复纳税）':''}${f.settled?'':'，预计'}`,-f.tax,f.tax?'bad':'')}${row('运营成本',-f.cost,'bad')}

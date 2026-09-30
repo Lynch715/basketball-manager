@@ -1,5 +1,5 @@
 // 篮球经理 service worker：代码网络优先，图片缓存优先 + 后台更新
-const VER='bbm-v4';
+const VER='bbm-v5';
 const SHELL=['./','./index.html','./site.webmanifest','./favicon.ico','./logos.png','./icon/icon-192.png','./icon/icon-512.png','./icon/icon-180.png','./icon/icon-32.png'];
 self.addEventListener('install',e=>{ e.waitUntil(caches.open(VER).then(c=>c.addAll(SHELL))); });
 self.addEventListener('activate',e=>{ e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==VER).map(k=>caches.delete(k)))).then(()=>self.clients.claim())); });

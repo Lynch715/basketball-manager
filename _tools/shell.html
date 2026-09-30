@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover,shrink-to-fit=no">
 <title>篮球经理</title>
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="icon/icon-32.png">
@@ -23,7 +23,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-html{background:var(--bg2);-webkit-text-size-adjust:100%;overscroll-behavior:none;touch-action:pan-x pan-y}
+html{overflow-x:hidden;max-width:100%;background:var(--bg2);-webkit-text-size-adjust:100%;overscroll-behavior:none;touch-action:pan-x pan-y}
 body{background:var(--bg2);color:var(--txt);font:13px/1.5 -apple-system,"PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
   overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:rgba(255,138,31,.18)}
 input,select{-webkit-user-select:text;user-select:text}
@@ -97,8 +97,9 @@ input[type=number]{width:58px;text-align:right}
 .warn{color:var(--warn)}.bad{color:var(--bad)}.good{color:var(--good)}
 @media(max-width:760px){
   #main{flex-direction:column-reverse}
-  #side{width:100%;flex:0 0 auto;display:grid;grid-template-columns:repeat(var(--navcols,9),1fr);border-right:0;border-top:1px solid var(--line);padding:0 var(--sar) var(--sab) var(--sal);overflow:visible}
-  .nav{min-width:0;white-space:nowrap;flex-direction:column;gap:2px;font-size:10.5px;padding:6px 0 5px;border-left:0;border-top:2px solid transparent;justify-content:center;letter-spacing:-.2px}
+  #side{width:100%;flex:0 0 auto;display:grid;grid-template-columns:repeat(var(--navcols,9),minmax(0,1fr));border-right:0;border-top:1px solid var(--line);padding:0 var(--sar) var(--sab) var(--sal);overflow:visible}
+  .nav{min-width:0;overflow:hidden;white-space:nowrap;flex-direction:column;gap:2px;font-size:10.5px;padding:6px 0 5px;border-left:0;border-top:2px solid transparent;justify-content:center;letter-spacing:-.3px}
+  .nav span{max-width:100%;overflow:hidden;text-overflow:clip}
   .nav svg{width:17px;height:17px;flex:0 0 17px}
   .nav.on{border-top-color:var(--acc)}
   #view{padding:12px}

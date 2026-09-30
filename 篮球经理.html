@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover,shrink-to-fit=no">
 <title>篮球经理</title>
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="icon/icon-32.png">
@@ -23,7 +23,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-html{background:var(--bg2);-webkit-text-size-adjust:100%;overscroll-behavior:none;touch-action:pan-x pan-y}
+html{overflow-x:hidden;max-width:100%;background:var(--bg2);-webkit-text-size-adjust:100%;overscroll-behavior:none;touch-action:pan-x pan-y}
 body{background:var(--bg2);color:var(--txt);font:13px/1.5 -apple-system,"PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
   overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:rgba(255,138,31,.18)}
 input,select{-webkit-user-select:text;user-select:text}
@@ -97,8 +97,9 @@ input[type=number]{width:58px;text-align:right}
 .warn{color:var(--warn)}.bad{color:var(--bad)}.good{color:var(--good)}
 @media(max-width:760px){
   #main{flex-direction:column-reverse}
-  #side{width:100%;flex:0 0 auto;display:grid;grid-template-columns:repeat(var(--navcols,9),1fr);border-right:0;border-top:1px solid var(--line);padding:0 var(--sar) var(--sab) var(--sal);overflow:visible}
-  .nav{min-width:0;white-space:nowrap;flex-direction:column;gap:2px;font-size:10.5px;padding:6px 0 5px;border-left:0;border-top:2px solid transparent;justify-content:center;letter-spacing:-.2px}
+  #side{width:100%;flex:0 0 auto;display:grid;grid-template-columns:repeat(var(--navcols,9),minmax(0,1fr));border-right:0;border-top:1px solid var(--line);padding:0 var(--sar) var(--sab) var(--sal);overflow:visible}
+  .nav{min-width:0;overflow:hidden;white-space:nowrap;flex-direction:column;gap:2px;font-size:10.5px;padding:6px 0 5px;border-left:0;border-top:2px solid transparent;justify-content:center;letter-spacing:-.3px}
+  .nav span{max-width:100%;overflow:hidden;text-overflow:clip}
   .nav svg{width:17px;height:17px;flex:0 0 17px}
   .nav.on{border-top-color:var(--acc)}
   #view{padding:12px}
@@ -3315,7 +3316,7 @@ function vFin(v){
   const row=(n,x,cls)=>`<tr><td>${n}</td><td class="n ${cls||''}">${typeof x==='number'?money(x):x}</td></tr>`;
   let cur='';
   if(!W.off){ const f=finOf(G.team);
-    cur=`<div class="card"><h3>${S.year}-${String((S.year+1)%100).padStart(2,'0')} 赛季 <span class="r">${f.final?'已结算':'按目前战绩预计'}</span></h3><table><tbody>
+    cur=`<div class="card tw"><h3>${S.year}-${String((S.year+1)%100).padStart(2,'0')} 赛季 <span class="r">${f.final?'已结算':'按目前战绩预计'}</span></h3><table><tbody>
       ${row('联盟分成（全国转播、商品）',f.rev.league)}${row(`本地收入（门票、本地转播、赞助，${TEAMS[G.team].pop} 百万人口）`,f.rev.local)}${row(`季后赛主场 ${f.hg} 场`,f.rev.playoff)}${row('奢侈税分红',f.settled?f.rev.share:'常规赛结束时结算')}
       <tr><td><b>收入合计</b></td><td class="n"><b>${money(f.revT)}</b></td></tr>
       ${row('工资（含死钱）',-f.pay,'bad')}${row(`奢侈税${f.rep?'（重复纳税）':''}${f.settled?'':'，预计'}`,-f.tax,f.tax?'bad':'')}${row('运营成本',-f.cost,'bad')}
