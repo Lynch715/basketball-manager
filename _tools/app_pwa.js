@@ -21,7 +21,7 @@ function closeInstall(){ const el=document.getElementById('installbox'); if(el) 
 function showInstall(manual){
   closeInstall(); if(isStandalone()){ if(manual) toast('已经装在桌面上了'); return; }
   const el=document.createElement('div'); el.id='installbox';
-  el.style.cssText='position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(380px,calc(100vw - 24px));background:var(--bg3);border:1px solid var(--acc);border-radius:12px;padding:14px 16px;z-index:90;box-shadow:0 10px 30px rgba(0,0,0,.5)';
+  el.style.cssText='position:fixed;left:50%;bottom:'+((()=>{ const sd=document.getElementById('side'); return (sd&&innerWidth<=760&&sd.offsetHeight)?sd.offsetHeight+12:24; })())+'px;transform:translateX(-50%);width:min(380px,calc(100vw - 24px));background:var(--bg3);border:1px solid var(--acc);border-radius:12px;padding:14px 16px;z-index:90;box-shadow:0 10px 30px rgba(0,0,0,.5)';
   let body;
   if(PWA.deferred) body=`<p style="margin-bottom:10px">把篮球经理装到桌面，像 App 一样打开，断网也能玩。</p><div style="text-align:right"><button id="ins-no">以后再说</button> <button class="pri" id="ins-yes">安装</button></div>`;
   else if(IS_SAFARI && IS_IOS) body=`<p style="margin-bottom:6px">装到主屏幕：</p><p class="hint" style="color:var(--txt)">点底部工具栏的<b>分享</b>按钮 → 往下找<b>「添加到主屏幕」</b> → 右上角点<b>添加</b>。</p><div style="text-align:right;margin-top:10px"><button id="ins-no">知道了</button></div>`;

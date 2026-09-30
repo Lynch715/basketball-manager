@@ -175,6 +175,5 @@ function vCareer(v){
   const C=G.career||[], rings=C.filter(c=>c.champ).length, cups=C.filter(c=>c.cup).length;
   v.innerHTML=`<h1>生涯</h1><div class="sub">总冠军 ${rings} 个 · NBA 杯 ${cups} 个 · 执教 ${C.length} 个完整赛季</div>
    <div class="card tw"><table><thead><tr><th>赛季</th><th>球队</th><th class="n">战绩</th><th>季后赛</th><th>老板目标</th><th>完成</th></tr></thead><tbody>
-   ${C.map(c=>`<tr><td>${c.year}-${String((c.year+1)%100).padStart(2,'0')}</td><td>${logo(TEAMS[c.team],16)} ${esc(TEAMS[c.team].cn)}</td><td class="n">${c.w}-${c.l}</td><td>${c.champ?'<b style="color:var(--acc)">总冠军</b>':esc(c.res)}${c.cup?' <span class="pill" style="background:#3a2a10">NBA 杯</span>':''}</td><td>${esc(c.goal)}</td><td class="${c.met?'good':'bad'}">${c.met?'是':'否'}</td></tr>`).join('')||'<tr><td class="hint">还没有打完的赛季</td></tr>'}</tbody></table></div>${installCardHTML()}`;
-  bindInstallCard(v);
+   ${C.map(c=>`<tr><td>${c.year}-${String((c.year+1)%100).padStart(2,'0')}</td><td>${logo(TEAMS[c.team],16)} ${esc(TEAMS[c.team].cn)}</td><td class="n">${c.w}-${c.l}</td><td>${c.champ?'<b style="color:var(--acc)">总冠军</b>':esc(c.res)}${c.cup?' <span class="pill" style="background:#3a2a10">NBA 杯</span>':''}</td><td>${esc(c.goal)}</td><td class="${c.met?'good':'bad'}">${c.met?'是':'否'}</td></tr>`).join('')||'<tr><td class="hint">还没有打完的赛季</td></tr>'}</tbody></table></div>`;
 }

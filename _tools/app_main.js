@@ -104,16 +104,17 @@ function render(){
   tb.innerHTML=logo(t,34); tn.innerHTML=`${esc(t.cn)}<small>${t.conf}部 · ${t.div}赛区</small>`;
   const r=standings()[G.team];
   ts.innerHTML=`<div class="tb-stat"><b>${dateTxt(Math.min(S.day,REG_DAYS+80),true)}</b><span>${phaseTxt()}</span></div><div class="tb-stat"><b>${r.w}-${r.l}</b><span>战绩</span></div><div class="tb-stat"><b style="color:${S.board.conf>=50?'var(--good)':S.board.conf>=25?'var(--warn)':'var(--bad)'}">${S.board.conf}</b><span>老板信任</span></div>`;
-  const navs=[['home','首页'],['roster','阵容'],['rot','轮换'],['tac','战术'],['train','训练'],['trade','交易'],['fa','自由球员'],['scout','球探'],['sched','赛程'],['stand','战绩榜'],['stats','数据'],['events','赛事'],['po','季后赛'],['career','生涯']];
+  const navs=[['home','首页'],['roster','阵容'],['rot','轮换'],['tac','战术'],['train','训练'],['trade','交易'],['fa','自由球员'],['scout','球探'],['sched','赛程'],['stand','战绩榜'],['stats','数据'],['events','赛事'],['po','季后赛'],['career','生涯'],['save','存档']];
   if(W.off){ navs.unshift(['off','休赛期']); if(G.view==='home') G.view='off'; }
   if(LIVE) navs.splice(1,0,['match','直播']);
+  side.style.setProperty('--navcols', Math.min(10,Math.ceil(navs.length/2)));
   side.innerHTML=navs.map(([k,n])=>`<div class="nav ${G.view===k?'on':''}" data-v="${k}">${ICON[k]||ICON.match}<span>${n}</span></div>`).join('');
   side.querySelectorAll('.nav').forEach(el=>el.onclick=()=>{ const k=el.dataset.v;
     if(LIVE && !LIVE.M.done && k!=='match') pauseLive();
     G.view=k; render(); });
   if(G.view==='match' && !LIVE) G.view='home';
   if(G.view==='off' && !W.off) G.view='home';
-  ({home:vHome, roster:vRoster, rot:vRot, tac:vTac, match:vLive, sched:vSched, stand:vStand, stats:vStats, po:vPO, career:vCareer, off:vOff, trade:vTrade, fa:vFA, train:vTrain, scout:vScout, events:vEvents})[G.view](v);
+  ({home:vHome, roster:vRoster, rot:vRot, tac:vTac, match:vLive, sched:vSched, stand:vStand, stats:vStats, po:vPO, career:vCareer, off:vOff, trade:vTrade, fa:vFA, train:vTrain, scout:vScout, events:vEvents, save:vSave})[G.view](v);
 }
 function phaseTxt(){ const S=G.season; if(W.off) return '休赛期'; return {reg:'常规赛',playin:'附加赛',po:'季后赛',done:'赛季结束'}[S.phase]; }
 function confirmLeave(){ try{ return window.confirm('这场比赛还没打完，离开就算放弃。确定吗？'); }catch(e){ return true; } }
@@ -123,8 +124,8 @@ function vPick(v){
   const east=TEAMS.filter(t=>t.conf==='东'), west=TEAMS.filter(t=>t.conf==='西');
   const card=t=>{ const best=t.players.slice().sort((a,b)=>b.ovr-a.ovr)[0];
     return `<div class="tcard" data-i="${t.i}">${logo(t,44)}<div><b>${esc(t.cn)}</b><span>前 8 人均值 ${t.top8.toFixed(1)} · ${esc(sn(best))} ${best.ovr}</span></div></div>`; };
-  v.innerHTML=`<h1>选择球队</h1><div class="sub">2026-27 赛季季前，阵容来自 2K27，合同来自 BBGM 名单</div>
-    <h2>东部</h2><div class="tgrid">${east.map(card).join('')}</div><h2>西部</h2><div class="tgrid">${west.map(card).join('')}</div><div style="margin-top:18px">${installCardHTML()}</div>`; bindInstallCard(v);
+  v.innerHTML=`<h1>选择球队</h1>
+    <h2>东部</h2><div class="tgrid">${east.map(card).join('')}</div><h2>西部</h2><div class="tgrid">${west.map(card).join('')}</div><div id="pickextra" style="margin-top:18px"></div>`; pickExtras(v);
   v.querySelectorAll('.tcard').forEach(el=>el.onclick=()=>{ G.team=+el.dataset.i; G.rot=null; G.tac=null; fixRot();
     const S=G.season;
     if(S && S.phase==='done' && !W.off){ G.board={conf:55}; S.fired=false; startOffseason(); G.view='off'; }       // 赛季末换队：带新球队进休赛期

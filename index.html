@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>篮球经理</title>
 <link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="icon/icon-32.png">
@@ -23,12 +23,12 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-html{background:var(--bg2);-webkit-text-size-adjust:100%;overscroll-behavior:none}
+html{background:var(--bg2);-webkit-text-size-adjust:100%;overscroll-behavior:none;touch-action:pan-x pan-y}
 body{background:var(--bg);color:var(--txt);font:13px/1.5 -apple-system,"PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
   overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:rgba(255,138,31,.18)}
 input,select{-webkit-user-select:text;user-select:text}
 ::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:#333d4b;border-radius:5px}
-#app{display:flex;flex-direction:column;height:100vh;height:100svh;overflow:hidden}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;overflow:hidden}
 #topbar{height:calc(52px + var(--sat));flex:0 0 calc(52px + var(--sat));background:linear-gradient(180deg,#1b2430,#141b24);
   border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:var(--sat) calc(14px + var(--sar)) 0 calc(14px + var(--sal))}
 #tb-name{font-weight:700;font-size:14px;line-height:1.15}#tb-name small{display:block;font-weight:400;font-size:11px;color:var(--dim)}
@@ -97,8 +97,9 @@ input[type=number]{width:58px;text-align:right}
 .warn{color:var(--warn)}.bad{color:var(--bad)}.good{color:var(--good)}
 @media(max-width:760px){
   #main{flex-direction:column-reverse}
-  #side{width:100%;flex:0 0 auto;display:flex;border-right:0;border-top:1px solid var(--line);padding:0 var(--sar) var(--sab) var(--sal);overflow-x:auto}
-  .nav{flex:1 0 auto;min-width:54px;white-space:nowrap;flex-direction:column;gap:2px;font-size:11px;padding:7px 6px;border-left:0;border-top:2px solid transparent;justify-content:center}
+  #side{width:100%;flex:0 0 auto;display:grid;grid-template-columns:repeat(var(--navcols,9),1fr);border-right:0;border-top:1px solid var(--line);padding:0 var(--sar) var(--sab) var(--sal);overflow:visible}
+  .nav{min-width:0;white-space:nowrap;flex-direction:column;gap:2px;font-size:10.5px;padding:6px 0 5px;border-left:0;border-top:2px solid transparent;justify-content:center;letter-spacing:-.2px}
+  .nav svg{width:17px;height:17px;flex:0 0 17px}
   .nav.on{border-top-color:var(--acc)}
   #view{padding:12px}
   .tb-stat{display:none}
@@ -1509,16 +1510,17 @@ function render(){
   tb.innerHTML=logo(t,34); tn.innerHTML=`${esc(t.cn)}<small>${t.conf}部 · ${t.div}赛区</small>`;
   const r=standings()[G.team];
   ts.innerHTML=`<div class="tb-stat"><b>${dateTxt(Math.min(S.day,REG_DAYS+80),true)}</b><span>${phaseTxt()}</span></div><div class="tb-stat"><b>${r.w}-${r.l}</b><span>战绩</span></div><div class="tb-stat"><b style="color:${S.board.conf>=50?'var(--good)':S.board.conf>=25?'var(--warn)':'var(--bad)'}">${S.board.conf}</b><span>老板信任</span></div>`;
-  const navs=[['home','首页'],['roster','阵容'],['rot','轮换'],['tac','战术'],['train','训练'],['trade','交易'],['fa','自由球员'],['scout','球探'],['sched','赛程'],['stand','战绩榜'],['stats','数据'],['events','赛事'],['po','季后赛'],['career','生涯']];
+  const navs=[['home','首页'],['roster','阵容'],['rot','轮换'],['tac','战术'],['train','训练'],['trade','交易'],['fa','自由球员'],['scout','球探'],['sched','赛程'],['stand','战绩榜'],['stats','数据'],['events','赛事'],['po','季后赛'],['career','生涯'],['save','存档']];
   if(W.off){ navs.unshift(['off','休赛期']); if(G.view==='home') G.view='off'; }
   if(LIVE) navs.splice(1,0,['match','直播']);
+  side.style.setProperty('--navcols', Math.min(10,Math.ceil(navs.length/2)));
   side.innerHTML=navs.map(([k,n])=>`<div class="nav ${G.view===k?'on':''}" data-v="${k}">${ICON[k]||ICON.match}<span>${n}</span></div>`).join('');
   side.querySelectorAll('.nav').forEach(el=>el.onclick=()=>{ const k=el.dataset.v;
     if(LIVE && !LIVE.M.done && k!=='match') pauseLive();
     G.view=k; render(); });
   if(G.view==='match' && !LIVE) G.view='home';
   if(G.view==='off' && !W.off) G.view='home';
-  ({home:vHome, roster:vRoster, rot:vRot, tac:vTac, match:vLive, sched:vSched, stand:vStand, stats:vStats, po:vPO, career:vCareer, off:vOff, trade:vTrade, fa:vFA, train:vTrain, scout:vScout, events:vEvents})[G.view](v);
+  ({home:vHome, roster:vRoster, rot:vRot, tac:vTac, match:vLive, sched:vSched, stand:vStand, stats:vStats, po:vPO, career:vCareer, off:vOff, trade:vTrade, fa:vFA, train:vTrain, scout:vScout, events:vEvents, save:vSave})[G.view](v);
 }
 function phaseTxt(){ const S=G.season; if(W.off) return '休赛期'; return {reg:'常规赛',playin:'附加赛',po:'季后赛',done:'赛季结束'}[S.phase]; }
 function confirmLeave(){ try{ return window.confirm('这场比赛还没打完，离开就算放弃。确定吗？'); }catch(e){ return true; } }
@@ -1528,8 +1530,8 @@ function vPick(v){
   const east=TEAMS.filter(t=>t.conf==='东'), west=TEAMS.filter(t=>t.conf==='西');
   const card=t=>{ const best=t.players.slice().sort((a,b)=>b.ovr-a.ovr)[0];
     return `<div class="tcard" data-i="${t.i}">${logo(t,44)}<div><b>${esc(t.cn)}</b><span>前 8 人均值 ${t.top8.toFixed(1)} · ${esc(sn(best))} ${best.ovr}</span></div></div>`; };
-  v.innerHTML=`<h1>选择球队</h1><div class="sub">2026-27 赛季季前，阵容来自 2K27，合同来自 BBGM 名单</div>
-    <h2>东部</h2><div class="tgrid">${east.map(card).join('')}</div><h2>西部</h2><div class="tgrid">${west.map(card).join('')}</div><div style="margin-top:18px">${installCardHTML()}</div>`; bindInstallCard(v);
+  v.innerHTML=`<h1>选择球队</h1>
+    <h2>东部</h2><div class="tgrid">${east.map(card).join('')}</div><h2>西部</h2><div class="tgrid">${west.map(card).join('')}</div><div id="pickextra" style="margin-top:18px"></div>`; pickExtras(v);
   v.querySelectorAll('.tcard').forEach(el=>el.onclick=()=>{ G.team=+el.dataset.i; G.rot=null; G.tac=null; fixRot();
     const S=G.season;
     if(S && S.phase==='done' && !W.off){ G.board={conf:55}; S.fired=false; startOffseason(); G.view='off'; }       // 赛季末换队：带新球队进休赛期
@@ -2419,8 +2421,7 @@ function vCareer(v){
   const C=G.career||[], rings=C.filter(c=>c.champ).length, cups=C.filter(c=>c.cup).length;
   v.innerHTML=`<h1>生涯</h1><div class="sub">总冠军 ${rings} 个 · NBA 杯 ${cups} 个 · 执教 ${C.length} 个完整赛季</div>
    <div class="card tw"><table><thead><tr><th>赛季</th><th>球队</th><th class="n">战绩</th><th>季后赛</th><th>老板目标</th><th>完成</th></tr></thead><tbody>
-   ${C.map(c=>`<tr><td>${c.year}-${String((c.year+1)%100).padStart(2,'0')}</td><td>${logo(TEAMS[c.team],16)} ${esc(TEAMS[c.team].cn)}</td><td class="n">${c.w}-${c.l}</td><td>${c.champ?'<b style="color:var(--acc)">总冠军</b>':esc(c.res)}${c.cup?' <span class="pill" style="background:#3a2a10">NBA 杯</span>':''}</td><td>${esc(c.goal)}</td><td class="${c.met?'good':'bad'}">${c.met?'是':'否'}</td></tr>`).join('')||'<tr><td class="hint">还没有打完的赛季</td></tr>'}</tbody></table></div>${installCardHTML()}`;
-  bindInstallCard(v);
+   ${C.map(c=>`<tr><td>${c.year}-${String((c.year+1)%100).padStart(2,'0')}</td><td>${logo(TEAMS[c.team],16)} ${esc(TEAMS[c.team].cn)}</td><td class="n">${c.w}-${c.l}</td><td>${c.champ?'<b style="color:var(--acc)">总冠军</b>':esc(c.res)}${c.cup?' <span class="pill" style="background:#3a2a10">NBA 杯</span>':''}</td><td>${esc(c.goal)}</td><td class="${c.met?'good':'bad'}">${c.met?'是':'否'}</td></tr>`).join('')||'<tr><td class="hint">还没有打完的赛季</td></tr>'}</tbody></table></div>`;
 }
 
 // ================= 休赛期 =================
@@ -2883,6 +2884,7 @@ function vOff(v){
   v.querySelectorAll('[data-unoffer]').forEach(b=>b.onclick=()=>{ delete O.userOffers[b.dataset.unoffer]; save(); render(); });
 }
 function toast(msg){ let el=document.getElementById('toast'); if(!el){ el=document.createElement('div'); el.id='toast'; el.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#243142;border:1px solid var(--line);color:var(--txt);padding:9px 16px;border-radius:8px;z-index:80;font-size:13px;max-width:90vw'; document.body.appendChild(el); }
+  const sd=document.getElementById('side'), nb=(sd && innerWidth<=760 && sd.offsetHeight)? sd.offsetHeight : 0; el.style.bottom=(nb+20)+'px';
   el.textContent=msg; el.style.display='block'; clearTimeout(el._t); el._t=setTimeout(()=>el.style.display='none',2600); }
 
 // ================= 交易、自由球员、裁人 =================
@@ -3667,7 +3669,7 @@ function closeInstall(){ const el=document.getElementById('installbox'); if(el) 
 function showInstall(manual){
   closeInstall(); if(isStandalone()){ if(manual) toast('已经装在桌面上了'); return; }
   const el=document.createElement('div'); el.id='installbox';
-  el.style.cssText='position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(380px,calc(100vw - 24px));background:var(--bg3);border:1px solid var(--acc);border-radius:12px;padding:14px 16px;z-index:90;box-shadow:0 10px 30px rgba(0,0,0,.5)';
+  el.style.cssText='position:fixed;left:50%;bottom:'+((()=>{ const sd=document.getElementById('side'); return (sd&&innerWidth<=760&&sd.offsetHeight)?sd.offsetHeight+12:24; })())+'px;transform:translateX(-50%);width:min(380px,calc(100vw - 24px));background:var(--bg3);border:1px solid var(--acc);border-radius:12px;padding:14px 16px;z-index:90;box-shadow:0 10px 30px rgba(0,0,0,.5)';
   let body;
   if(PWA.deferred) body=`<p style="margin-bottom:10px">把篮球经理装到桌面，像 App 一样打开，断网也能玩。</p><div style="text-align:right"><button id="ins-no">以后再说</button> <button class="pri" id="ins-yes">安装</button></div>`;
   else if(IS_SAFARI && IS_IOS) body=`<p style="margin-bottom:6px">装到主屏幕：</p><p class="hint" style="color:var(--txt)">点底部工具栏的<b>分享</b>按钮 → 往下找<b>「添加到主屏幕」</b> → 右上角点<b>添加</b>。</p><div style="text-align:right;margin-top:10px"><button id="ins-no">知道了</button></div>`;
@@ -3700,6 +3702,101 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
     navigator.serviceWorker.addEventListener('controllerchange', ()=>{ if(reloading) return; reloading=true; location.reload(); });
   });
 }
+
+// ================= 存档、读档、新开一局、联系方式 =================
+// 当前进度自动存在 localStorage（bbm_v1 / bbm_world_v1 / bbm_season_v1）；
+// 手动存档位放 IndexedDB（一个存档接近 1 MB，localStorage 放不下几个），IndexedDB 不可用时退回 localStorage。
+const SAVE_KEYS=[SAVE_KEY, WORLD_KEY, SEASON_KEY];
+const SLOT_N=3;
+const IDB={db:null};
+function idbOpen(){ return new Promise((res,rej)=>{ if(IDB.db) return res(IDB.db); if(!window.indexedDB) return rej(new Error('no idb'));
+  const r=indexedDB.open('bbm_saves',1); r.onupgradeneeded=()=>r.result.createObjectStore('slots'); r.onsuccess=()=>{ IDB.db=r.result; res(IDB.db); }; r.onerror=()=>rej(r.error); }); }
+async function slotPut(k,v){ try{ const db=await idbOpen(); await new Promise((res,rej)=>{ const tx=db.transaction('slots','readwrite'); tx.objectStore('slots').put(v,k); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); }
+  catch(e){ localStorage.setItem('bbm_slot_'+k, JSON.stringify(v)); } }
+async function slotGet(k){ try{ const db=await idbOpen(); return await new Promise((res,rej)=>{ const q=db.transaction('slots').objectStore('slots').get(k); q.onsuccess=()=>res(q.result||null); q.onerror=()=>rej(q.error); }); }
+  catch(e){ try{ return JSON.parse(localStorage.getItem('bbm_slot_'+k)||'null'); }catch(_){ return null; } } }
+async function slotDel(k){ try{ const db=await idbOpen(); await new Promise(res=>{ const tx=db.transaction('slots','readwrite'); tx.objectStore('slots').delete(k); tx.oncomplete=res; tx.onerror=res; }); }catch(e){} try{ localStorage.removeItem('bbm_slot_'+k); }catch(e){} }
+
+function snapshot(){
+  save(); saveSeason();
+  const keys={}; SAVE_KEYS.forEach(k=>{ const v=localStorage.getItem(k); if(v!=null) keys[k]=v; });
+  const S=G.season, t=G.team!=null?TEAMS[G.team]:null, r=S&&t? standings()[G.team] : null;
+  return {v:1, time:Date.now(), meta:{team:t?t.cn:'', ti:G.team, year:W.off?W.off.year:(S?S.year:W.year), date:W.off?'休赛期 · '+OFF_STEPS[W.off.step]:(S?dateTxt(Math.min(S.day,REG_DAYS+80))+' · '+phaseTxt():''), rec:r?`${r.w}-${r.l}`:''}, keys};
+}
+function restore(snap){
+  if(!snap || !snap.keys || !snap.keys[WORLD_KEY]) throw new Error('bad');
+  SAVE_KEYS.forEach(k=>localStorage.removeItem(k));
+  Object.entries(snap.keys).forEach(([k,v])=>{ if(SAVE_KEYS.includes(k)) localStorage.setItem(k,v); });
+  location.reload();
+}
+function metaTxt(s){ if(!s) return '<span class="hint">空</span>'; const m=s.meta||{}, d=new Date(s.time);
+  return `<b>${esc(m.team||'未选队')}</b> <span class="hint">${m.year?m.year+'-'+String((m.year+1)%100).padStart(2,'0')+' 赛季 · ':''}${esc(m.date||'')}${m.rec?' · '+m.rec:''}</span><div class="hint">存于 ${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</div>`; }
+function exportSave(){
+  const s=snapshot(), m=s.meta, d=new Date(), p2=x=>String(x).padStart(2,'0'), name=`basketball-manager-${G.team!=null?TEAMS[G.team].abbr:'new'}-${m.year}-${p2(d.getMonth()+1)}${p2(d.getDate())}${p2(d.getHours())}${p2(d.getMinutes())}.json`;
+  const blob=new Blob([JSON.stringify(s)],{type:'application/json'}), a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500);
+  toast('存档文件已导出');
+}
+function importSave(file){
+  const r=new FileReader(); r.onload=()=>{ try{ const s=JSON.parse(r.result); if(!confirmSafe('导入会替换当前进度，确定吗？')) return; restore(s); }catch(e){ toast('这个文件读不出来，不是篮球经理的存档'); } }; r.readAsText(file);
+}
+function confirmSafe(msg){ try{ return window.confirm(msg); }catch(e){ return true; } }
+function newGame(){ if(!confirmSafe('新开一局会丢掉当前进度（手动存档位不受影响）。确定吗？')) return; SAVE_KEYS.forEach(k=>localStorage.removeItem(k)); location.reload(); }
+function copyWx(){
+  const id='lynchrrr';
+  const fb=()=>{ try{ const el=document.getElementById('wx-id'), rg=document.createRange(); rg.selectNodeContents(el); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(rg); toast('已选中微信号，长按复制'); }catch(e){ toast('微信号：'+id); } };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(id).then(()=>toast('微信号已复制：'+id)).catch(fb); else fb();
+}
+function contactHTML(){
+  return `<div class="card"><h3>反馈和建议</h3><p class="hint" style="margin-bottom:8px">遇到 bug、觉得哪里数值不对，或者想要什么新功能，加微信直接说：</p>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><b id="wx-id" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:20px;letter-spacing:1px;color:var(--acc);-webkit-user-select:all;user-select:all">lynchrrr</b><button class="sm" id="copywx">复制微信号</button></div>
+    <p class="hint" style="margin-top:6px">作者 Lynch · GitHub @Lynch715</p></div>`;
+}
+async function slotsHTML(canSave){
+  const S=[]; for(let i=1;i<=SLOT_N;i++) S.push(await slotGet('s'+i));
+  return `<div class="card"><h3>存档位</h3>${S.map((s,k)=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #1f2733;flex-wrap:wrap">
+      <b style="width:22px;color:var(--dim)">${k+1}</b><div style="flex:1;min-width:180px">${metaTxt(s)}</div>
+      <div>${canSave?`<button class="sm pri" data-ss="${k+1}">存到这里</button> `:''}${s?`<button class="sm" data-sl="${k+1}">读取</button> <button class="sm" data-sd="${k+1}">删除</button>`:''}</div></div>`).join('')}
+    <p class="hint" style="margin-top:8px">存档位只在这台设备的这个浏览器里。换手机、换电脑，或者清理浏览器数据之前，先导出存档文件。</p>
+    <div style="margin-top:10px">${canSave?'<button id="exportsave">导出存档文件</button> ':''}<button id="importbtn">导入存档文件</button><input type="file" id="importfile" accept=".json,application/json" style="display:none"></div></div>`;
+}
+function bindSave(v, rerender){
+  v.querySelectorAll('[data-ss]').forEach(b=>b.onclick=async()=>{ const k='s'+b.dataset.ss, old=await slotGet(k);
+    if(old && !confirmSafe(`存档位 ${b.dataset.ss} 已经有存档，覆盖吗？`)) return; await slotPut(k, snapshot()); toast(`已存到存档位 ${b.dataset.ss}`); rerender(); });
+  v.querySelectorAll('[data-sl]').forEach(b=>b.onclick=async()=>{ const s=await slotGet('s'+b.dataset.sl); if(!s) return;
+    if(G.team!=null && !confirmSafe('读档会替换当前进度，没存的部分会丢。确定吗？')) return; try{ restore(s); }catch(e){ toast('这个存档读不出来'); } });
+  v.querySelectorAll('[data-sd]').forEach(b=>b.onclick=async()=>{ if(!confirmSafe(`删除存档位 ${b.dataset.sd}？`)) return; await slotDel('s'+b.dataset.sd); rerender(); });
+  const q=s=>v.querySelector(s);
+  if(q('#exportsave')) q('#exportsave').onclick=exportSave;
+  if(q('#importbtn')) q('#importbtn').onclick=()=>q('#importfile').click();
+  if(q('#importfile')) q('#importfile').onchange=e=>{ const f=e.target.files[0]; if(f) importSave(f); e.target.value=''; };
+  if(q('#copywx')) q('#copywx').onclick=copyWx;
+  if(q('#newgame')) q('#newgame').onclick=newGame;
+  bindInstallCard(v);
+}
+async function vSave(v){
+  const s=G.season, t=myTeam();
+  v.innerHTML=`<h1>存档</h1><div class="sub">每一步操作都会自动保存，关掉再打开会接着玩。想留几个进度来回切，用下面的存档位。</div><div id="savebody"><div class="hint">读取中…</div></div>`;
+  const html=await slotsHTML(true);
+  if(G.view!=='save') return;
+  v.querySelector('#savebody').innerHTML=`${html}
+    <div class="card"><h3>新开一局</h3><p class="hint" style="margin-bottom:8px">放弃当前进度，回到 2026-27 赛季季前重新选队。手动存档位里的存档不受影响。</p><button class="sm" id="newgame" style="border-color:var(--bad);color:var(--bad)">新开一局</button></div>
+    ${installCardHTML()}${contactHTML()}`;
+  bindSave(v, ()=>vSave(v));
+}
+// 选队页：读档、导入、联系方式
+async function pickExtras(v){
+  const box=v.querySelector('#pickextra'); if(!box) return;
+  box.innerHTML=`${await slotsHTML(false)}${installCardHTML()}${contactHTML()}`;
+  bindSave(box, ()=>pickExtras(v));
+}
+ICON.save='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 2.5h9l2 2v9h-11z"/><path d="M5 2.5v3.5h5V2.5M5 13.5v-4h6v4"/></svg>';
+
+// ---------- 手机上关掉缩放 ----------
+(function lockZoom(){
+  ['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
+  document.addEventListener('touchmove',e=>{ if(e.touches && e.touches.length>1) e.preventDefault(); },{passive:false});
+})();
 
 // 启动（放在所有模块之后，避免常量还没初始化）
 load(); render();

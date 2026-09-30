@@ -98,4 +98,5 @@ function vOff(v){
   v.querySelectorAll('[data-unoffer]').forEach(b=>b.onclick=()=>{ delete O.userOffers[b.dataset.unoffer]; save(); render(); });
 }
 function toast(msg){ let el=document.getElementById('toast'); if(!el){ el=document.createElement('div'); el.id='toast'; el.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#243142;border:1px solid var(--line);color:var(--txt);padding:9px 16px;border-radius:8px;z-index:80;font-size:13px;max-width:90vw'; document.body.appendChild(el); }
+  const sd=document.getElementById('side'), nb=(sd && innerWidth<=760 && sd.offsetHeight)? sd.offsetHeight : 0; el.style.bottom=(nb+20)+'px';
   el.textContent=msg; el.style.display='block'; clearTimeout(el._t); el._t=setTimeout(()=>el.style.display='none',2600); }
