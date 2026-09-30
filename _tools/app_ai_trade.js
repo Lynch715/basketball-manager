@@ -3,12 +3,16 @@
 function teamsByMode(){ const c=[], r=[]; TEAMS.forEach(t=>{ if(t.i===G.team) return; (teamMode(t.i)==='contend'?c:r).push(t.i); }); return {c,r}; }
 function tradeableAssets(ti, yr, exclude){
   const t=TEAMS[ti], top=t.players.slice().sort((a,b)=>b.ovr-a.ovr), protect=new Set(top.slice(0,exclude||0).map(p=>p.id));
-  return {players:t.players.filter(p=>!protect.has(p.id) && p.contract && p.contract[1]>yr && p.contract[2]!=='tw' && !(p.injury>200)), picks:picksOwnedBy(ti)};
+  return {players:t.players.filter(p=>!protect.has(p.id) && !frozen(p) && p.contract && p.contract[1]>yr && p.contract[2]!=='tw' && !(p.injury>200)), picks:picksOwnedBy(ti)};
 }
 // 从 giver 的资产里枚举「最多 3 人 + 2 个签」的组合：接收方得到的价值 ≥ minRecv，送出方付出的价值 ≤ maxGive，规则合规，溢价最小
 function searchPackage(giver, receiver, recvOut, recvOutK, recvVal, giveVal, minRecv, maxGive, yr, protectN, filterP){
   const A=tradeableAssets(giver,yr,protectN);
-  const P=A.players.filter(filterP||(()=>true)).map(p=>({p, r:recvVal(p), g:giveVal(p)})).filter(x=>x.r>3).sort((x,y)=>y.r-x.r).slice(0,12);
+  // 候选：对方最看重的 9 人，加上工资最高的 4 人（凑薪资用的「填充合同」）
+  const all=A.players.filter(filterP||(()=>true)).map(p=>({p, r:recvVal(p), g:giveVal(p)}));
+  const byVal=all.filter(x=>x.r>3).sort((x,y)=>y.r-x.r).slice(0,9);
+  const bySal=all.filter(x=>!byVal.includes(x)).sort((x,y)=>(y.p.contract?y.p.contract[0]:0)-(x.p.contract?x.p.contract[0]:0)).slice(0,4);
+  const P=[...byVal,...bySal];
   const K=A.picks.map(k=>({k, r:recvVal(k), g:giveVal(k)})).sort((x,y)=>y.r-x.r).slice(0,4);
   let best=null, bestScore=1e18;
   const pc=[[]]; for(let i=0;i<P.length;i++){ pc.push([i]); for(let j=i+1;j<P.length;j++){ pc.push([i,j]); for(let k=j+1;k<P.length;k++) pc.push([i,j,k]); } }
@@ -29,12 +33,12 @@ function searchPackage(giver, receiver, recvOut, recvOutK, recvVal, giveVal, min
 function genAITrade(bi, si, yr){
   const B=TEAMS[bi], S=TEAMS[si];
   const bTop=B.players.slice().sort((a,b)=>b.ovr-a.ovr); const fifth=bTop[4]?bTop[4].ovr:70;
-  const targets=S.players.filter(p=>p.contract && p.contract[1]>yr && p.contract[2]!=='tw' && (ageOf(p,yr)>=26||p.treq) && p.ovr>fifth && !(p.injury>30)).sort((a,b)=>(b.treq?1:0)-(a.treq?1:0)||b.ovr-a.ovr);
+  const targets=S.players.filter(p=>!frozen(p) && p.contract && p.contract[1]>yr && p.contract[2]!=='tw' && (ageOf(p,yr)>=26||p.treq) && p.ovr>fifth && !(p.injury>30)).sort((a,b)=>(b.treq?1:0)-(a.treq?1:0)||b.ovr-a.ovr);
   for(const target of targets.slice(0,3)){
     const sLose=playerValue(target,'rebuild',yr), bGain=playerValue(target,'contend',yr);
     const pk=searchPackage(bi, si, [target], [], x=>x.id!=null?playerValue(x,'rebuild',yr):pickValue(x,'rebuild'), x=>x.id!=null?playerValue(x,'contend',yr):pickValue(x,'contend'),
-      sLose*1.05+20, bGain, yr, 3);
-    if(pk) return {bi, si, outP:pk.outP, outK:pk.outK, target};
+      sLose*1.05+20, bGain*1.2+20, yr, 3);   // 争冠队愿意为即战力多付两成
+    if(pk && ownerOk(bi, (target.contract?target.contract[0]:0)-tradeSal(pk.outP,yr), yr, 1.03)) return {bi, si, outP:pk.outP, outK:pk.outK, target};
   }
   return null;
 }
@@ -57,9 +61,9 @@ function genUserOffer(){
   // AI 想要什么
   let target=null;
   if(mode==='contend'){ const five=TEAMS[ai].players.slice().sort((a,b)=>b.ovr-a.ovr)[4];
-    const c=U.players.filter(p=>p.contract && p.contract[1]>yr && p.contract[2]!=='tw' && ageOf(p,yr)>=25 && p.ovr>(five?five.ovr:70) && !(p.injury>20));
+    const c=U.players.filter(p=>!frozen(p) && p.contract && p.contract[1]>yr && p.contract[2]!=='tw' && ageOf(p,yr)>=25 && p.ovr>(five?five.ovr:70) && !(p.injury>20));
     if(c.length) target={p:pickOne(c.sort((a,b)=>b.ovr-a.ovr).slice(0,4))}; }
-  else { const c=U.players.filter(p=>p.contract && p.contract[2]!=='tw' && ageOf(p,yr)<=23 && p.pot>=80);
+  else { const c=U.players.filter(p=>!frozen(p) && p.contract && p.contract[2]!=='tw' && ageOf(p,yr)<=23 && p.pot>=80);
     const ks=picksOwnedBy(G.team).filter(k=>k.round===1);
     if(c.length && (rnd01()<.6 || !ks.length)) target={p:pickOne(c)}; else if(ks.length) target={k:pickOne(ks)}; }
   if(!target) return null;
@@ -69,6 +73,7 @@ function genUserOffer(){
   const pk=searchPackage(ai, G.team, inP, inK, x=>x.id!=null?playerValue(x,uMode,yr):pickValue(x,uMode), x=>x.id!=null?playerValue(x,mode,yr):pickValue(x,mode),
     tUser*.9, tAI*.97, yr, mode==='contend'?3:1);
   if(!pk) return null;
+  if(!ownerOk(ai, tradeSal(inP,yr)-tradeSal(pk.outP,yr), yr, 1.03)) return null;
   const outP=pk.outP, outK=pk.outK;
   const S=G.season;
   return {id:Date.now()+'-'+Math.floor(rnd01()*1e6), from:ai, give:{p:outP.map(p=>p.id), k:outK.map(pkKey)}, get:{p:inP.map(p=>p.id), k:inK.map(pkKey)},
@@ -79,7 +84,7 @@ function maybeUserOffer(prob){
   if(W.offers.length>=2 || rnd01()>=prob) return;
   let o=null; for(let k=0;k<4 && !o;k++) o=genUserOffer(); if(o){ W.offers.push(o); if(G.season) G.season.inbox.push({d:G.season.day, t:`${TEAMS[o.from].cn}发来交易报价`, b:'在首页的「交易报价」里查看。'}); }
 }
-function offerExpired(o){ if(o.exp.off) return !W.off || W.off.step>o.exp.step; return W.off || !G.season || G.season.day>o.exp.day || G.season.phase!=='reg'; }
+function offerExpired(o){ if([...o.give.k,...o.get.k].some(k=>pickUsed(pkFromKey(k)))) return true; if(o.exp.off) return !W.off || W.off.step>o.exp.step; return W.off || !G.season || G.season.day>o.exp.day || G.season.phase!=='reg'; }
 function offerItems(o){ return {give:o.give.p.map(id=>PBYID[id]).filter(Boolean), giveK:o.give.k.map(pkFromKey), get:o.get.p.map(id=>PBYID[id]).filter(Boolean), getK:o.get.k.map(pkFromKey)}; }
 function acceptOffer(id){
   const o=(W.offers||[]).find(x=>x.id===id); if(!o) return;

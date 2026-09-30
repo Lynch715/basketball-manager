@@ -1450,7 +1450,7 @@ function payroll(t, year){ year=year||W.year; let s=0;
 
 // ---------- 联盟存档 ----------
 const WORLD_KEY='bbm_world_v1';
-const PFIELDS=['id','en','cn','pos','pos2','born','jersey','ht','ws','wt','nat','pot','dur','prof','a','contract','ovr','hist','draft','fa','twoWay','rkOpt','rk1','rfa','sheet','mor','treq','tf','gx','sz'];
+const PFIELDS=['id','en','cn','pos','pos2','born','jersey','ht','ws','wt','nat','pot','dur','prof','a','contract','ovr','hist','draft','fa','twoWay','rkOpt','rk1','rfa','sheet','mor','treq','tf','gx','sz','frz','arch','dev','vol','pre'];
 function saveWorld(){ try{
   const pl=[]; const put=(p,team)=>{ const o={}; PFIELDS.forEach(k=>{ if(p[k]!==undefined) o[k]=p[k]; }); o.team=team; pl.push(o); };
   TEAMS.forEach(t=>t.players.forEach(p=>put(p,t.i))); FREE.forEach(p=>put(p,-1));
@@ -1472,7 +1472,7 @@ function loadWorld(){ try{
 const SAVE_KEY='bbm_v1';
 let G = {team:null, rot:null, tac:null, view:'home', season:null, career:[], board:null, autoMine:false};
 function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify({team:G.team, rot:G.rot, tac:G.tac, career:G.career, board:G.board, autoMine:G.autoMine})); }catch(e){} saveWorld(); }
-function load(){ try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); if(s && s.team!=null && TEAMS[s.team]){ loadWorld(); Object.assign(G,s); fixRot(); loadSeason(); if(!G.season) newSeason(W.year); applyPlayerState(); } }catch(e){ console.error(e); } }
+function load(){ try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); if(s && s.team!=null && TEAMS[s.team]){ loadWorld(); Object.assign(G,s); fixRot(); loadSeason(); if(!G.season) newSeason(W.year); if(!W.off){ ensurePicks(W.year+1); ensurePicks(W.year+2); } applyPlayerState(); } }catch(e){ console.error(e); } }
 function myTeam(){ return TEAMS[G.team]; }
 function fixRot(){ // 存档里的球员 id 对不上时重置
   const t=myTeam(), ids=new Set(t.players.map(p=>p.id));
@@ -1491,7 +1491,7 @@ function ovrCol(v){ return v>=90?'#ff8a1f':v>=84?'#ffc043':v>=78?'#7fd36b':v>=72
 function ovrTag(v){ return `<span class="ovr" style="background:${ovrCol(v)}">${v}</span>`; }
 function attrCol(v){ return v>=85?'#00c276':v>=72?'#9bd35a':v>=58?'#f0a020':'#e5484d'; }
 function bar(v,max,col){ return `<div class="bar"><i style="width:${clamp(v/max*100,0,100)}%;background:${col}"></i></div>`; }
-function money(w){ return w>=10000? (w/10000).toFixed(2)+' 亿' : w+' 万'; }
+function money(w){ const a=Math.abs(w); return (w<0?'-':'')+(a>=10000? (a/10000).toFixed(2)+' 亿' : a+' 万'); }
 function contractTxt(c){ if(!c) return '无合同'; const t={std:'',rk:'新秀',tw:'双向'}[c[2]]; return `${money(c[0])} · 至 ${c[1]}${t?' · '+t:''}`; }
 const ICON={
   roster:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="2.5"/><path d="M1.5 14c.5-3 2.3-4.5 4.5-4.5s4 1.5 4.5 4.5"/><circle cx="11.5" cy="5.5" r="2"/><path d="M11 9.5c2 0 3.2 1.3 3.6 3.8"/></svg>',
@@ -1510,17 +1510,17 @@ function render(){
   tb.innerHTML=logo(t,34); tn.innerHTML=`${esc(t.cn)}<small>${t.conf}部 · ${t.div}赛区</small>`;
   const r=standings()[G.team];
   ts.innerHTML=`<div class="tb-stat"><b>${dateTxt(Math.min(S.day,REG_DAYS+80),true)}</b><span>${phaseTxt()}</span></div><div class="tb-stat"><b>${r.w}-${r.l}</b><span>战绩</span></div><div class="tb-stat"><b style="color:${S.board.conf>=50?'var(--good)':S.board.conf>=25?'var(--warn)':'var(--bad)'}">${S.board.conf}</b><span>老板信任</span></div>`;
-  const navs=[['home','首页'],['roster','阵容'],['rot','轮换'],['tac','战术'],['train','训练'],['trade','交易'],['fa','自由球员'],['scout','球探'],['sched','赛程'],['stand','战绩榜'],['stats','数据'],['events','赛事'],['po','季后赛'],['career','生涯'],['save','存档']];
+  const navs=[['home','首页'],['roster','阵容'],['rot','轮换'],['tac','战术'],['train','训练'],['fin','财政'],['trade','交易'],['fa','自由球员'],['scout','球探'],['sched','赛程'],['stand','战绩榜'],['stats','数据'],['events','赛事'],['po','季后赛'],['career','生涯'],['save','存档']];
   if(W.off){ navs.unshift(['off','休赛期']); if(G.view==='home') G.view='off'; }
   if(LIVE) navs.splice(1,0,['match','直播']);
-  side.style.setProperty('--navcols', Math.min(10,Math.ceil(navs.length/2)));
+  side.style.setProperty('--navcols', Math.min(9,Math.ceil(navs.length/2)));
   side.innerHTML=navs.map(([k,n])=>`<div class="nav ${G.view===k?'on':''}" data-v="${k}">${ICON[k]||ICON.match}<span>${n}</span></div>`).join('');
   side.querySelectorAll('.nav').forEach(el=>el.onclick=()=>{ const k=el.dataset.v;
     if(LIVE && !LIVE.M.done && k!=='match') pauseLive();
     G.view=k; render(); });
   if(G.view==='match' && !LIVE) G.view='home';
   if(G.view==='off' && !W.off) G.view='home';
-  ({home:vHome, roster:vRoster, rot:vRot, tac:vTac, match:vLive, sched:vSched, stand:vStand, stats:vStats, po:vPO, career:vCareer, off:vOff, trade:vTrade, fa:vFA, train:vTrain, scout:vScout, events:vEvents, save:vSave})[G.view](v);
+  ({home:vHome, roster:vRoster, rot:vRot, tac:vTac, match:vLive, sched:vSched, stand:vStand, stats:vStats, po:vPO, career:vCareer, off:vOff, trade:vTrade, fa:vFA, train:vTrain, scout:vScout, events:vEvents, save:vSave, fin:vFin})[G.view](v);
 }
 function phaseTxt(){ const S=G.season; if(W.off) return '休赛期'; return {reg:'常规赛',playin:'附加赛',po:'季后赛',done:'赛季结束'}[S.phase]; }
 function confirmLeave(){ try{ return window.confirm('这场比赛还没打完，离开就算放弃。确定吗？'); }catch(e){ return true; } }
@@ -1571,6 +1571,7 @@ function showPlayer(p){
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">${pros?'':ovrTag(p.ovr)}<div><h1 style="margin:0">${esc(p.cn)}</h1>
     <div class="hint">${p.en!==p.cn?esc(p.en)+' · ':''}${POS_CN[p.pos]}${p.pos2.length?'（可打 '+p.pos2.map(x=>POS_CN[x]).join('、')+'）':''} · ${ageOf(p,(W.off?W.off.year:W.year))} 岁 · ${esc(p.nat)}</div></div>
     <div style="margin-left:auto;text-align:right">${pros?`<div>总评 <b>${rangeTxt(p.scout.o)}</b> · 潜力 <b>${rangeTxt(p.scout.p)}</b></div><div class="hint">球探报告，属性也有误差</div>`:`<div>潜力 <b>${p.pot}</b></div><div class="hint">${contractTxt(p.contract)}</div>${G.team!=null&&teamOfId(p.id)>=0?`<div class="hint">士气 ${morTag(p)}</div>`:''}`}</div></div>
+    ${pros?`<div class="card" style="margin-bottom:10px;padding:10px"><div>原型：<b>${esc(p.arch||'')}</b> · ${esc(preTxt(p))}</div>${(W.scoutFocus||[]).includes(p.id)?`<div class="hint" style="margin-top:4px">重点考察：敬业${profCn(p.prof)}，伤病风险${durCn(p.dur)}</div>`:''}</div>`:(p.arch&&p.draft?`<div class="hint" style="margin-bottom:8px">选秀时的原型：${esc(p.arch)}</div>`:'')}
     <div class="row" style="margin-bottom:10px;font-size:12px"><span>身高 <b>${p.ht}</b> cm</span><span>臂展 <b>${p.ws}</b> cm</span><span>体重 <b>${p.wt}</b> kg</span><span>出生 ${p.born}</span></div>
     ${ATTR_GROUPS.map(([g,ks])=>`<h2>${g}</h2><div class="attrs">${ks.map(k=>`<div class="attr"><span>${ATTR_CN[k]}</span><b style="color:${attrCol(p.a[k])}">${p.a[k]}</b></div>`).join('')}</div>`).join('')}
     ${(p.hist&&p.hist.length)?`<h2>生涯数据</h2><div class="tw"><table><thead><tr><th>赛季</th><th>球队</th><th class="n">出场</th><th class="n">时间</th><th class="n">得分</th><th class="n">篮板</th><th class="n">助攻</th><th class="n">抢断</th><th class="n">盖帽</th><th class="n">命中率</th><th class="n">三分%</th></tr></thead><tbody>${p.hist.map(h=>`<tr><td>${h[0]}-${String((h[0]+1)%100).padStart(2,'0')}${h[2]?' 季后赛':''}</td><td>${h[1]>=0&&TEAMS[h[1]]?logo(TEAMS[h[1]],14)+' '+esc(TEAMS[h[1]].nick):''}</td>${h.slice(3).map(x=>`<td class="n">${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:''}${p.draft?`<p class="hint" style="margin-top:8px">${p.draft.year} 年第 ${p.draft.no} 顺位，被${TEAMS[p.draft.team]?TEAMS[p.draft.team].cn:''}选中</p>`:''}
@@ -1946,7 +1947,7 @@ function newSeason(year){
   const S={ year, seed, day:0, phase:'reg', games:genSchedule(seed, cupPairSet(cupGroups)), boxes:{}, ps:{}, pps:{}, cond:{}, inj:{},
     inbox:[], playin:null, po:null, awards:null, champion:null, lastMonth:SEASON_START.getMonth(), userFinal:null, ovr0:{} };
   TEAMS.forEach(t=>t.players.forEach(p=>S.ovr0[p.id]=p.ovr));
-  S.cup={groups:cupGroups, ko:null, champ:null}; ensureDraftClass(year+1);
+  S.cup={groups:cupGroups, ko:null, champ:null}; ensureDraftClass(year+1); ensurePicks(year+1); ensurePicks(year+2);
   // 老板目标
   const rank=TEAMS.slice().sort((a,b)=>b.top8-a.top8).findIndex(t=>t.i===G.team)+1;
   const tier = rank<=3?0 : rank<=8?1 : rank<=16?2 : rank<=22?3 : 4;
@@ -2119,14 +2120,14 @@ function monthlyBoard(){
   const diff=r.pct-GOALS[S.board.tier].exp;
   const delta=Math.round(clamp(diff*40,-8,8));
   S.board.conf=clamp(S.board.conf+delta,0,100);
-  S.inbox.push({d:S.day, t:'老板的月度评价', b:`目前 ${r.w} 胜 ${r.l} 负。${delta>2?'老板对球队的表现很满意。':delta<-2?'老板对战绩不太满意，希望尽快改善。':'老板觉得还行，继续保持。'}信任度 ${S.board.conf}（${delta>=0?'+':''}${delta}）。`});
+  S.inbox.push({d:S.day, t:'老板的月度评价', b:`目前 ${r.w} 胜 ${r.l} 负。${delta>2?'老板对球队的表现很满意。':delta<-2?'老板对战绩不太满意，希望尽快改善。':'老板觉得还行，继续保持。'}信任度 ${S.board.conf}（${delta>=0?'+':''}${delta}）。${finMonthlyNote()}`});
   checkFired();
 }
 function checkFired(){ const S=G.season; if(S.board.conf<15 && !S.fired){ S.fired=true; S.inbox.push({d:S.day,t:'你被解雇了',b:'老板对球队失去了信心，决定换帅。你可以接手另一支球队重新开始。'}); } }
 
 // ---------- 常规赛结束：奖项、附加赛 ----------
 function endRegular(){
-  const S=G.season; const R=standings();
+  const S=G.season; settleTax(); const R=standings();
   S.final=R.map(r=>({i:r.i,w:r.w,l:r.l}));
   S.seeds={东:confRank(R,'东').map(r=>r.i), 西:confRank(R,'西').map(r=>r.i)};
   S.awards=calcAwards(R);
@@ -2236,10 +2237,13 @@ function finishSeason(){
   const close = !met && ({0:roundWon===3, 1:roundWon===1, 2:seed<=10, 3:seed<=12, 4:r.w>=20})[S.board.tier];
   const delta = exceed?25 : met?15 : close?-8 : -18;
   S.board.conf=clamp(S.board.conf+delta,0,100);
-  S.userFinal={w:r.w,l:r.l,res,met,exceed,delta,seed};
+  const fe=financeSeasonEnd(), ff=fe.f;
+  if(!fe.pen && fe.first && ff.spend>ff.limit) S.inbox.push({d:S.day, t:'老板提醒开支', b:`工资加奢侈税一共 ${money(ff.spend)}，超出老板能接受的 ${money(ff.limit)}。这些合同是前任签的，今年不追究；从下个赛季起，超出的部分会扣信任度。`});
+  if(fe.pen){ S.board.conf=clamp(S.board.conf-fe.pen,0,100); S.inbox.push({d:S.day, t:'老板对开支不满', b:`工资加奢侈税一共 ${money(ff.spend)}，超出老板能接受的 ${money(ff.limit)}。信任度 −${fe.pen}。`}); }
+  S.userFinal={w:r.w,l:r.l,res,met,exceed,delta,seed,finPen:fe.pen};
   S.inbox.push({d:S.day,t: S.champion===G.team?'总冠军！':'赛季结束', b:`${TEAMS[S.champion].cn} 拿下总冠军。你的球队：${r.w} 胜 ${r.l} 负，${res}。老板目标「${GOALS[S.board.tier].txt}」${met?(exceed?'超额完成':'完成'):close?'差一点完成':'没有完成'}，信任度 ${delta>0?'+':''}${delta}，现在 ${S.board.conf}。`});
   G.career=G.career||[];
-  G.career.push({year:S.year, team:G.team, w:r.w, l:r.l, res, champ:S.champion===G.team, cup:!!(S.cup&&S.cup.champ===G.team), goal:GOALS[S.board.tier].name, met, fmvp:null, mvp:S.awards&&S.awards.mvp});
+  G.career.push({year:S.year, team:G.team, w:r.w, l:r.l, res, champ:S.champion===G.team, cup:!!(S.cup&&S.cup.champ===G.team), goal:GOALS[S.board.tier].name, met, fmvp:null, mvp:S.awards&&S.awards.mvp, fin:{revT:ff.revT, pay:ff.pay, tax:ff.tax, profit:ff.profit}});
   G.board={conf:S.board.conf};
   checkFired(); save();
 }
@@ -2442,9 +2446,9 @@ function contractYears(age){ return age<=24? 3+(rnd01()<.5?1:0) : age<=29? 2+Mat
 // ---------- 1. 赛季总结：存档数据、成长衰退、退役 ----------
 const PHYS=['spd','jmp','str','sta'], SKILL=['three','ft','mid','pass','oiq','diq','handle','post'];
 const AGE_DELTA=a=> a<=20?4 : a===21?3.5 : a===22?3 : a===23?2.2 : a===24?1.5 : a===25?1 : a===26?.5 : a===27?0 : a===28?-.3 : a===29?-.7 : a===30?-1.2 : a===31?-1.8 : a===32?-2.5 : a===33?-3.2 : a===34?-4 : -5;
-function progressPlayer(p, age, ti){
-  // 全年成长的六成在这里结算，另外四成在赛季里每两周结算（第五阶段）
-  let d=growthBase(p,age); d*=.6*trainMul(ti==null?-1:ti,d);
+function progressPlayer(p, age, ti, mm){
+  // 全年成长的六成在这里结算，另外四成在赛季里每两周结算（第五阶段）；年轻人再乘上场时间系数（第六阶段）
+  let d=growthBase(p,age); d*=.6*trainMul(ti==null?-1:ti,d); if(d>0 && age<=24) d*=(mm||1);
   d+=gauss(0,1.5);
   if(d>0 && p.ovr+d>p.pot) d=Math.max(0,p.pot-p.ovr);
   const target=clamp(Math.round(p.ovr+d),30,99), old=p.ovr;
@@ -2456,7 +2460,7 @@ function progressPlayer(p, age, ti){
   fitOvr(p, target);
   p.ovr=calcOvr(p);
   // 潜力
-  if(age<25) p.pot=Math.round(clamp(p.pot+gauss(-.3,1.5),p.ovr,99));
+  if(age<25) p.pot=Math.round(clamp(p.pot+potDrift(p,age),p.ovr,99));
   else p.pot=Math.max(p.ovr, Math.round(p.pot-(p.pot-p.ovr)*.5));
   p.dur=clamp(Math.round(p.dur - (age>=31?rnd01()*3:0) + gauss(0,1.5)),30,99);
   return p.ovr-old;
@@ -2483,7 +2487,7 @@ function offSummary(){
   archiveStats();
   const all=[]; TEAMS.forEach(t=>t.players.forEach(p=>all.push([p,t.i]))); FREE.forEach(p=>all.push([p,-1]));
   all.forEach(([p,ti])=>{
-    const age=ageOf(p,nextYear); const old=p.ovr; const d=progressPlayer(p,age,ti); p.age=age; delete p.gx;
+    const age=ageOf(p,nextYear); const old=p.ovr; const q=S.ps[p.id], mpg=q?q.min/82:0; const d=progressPlayer(p,age,ti,ti>=0?minMul(mpg,p.contract&&p.contract[2]==='tw'):.9); p.age=age; delete p.gx;
     const r={id:p.id, cn:p.cn, team:ti, old, now:p.ovr, age};
     if(ti===G.team) rep.mine.push(r);
     rep.risers.push(r);
@@ -2507,14 +2511,48 @@ const CN_SURNAME=['王','李','张','刘','陈','杨','赵','黄','周','吴','�
 const CN_GIVEN=['子轩','浩然','宇航','俊杰','天佑','明哲','嘉豪','博文','一鸣','思远','晨阳','梓涵','瀚文','志强','振宇'];
 const NATS=[['美国',75],['加拿大',5],['法国',4],['塞尔维亚',2],['澳大利亚',3],['西班牙',2],['立陶宛',1.5],['喀麦隆',1.5],['尼日利亚',2],['德国',1.5],['中国',1.5],['土耳其',1]];
 function pickNat(){ let r=rnd01()*NATS.reduce((s,x)=>s+x[1],0); for(const [n,w] of NATS){ r-=w; if(r<=0) return n; } return '美国'; }
-function genProspect(rank, year){
-  // rank 0 = 最好；按顺位设定总评和潜力的期望值
+// 原型：属性加减（第六阶段 §3.2）
+const ARCH={
+  运动型:{pos:POS, d:{spd:8,jmp:9,str:6,dunk:6,finish:2,three:-6,mid:-6,ft:-5,handle:-4,pass:-4,post:-3,oiq:-7,diq:-4}, pot:3},
+  射手:{pos:['PG','SG','SF'], d:{three:10,mid:8,ft:8,oiq:2,str:-4,spd:-2,jmp:-3,perD:-4,intD:-4,blk:-3}, pot:0},
+  组织者:{pos:['PG','SG'], d:{pass:10,handle:9,oiq:7,str:-6,dunk:-4,blk:-3,oreb:-3}, pot:0},
+  护框者:{pos:['PF','C'], d:{blk:10,intD:9,dreb:7,oreb:6,str:4,three:-10,mid:-7,handle:-8,pass:-3,ft:-5}, pot:0},
+  锋线防守者:{pos:['SG','SF','PF'], d:{perD:10,stl:8,diq:8,spd:4,hustle:5,three:-3,mid:-4,pass:-3,post:-3}, pot:0},
+  得分手:{pos:['PG','SG','SF','PF'], d:{finish:6,mid:6,three:5,handle:5,perD:-6,diq:-6,hustle:-4,pass:-2}, pot:1},
+  老成型:{pos:POS, d:{oiq:7,diq:6,pass:6,ft:6,hustle:4,spd:-5,jmp:-6}, pot:-4, age:[21,22]},
+};
+function rollDev(p, rng){ rng=rng||rnd01; const r=rng(); p.dev= r<.2?'early' : r<.8?'normal' : 'late'; const v=rng(); p.vol= v<.6?1 : v<.88?2 : 3; }
+function ensureDev(p){ if(!p.dev) rollDev(p, srand(p.id*7919+13)); }
+const DEV_CN={early:'早熟',normal:'正常',late:'大器晚成'};
+function devMul(p, age){ ensureDev(p); if(p.dev==='early') return age<=21?1.35 : age<=24?.75 : 1; if(p.dev==='late') return age<=21?.65 : age<=24?1.45 : 1; return 1; }
+function potDrift(p, age){ ensureDev(p); const sd=[0,1.5,2.5,4][p.vol||1];
+  let bias=-.3; if(p.dev==='late' && age>=21 && age<=24) bias=.6; if(p.dev==='early' && age>=22) bias=-.9; return gauss(bias, sd); }
+function minMul(mpg, tw){ if(tw) return 1; return mpg>=28?1.3 : mpg>=18?1.1 : mpg>=10?1 : .8; }
+function genPre(p){
+  const a=p.a, age=p.age, lg= (p.nat==='美国'||p.nat==='加拿大')? (rnd01()<.1?'G联盟':'NCAA') : p.nat==='澳大利亚'?'澳洲 NBL' : p.nat==='中国'?'CBA' : '欧洲联赛';
+  const tough= lg==='NCAA'||lg==='G联盟'? 1 : .78, lvl=(p.ovr-60)/15;
+  const pts=clamp((9+lvl*9+(age-19)*.9+((a.finish+a.three+a.mid)/3-60)/6+gauss(0,2.5))*tough,3,32);
+  const reb=clamp(2+((a.oreb+a.dreb)/2-45)/7+(p.ht-195)/6+gauss(0,1.2),1,15), ast=clamp(1+((a.pass+a.handle)/2-50)/7+gauss(0,1),.3,10);
+  const fg=clamp(.42+(a.finish-60)/400+(p.pos==='C'||p.pos==='PF'?.06:0)+gauss(0,.03),.35,.68), tp=clamp(.3+(a.three-60)/250+gauss(0,.04),.15,.48);
+  const r1=x=>Math.round(x*10)/10;
+  return {lg, g:Math.round(lg==='NCAA'?30+rnd01()*8:24+rnd01()*14), pts:r1(pts), reb:r1(reb), ast:r1(ast), fg:Math.round(fg*1000)/10, tp:Math.round(tp*1000)/10};
+}
+function preTxt(p){ const x=p.pre; return x? `${x.lg} ${x.pts} 分 ${x.reb} 板 ${x.ast} 助 · 命中 ${x.fg}% · 三分 ${x.tp}%` : ''; }
+function profCn(v){ return v>=70?'高':v>=45?'中':'低'; }
+function durCn(v){ return v>=85?'低':v>=72?'中':'高'; }
+function genProspect(rank, year, boost, gen){
+  // rank 0 = 最好；按顺位设定总评和潜力的期望值，boost 是这一届的强弱
   const t=rank/69;
-  const ovr=Math.round(clamp(76-18*Math.pow(t,.85)+gauss(0,1.8),50,79));
-  const pot=Math.round(clamp(93-24*Math.pow(t,.8)+gauss(0,3),ovr+2,99));
-  const r=rnd01(); const age = r<.4?19 : r<.65?20 : r<.85?21 : 22;
-  // 模板：同位置的现役轮换球员
+  let ovr=Math.round(clamp(76-18*Math.pow(t,.85)+gauss(0,1.8)+boost*1.2,50,79));
+  let pot=Math.round(clamp(93-24*Math.pow(t,.8)+gauss(0,3)+boost*2.5,ovr+2,99));
+  if(gen){ ovr=79+Math.floor(rnd01()*4); pot=97+Math.floor(rnd01()*3); }
+  const r=rnd01(); let age = r<.4?19 : r<.65?20 : r<.85?21 : 22;
+  // 模板：同位置的现役轮换球员（只用身材），属性形状看原型
   const pos=pickOne(POS);
+  const archs=Object.keys(ARCH).filter(k=>ARCH[k].pos.includes(pos) && (!ARCH[k].age || !gen));
+  const arch=pickOne(archs), A=ARCH[arch];
+  if(A.age && age<A.age[0]) age=A.age[0]+Math.floor(rnd01()*2);
+  if(!gen) pot=Math.round(clamp(pot+A.pot,ovr+2,99));
   const pool=[]; TEAMS.forEach(tm=>tm.players.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,9).forEach(p=>{ if(p.pos===pos) pool.push(p); }));
   const tpl=pickOne(pool.length?pool:TEAMS[0].players);
   const nat=pickNat();
@@ -2522,27 +2560,31 @@ function genProspect(rank, year){
   const by=year-age, bm=1+Math.floor(rnd01()*12);
   const p={id:PID++, en:cn, cn, pos, pos2: tpl.pos2? tpl.pos2.slice():[], born:`${by}-${String(bm).padStart(2,'0')}`, jersey:String(Math.floor(rnd01()*50)),
     ht:Math.round(tpl.ht+gauss(0,2.5)), ws:Math.round(tpl.ws+gauss(0,3)), wt:Math.round(tpl.wt+gauss(0,4)), nat, pot, dur:Math.round(clamp(gauss(80,8),50,98)), prof:Math.round(clamp(gauss(60,15),20,99)),
-    a:Object.assign({},tpl.a), contract:null, hist:[]};
-  // 身体属性年轻人略低、技术略粗糙，再整体缩放到目标总评
-  KEYS.forEach(k=>{ p.a[k]=clamp(Math.round(p.a[k]+gauss(0,4)),20,99); });
-  // 先按比例粗缩放，再逐点微调
+    a:Object.assign({},tpl.a), contract:null, hist:[], arch};
+  // 模板属性加上原型的加减和随机噪声，再整体缩放到目标总评
+  KEYS.forEach(k=>{ p.a[k]=clamp(Math.round(p.a[k]+(A.d[k]||0)*1.2+gauss(0,4)),20,99); });
   { const cur=calcOvr(p); const k0=(ovr-40)/Math.max(1,cur-40); KEYS.forEach(k=>{ p.a[k]=clamp(Math.round(40+(p.a[k]-40)*k0),20,99); }); }
   fitOvr(p, ovr);
   p.ovr=calcOvr(p); p.pot=Math.max(p.pot,p.ovr+2); p.age=ageOf(p,year);
+  rollDev(p); if(gen){ p.dev='normal'; p.vol=1; p.prof=Math.max(p.prof,70); }
+  p.pre=genPre(p);
   // 球探误差：标准正态，显示区间的宽度看球探等级（refreshScout）
   p.sz=[gauss(0,1),gauss(0,1)];
   return p;
 }
 function genDraftClass(year){
-  const arr=[]; for(let i=0;i<70;i++) arr.push(genProspect(i,year));
+  const s=clamp(gauss(0,1),-2,2), gen=rnd01()<.07;
+  W.dcStr={s:Math.round(s*100)/100, gen};
+  const arr=[]; for(let i=0;i<70;i++) arr.push(genProspect(i,year, i<20? s*(1-i/20) : 0, gen&&i===0));
   arr.forEach(p=>PBYID[p.id]=p);
   return arr;
 }
+function classTxt(){ const c=W.dcStr; if(!c) return ''; return (c.s>=.7?'大年，前几顺位的成色明显好过往年' : c.s<=-.7?'小年，前几顺位没有往年扎实' : '普通年份')+(c.gen?'。另外，今年有一个被看作世代级的天才':''); }
 
 // ---------- 选秀权 ----------
 function ensurePicks(year){ W.picks[year]=W.picks[year]||{1:{},2:{}}; [1,2].forEach(r=>{ for(let i=0;i<30;i++) if(W.picks[year][r][i]==null) W.picks[year][r][i]=i; }); }
 function picksOwnedBy(ti){ const out=[]; Object.keys(W.picks).forEach(y=>[1,2].forEach(r=>Object.entries(W.picks[y][r]).forEach(([orig,own])=>{ if(own===ti) out.push({year:+y,round:r,orig:+orig}); }))); return out.sort((a,b)=>a.year-b.year||a.round-b.round); }
-function pickLabel(pk){ return `${pk.year} 年${pk.round===1?'首轮':'次轮'}（${TEAMS[pk.orig].nick}）`; }
+function pickLabel(pk){ const n=pk.round===1&&typeof protOf==='function'?protOf(pk):0; return `${pk.year} 年${pk.round===1?'首轮':'次轮'}（${TEAMS[pk.orig].nick}${n?'，前 '+n+' 保护':''}）`; }
 
 // ---------- 3. 抽签 ----------
 const LOTTO=[140,140,140,125,105,90,75,60,45,30,20,15,10,5];
@@ -2555,6 +2597,7 @@ function runLottery(){
   const pool=non.map((i,k)=>({i,w:LOTTO[k]})), top=[];
   for(let k=0;k<4;k++){ let r=rnd01()*pool.reduce((s,x)=>s+x.w,0); const j=pool.findIndex(x=>(r-=x.w)<=0); top.push(pool[j].i); pool.splice(j,1); }
   const r1=[...top, ...pool.map(x=>x.i), ...po];
+  resolveProtections(year, r1);
   const r2=[...non, ...po];
   const order=[]; r1.forEach((orig,k)=>order.push({no:k+1,round:1,orig,owner:W.picks[year][1][orig]}));
   r2.forEach((orig,k)=>order.push({no:31+k,round:2,orig,owner:W.picks[year][2][orig]}));
@@ -2575,6 +2618,7 @@ function draftPlayer(pk, p){
   p.drafted=true; p.draft={year:D.year,round:pk.round,no:pk.no,team:pk.owner};
   const t=TEAMS[pk.owner];
   if(pk.round===1){ p.contract=[rookieScale(pk.no), yr+2, 'rk']; p.rkOpt=2; p.rk1=true; }
+  else if(t.players.filter(x=>x.contract&&x.contract[2]==='tw').length<3){ p.contract=[Math.round(CFG(yr).minSal*.5), yr+2, 'tw']; p.rkOpt=0; p.rk1=false; }
   else { p.contract=[CFG(yr).minSal, yr+2, 'rk']; p.rkOpt=0; p.rk1=false; }
   t.players.push(p); PBYID[p.id]=p; chemHit(pk.owner,.25); D.log.push({no:pk.no, round:pk.round, team:pk.owner, pid:p.id});
 }
@@ -2582,7 +2626,7 @@ function draftAdvance(untilUser){ // 一直选到轮到玩家（或者选完）
   const D=W.off.draft;
   while(D.idx<D.order.length){
     const pk=D.order[D.idx];
-    if(pk.owner===G.team && untilUser) return;
+    if(pk.owner===G.team && untilUser){ maybeDraftOffer(pk); return; }
     const p=aiDraftPick(pk.owner); if(!p) break;
     draftPlayer(pk,p); D.idx++;
   }
@@ -2628,8 +2672,8 @@ function aiResign(ti){
     const et=expType(p);
     if(et==='option'){ if(p.ovr>=66||p.pot>=78) exerciseOption(p); else releaseToFA(p,ti,ask); return; }
     if(et==='rfa'){ if(p.ovr>=68||p.pot>=80) giveQO(p,ti,ask); else releaseToFA(p,ti,ask); return; }
-    const keep = !ask.refuse && t.players.filter(x=>x.contract && x.contract[1]>yr).length < 15 && payroll(t,yr)+ask.amt <= C.apron2 && (ask.amt<=worth*1.12) && p.ovr>=66 && rnd01()<.8;
-    if(keep) p.contract=[ask.amt, yr+ask.yrs, 'std']; else releaseToFA(p, ti, ask);
+    const keep = !ask.refuse && t.players.filter(x=>x.contract && x.contract[1]>yr).length < 15 && ownerOk(ti,ask.amt,yr) && payroll(t,yr)+ask.amt <= C.apron2*1.08 && (ask.amt<=worth*1.12) && p.ovr>=66 && rnd01()<.8;
+    if(keep){ const old=p.contract[0]; p.contract=[ask.amt, yr+ask.yrs, 'std']; if(ask.amt>old*1.2) freezeOnSign(p); } else releaseToFA(p, ti, ask);
   });
 }
 function releaseToFA(p, ti, ask){
@@ -2655,7 +2699,7 @@ function signFA(p, ti, amt, yrs, yr){
   const r=offerRule(ti,amt,yr); if(!r.ok) return r;
   if(r.kind && r.kind.includes('中产')){ W.mle[yr]=W.mle[yr]||{}; W.mle[yr][ti]=true; }
   const i=FREE.indexOf(p); if(i>=0) FREE.splice(i,1);
-  p.contract=[amt, yr+yrs, 'std']; delete p.fa; TEAMS[ti].players.push(p); PBYID[p.id]=p; chemHit(ti,1);
+  p.contract=[amt, yr+yrs, 'std']; delete p.fa; TEAMS[ti].players.push(p); PBYID[p.id]=p; chemHit(ti,1); freezeOnSign(p);
   const t=TEAMS[ti]; t._rot=null; t.top8=t.players.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,8).reduce((s,q)=>s+q.ovr,0)/Math.max(1,Math.min(8,t.players.length));
   return {ok:true, kind:r.kind};
 }
@@ -2683,6 +2727,7 @@ function faRound(){
       else if(!(W.mle[yr]||{})[t.i] && pay<C.apron2 && want<=C.mleTP) amt=want;
       else if(want<=C.minSal*1.25 && cnt<14) amt=C.minSal;
       if(amt==null || rnd01()<.2) continue;
+      if(amt>C.minSal && !ownerOk(t.i, amt+(pay-payroll(t,yr)), yr)) continue;
       add(p.id,{ti:t.i, amt, yrs:a.yrs}); n++; pay+=amt;
     }
   });
@@ -2699,7 +2744,7 @@ function faRound(){
       if(p.rfa && offerRule(o.ti,o.amt,yr).ok){ // 报价单：原球队有匹配权
         const orig=p.rfa.team;
         if(orig===G.team){ W.off.sheets=W.off.sheets||[]; W.off.sheets.push({pid:p.id, ti:o.ti, amt:o.amt, yrs:o.yrs}); p.sheet=true; break; }
-        const match = o.amt<=marketSalary(p.ovr,ageOf(p,yr),yr)*1.2 && payroll(TEAMS[orig],yr)+o.amt<=CFG(yr).apron2 && rosterCount(TEAMS[orig],yr)<15;
+        const match = o.amt<=marketSalary(p.ovr,ageOf(p,yr),yr)*1.2 && ownerOk(orig,o.amt,yr,1.05) && rosterCount(TEAMS[orig],yr)<15;
         if(match){ signDirect(p,orig,o.amt,o.yrs,yr); signed.push({pid:p.id, ti:orig, amt:o.amt, yrs:o.yrs, matched:o.ti, user:false}); addNews('匹配',`${TEAMS[orig].nick}匹配了${TEAMS[o.ti].nick}给 ${p.cn} 的报价单（${money(o.amt)} × ${o.yrs} 年）`); break; }
       }
       const r=signFA(p,o.ti,o.amt,o.yrs,yr); if(r.ok){ signed.push({pid:p.id, ti:o.ti, amt:o.amt, yrs:o.yrs, user:o.ti===G.team}); if(p.ovr>=80) addNews('签约',`${p.cn}（${p.ovr}）加盟${TEAMS[o.ti].nick}，${money(o.amt)} × ${o.yrs} 年`); break; }
@@ -2816,11 +2861,11 @@ function vOff(v){
   else if(O.step===2){ const D=O.draft, cur=D.order[D.idx], myTurn=cur && cur.owner===G.team && !D.done;
     refreshScout(); const avail=W.draftClass.filter(p=>!p.drafted).sort((a,b)=>perceivedBy(b,G.team)-perceivedBy(a,G.team));
     body=`<div class="card"><h3>${D.done?'选秀结束':myTurn?`轮到你了：第 ${cur.no} 顺位`:`第 ${cur.no} 顺位：${esc(TEAMS[cur.owner].cn)}`}</h3>
-      ${myTurn?'<p class="hint">在下面的名单里挑一个人。总评和潜力是球探给的区间，不一定准。</p>':''}
-      <div class="ctrl" style="margin-top:4px">${myTurn?'<button id="autopick">让系统替我选</button>':''}${!D.done&&!myTurn?'<button id="tomypick">选到我的下一个签位</button>':''}</div></div>
-     <div class="row"><div class="col card tw" style="min-width:320px;flex:1.6"><h3>新秀 <span class="r">${avail.length} 人可选</span></h3><table><thead><tr><th>新秀</th><th>位置</th><th class="n">年龄</th><th class="n">身高</th><th class="n">总评</th><th class="n">潜力</th><th class="n">三分</th><th class="n">终结</th><th class="n">外防</th><th class="n">内防</th><th>国籍</th><th></th></tr></thead><tbody>
-      ${avail.map(p=>`<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b></td><td>${p.pos}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td class="n">${rangeTxt(p.scout.o)}</td><td class="n">${rangeTxt(p.scout.p)}</td>
-        ${['three','finish','perD','intD'].map(k=>{ const r=srand(p.id*7+3); KEYS.slice(0,KEYS.indexOf(k)).forEach(()=>r()); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0]; const x=clamp(Math.round(p.a[k]+(r()*2-1)*hw*1.5),20,99); return `<td class="n" style="color:${attrCol(x)}">${x}</td>`; }).join('')}<td class="hint">${esc(p.nat)}</td><td>${myTurn?`<button class="sm pri" data-pick="${p.id}">选他</button>`:''}</td></tr>`).join('')}</tbody></table></div>
+      <p class="hint">${esc(classTxt())}。${myTurn?'在下面的名单里挑一个人。总评和潜力是球探给的区间，不一定准。':''}</p>
+      <div class="ctrl" style="margin-top:4px">${myTurn?'<button id="autopick">让系统替我选</button>':''}${!D.done&&!myTurn?'<button id="tomypick">选到我的下一个签位</button>':''}${!D.done?` <button id="tradepick">交易签位</button>`:''}</div></div>
+     <div class="row"><div class="col card tw" style="min-width:320px;flex:1.6"><h3>新秀 <span class="r">${avail.length} 人可选</span></h3><table><thead><tr><th>新秀</th><th>位置</th><th class="n">年龄</th><th class="n">身高</th><th>原型</th><th class="n">总评</th><th class="n">潜力</th><th class="n">三分</th><th class="n">终结</th><th class="n">外防</th><th class="n">内防</th><th>上季数据</th><th></th></tr></thead><tbody>
+      ${avail.map(p=>`<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b></td><td>${p.pos}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td>${esc(p.arch||'')}</td><td class="n">${rangeTxt(p.scout.o)}</td><td class="n">${rangeTxt(p.scout.p)}</td>
+        ${['three','finish','perD','intD'].map(k=>{ const r=srand(p.id*7+3); KEYS.slice(0,KEYS.indexOf(k)).forEach(()=>r()); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0]; const x=clamp(Math.round(p.a[k]+(r()*2-1)*hw*1.5),20,99); return `<td class="n" style="color:${attrCol(x)}">${x}</td>`; }).join('')}<td class="hint">${esc(preTxt(p))}</td><td>${myTurn?`<button class="sm pri" data-pick="${p.id}">选他</button>`:''}</td></tr>`).join('')}</tbody></table></div>
       <div class="col card tw" style="min-width:240px"><h3>已选</h3><table><tbody>${D.log.slice().reverse().map(x=>{ const p=PBYID[x.pid]; return `<tr style="${x.team===G.team?'background:#2a1c10':''}"><td class="n">${x.no}</td><td>${logo(TEAMS[x.team],16)}</td><td class="cl" data-id="${x.pid}">${esc(p?p.cn:'')}</td><td class="hint">${p?p.pos:''}</td></tr>`; }).join('')||'<tr><td class="hint">还没开始</td></tr>'}</tbody></table></div></div>`;
     next = D.done? '进入续约' : '跳过剩下的选秀（系统替我选）';
   }
@@ -2867,10 +2912,11 @@ function vOff(v){
   v.querySelectorAll('[data-id]').forEach(el=>el.onclick=()=>showPlayer(PBYID[el.dataset.id]));
   if(q('#autopick')) q('#autopick').onclick=()=>{ const D=O.draft, pk=D.order[D.idx]; draftPlayer(pk, aiDraftPick(G.team)); D.idx++; draftAdvance(true); save(); render(); };
   if(q('#tomypick')) q('#tomypick').onclick=()=>{ draftAdvance(true); save(); render(); };
+  if(q('#tradepick')) q('#tradepick').onclick=()=>{ const cur=O.draft.order[O.draft.idx]; if(cur && cur.owner!==G.team) TR.partner=cur.owner; G.view='trade'; render(); };
   v.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{ const D=O.draft, pk=D.order[D.idx]; draftPlayer(pk, PBYID[b.dataset.pick]); D.idx++; draftAdvance(true); save(); render(); });
-  v.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.rs], a=O.asks[p.id]; p.contract=[a.amt, O.year+a.yrs, 'std']; save(); render(); });
+  v.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.rs], a=O.asks[p.id]; const old=p.contract[0]; p.contract=[a.amt, O.year+a.yrs, 'std']; if(a.amt>old*1.2) freezeOnSign(p); save(); render(); });
   v.querySelectorAll('[data-rsd]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.rsd], a=O.asks[p.id]; const pAccept = a.mood<1? .8 : a.mood<1.12? .5 : .25;
-    if(rnd01()<pAccept){ p.contract=[Math.round(a.amt*.9), O.year+a.yrs, 'std']; toast(`${p.cn} 同意了：${money(Math.round(a.amt*.9))} × ${a.yrs} 年`); }
+    if(rnd01()<pAccept){ const old=p.contract[0]; p.contract=[Math.round(a.amt*.9), O.year+a.yrs, 'std']; if(a.amt*.9>old*1.2) freezeOnSign(p); toast(`${p.cn} 同意了：${money(Math.round(a.amt*.9))} × ${a.yrs} 年`); }
     else { releaseToFA(p,G.team,a); toast(`${p.cn} 拒绝压价，进入自由市场`); }
     save(); render(); });
   v.querySelectorAll('[data-opt]').forEach(b=>b.onclick=()=>{ exerciseOption(PBYID[b.dataset.opt]); save(); render(); });
@@ -2898,17 +2944,15 @@ function tradeOpen(){
   if(S.day>dl) return {ok:false, why:`已经过了交易截止日（${S.year+1} 年 2 月 5 日）`};
   return {ok:true, deadline:dl};
 }
-function pickValue(pk, mode){
-  let slot;
-  if(W.off && W.off.lottery && pk.year===W.off.lottery.year){ const o=W.off.lottery.order.find(x=>x.round===pk.round && x.orig===pk.orig); slot=o? (pk.round===1?o.no:o.no-30) : 15; }
-  else { const rank=TEAMS.slice().sort((a,b)=>b.top8-a.top8).findIndex(t=>t.i===pk.orig); slot=30-rank; }
+function pickValue(pk, mode, prot){
+  const slot=projSlot(pk);
   const eff = pk.round===1? 80-(slot-1)*.45 : 63-(slot-1)*.08;
   let v=Math.pow(Math.max(0,eff-58),2.2);
   if(mode==='rebuild') v*=1.3;
   if(pk.year>ctxYear()+ (W.off?0:1)) v*=.85;
-  return v;
+  return v*protFactor(pk, prot==null? protOf(pk) : prot);
 }
-let TR={partner:null, mineP:new Set(), theirP:new Set(), mineK:new Set(), theirK:new Set()};
+let TR={partner:null, mineP:new Set(), theirP:new Set(), mineK:new Set(), theirK:new Set(), prot:{}};
 function pkKey(pk){ return `${pk.year}-${pk.round}-${pk.orig}`; }
 function pkFromKey(k){ const [y,r,o]=k.split('-').map(Number); return {year:y,round:r,orig:o}; }
 // ---------- 通用交易：任意两队 ----------
@@ -2917,8 +2961,11 @@ function tradeSal(ps, yr){ return ps.reduce((s,p)=>s+(p.contract&&p.contract[1]>
 function checkTrade(ai, outA, bi, outB, yr, labels){
   const C=CFG(yr), iss=[]; labels=labels||[TEAMS[ai].nick, TEAMS[bi].nick];
   [[ai,outA,outB,labels[0]],[bi,outB,outA,labels[1]]].forEach(([ti,out,inn,lb])=>{
-    const t=TEAMS[ti], pay=payroll(t,yr)-tradeSal(out,yr)+tradeSal(inn,yr);
-    if(pay>C.cap && tradeSal(inn,yr)>tradeSal(out,yr)*1.25+25) iss.push(`${lb}交易后超过工资帽，换进来的薪资（${money(tradeSal(inn,yr))}）不能超过换出去的 125% 加 25 万（${money(Math.round(tradeSal(out,yr)*1.25+25))}）`);
+    const t=TEAMS[ti], pay=payroll(t,yr)-tradeSal(out,yr)+tradeSal(inn,yr), sIn=tradeSal(inn,yr), sOut=tradeSal(out,yr);
+    const r=matchRule(pay, sOut, out.length, yr);
+    if(r.max!=null && sIn>r.max) iss.push(`${lb}：${matchTxt(r)}，现在是 ${money(sIn)}`);
+    if(r.noAgg && out.filter(p=>p.contract&&p.contract[2]!=='tw').length>=2 && sIn>Math.max(0,...out.map(p=>p.contract?p.contract[0]:0))) iss.push(`${lb}交易后超过第二土豪线，不能合并两人以上的工资换人`);
+    out.forEach(p=>{ if(frozen(p)) iss.push(`${p.cn} 刚签约，要到 ${numDateTxt(p.frz)} 才能交易`); });
     const std=ps=>ps.filter(p=>p.contract&&p.contract[2]!=='tw').length;
     const n=rosterCount(t,yr)-std(out)+std(inn), lo=W.off?8:13, hi=W.off?17:15;
     if(n>hi) iss.push(`${lb}交易后有 ${n} 人，超过 ${hi} 人上限`); if(n<lo) iss.push(`${lb}交易后只剩 ${n} 人，少于 ${lo} 人`);
@@ -2926,12 +2973,12 @@ function checkTrade(ai, outA, bi, outB, yr, labels){
   return iss;
 }
 function pkgValue(ti, players, picks, yr, mode){ mode=mode||teamMode(ti); return players.reduce((s,p)=>s+playerValue(p,mode,yr),0)+picks.reduce((s,k)=>s+pickValue(k,mode),0); }
-function execTrade(ai, outA, outAk, bi, outB, outBk){
+function execTrade(ai, outA, outAk, bi, outB, outBk, protA){
   const A=TEAMS[ai], B=TEAMS[bi];
   outA.forEach(p=>{ A.players=A.players.filter(x=>x!==p); B.players.push(p); });
   outB.forEach(p=>{ B.players=B.players.filter(x=>x!==p); A.players.push(p); });
   [...outA,...outB].forEach(p=>{ setMor(p,mor(p)-8); delete p.treq; }); chemHit(ai,outB.length); chemHit(bi,outA.length);
-  outAk.forEach(pk=>{ W.picks[pk.year][pk.round][pk.orig]=bi; });
+  outAk.forEach(pk=>{ W.picks[pk.year][pk.round][pk.orig]=bi; const n=protA&&protA[pkKey(pk)]; if(n && pk.orig===ai && pk.round===1){ W.prot=W.prot||{}; W.prot[pkKey(pk)]=n; } });
   outBk.forEach(pk=>{ W.picks[pk.year][pk.round][pk.orig]=ai; });
   if(W.off && W.off.draft && !W.off.draft.done) W.off.draft.order.forEach(o=>{ if(W.picks[W.off.draft.year]) o.owner=W.picks[W.off.draft.year][o.round][o.orig]; });
   const desc=(ps,ks)=>[...ps.map(p=>p.cn), ...ks.map(pickLabel)].join('、')||'无';
@@ -2947,19 +2994,20 @@ function evalTrade(){
   const yr=ctxYear(), me=myTeam(), pt=TEAMS[TR.partner], mode=teamMode(pt.i);
   const outP=[...TR.mineP].map(id=>PBYID[id]), inP=[...TR.theirP].map(id=>PBYID[id]);
   const outK=[...TR.mineK].map(pkFromKey), inK=[...TR.theirK].map(pkFromKey);
-  const gain=pkgValue(pt.i,outP,outK,yr,mode), lose=pkgValue(pt.i,inP,inK,yr,mode);
+  const gain=outP.reduce((s,p)=>s+playerValue(p,mode,yr),0)+outK.reduce((s,k)=>s+pickValue(k,mode,TR.prot[pkKey(k)]||protOf(k)),0), lose=pkgValue(pt.i,inP,inK,yr,mode);
   const best=pt.players.slice().sort((a,b)=>b.ovr-a.ovr)[0];
   const need = lose*(best && TR.theirP.has(best.id)? 1.3 : 1.05) + 20;
   const ratio = need>0? gain/need : (gain>0?9:0);
   const issues=checkTrade(me.i,outP,pt.i,inP,yr,['你方','对方']);
   if(!outP.length && !outK.length && !inP.length && !inK.length) issues.push('还没选任何人');
-  return {ratio, issues, myPay:payroll(me,yr)-tradeSal(outP,yr)+tradeSal(inP,yr), ptPay:payroll(pt,yr)-tradeSal(inP,yr)+tradeSal(outP,yr), salOut:tradeSal(outP,yr), salIn:tradeSal(inP,yr), mode};
+  const match=matchRule(payroll(me,yr)-tradeSal(outP,yr)+tradeSal(inP,yr), tradeSal(outP,yr), outP.length, yr);
+  return {ratio, issues, match, myPay:payroll(me,yr)-tradeSal(outP,yr)+tradeSal(inP,yr), ptPay:payroll(pt,yr)-tradeSal(inP,yr)+tradeSal(outP,yr), salOut:tradeSal(outP,yr), salIn:tradeSal(inP,yr), mode};
 }
 function doTrade(){
   const me=myTeam(), pt=TEAMS[TR.partner];
-  const txt=execTrade(me.i,[...TR.mineP].map(id=>PBYID[id]),[...TR.mineK].map(pkFromKey), pt.i,[...TR.theirP].map(id=>PBYID[id]),[...TR.theirK].map(pkFromKey));
+  const txt=execTrade(me.i,[...TR.mineP].map(id=>PBYID[id]),[...TR.mineK].map(pkFromKey), pt.i,[...TR.theirP].map(id=>PBYID[id]),[...TR.theirK].map(pkFromKey), TR.prot);
   if(G.season) G.season.inbox.push({d:G.season.day, t:`和${pt.cn}完成交易`, b:txt});
-  TR.mineP.clear(); TR.theirP.clear(); TR.mineK.clear(); TR.theirK.clear();
+  TR.mineP.clear(); TR.theirP.clear(); TR.mineK.clear(); TR.theirK.clear(); TR.prot={};
   save(); return txt;
 }
 function vTrade(v){
@@ -2970,13 +3018,14 @@ function vTrade(v){
   const ev=evalTrade();
   const verdict = ev.ratio>=1? ['会接受','var(--good)'] : ev.ratio>=.85? ['差一点','var(--warn)'] : ['差很远','var(--bad)'];
   const side=(t,setP,setK,key)=>`<div class="card tw"><h3>${logo(t,20)} ${esc(t.cn)} <span class="r">${t===pt?(ev.mode==='rebuild'?'重建中，看重年轻人和选秀权':'争冠中，看重即战力'):''} 工资 ${money(payroll(t,yr))}</span></h3><table><thead><tr><th></th><th>球员</th><th class="n">年龄</th><th class="n">总评</th><th class="n">潜力</th><th class="n">年薪</th><th class="n">到期</th></tr></thead><tbody>
-    ${t.players.slice().sort((a,b)=>b.ovr-a.ovr).map(p=>`<tr><td><input type="checkbox" data-${key}p="${p.id}" ${setP.has(p.id)?'checked':''}></td><td class="cl" data-id="${p.id}">${esc(p.cn)}${injTag(p)}</td><td class="n">${ageOf(p,yr)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${p.contract?money(p.contract[0]):'-'}</td><td class="n">${p.contract?p.contract[1]+(p.contract[2]==='rk'?' 新秀':p.contract[2]==='tw'?' 双向':''):''}</td></tr>`).join('')}
-    </tbody></table><div style="margin-top:8px">${picksOwnedBy(t.i).map(pk=>`<label class="pill" style="background:#1c2430;margin:2px;padding:3px 8px;cursor:pointer"><input type="checkbox" data-${key}k="${pkKey(pk)}" ${setK.has(pkKey(pk))?'checked':''}> ${esc(pickLabel(pk))}</label>`).join('')||'<span class="hint">没有选秀权</span>'}</div></div>`;
+    ${t.players.slice().sort((a,b)=>b.ovr-a.ovr).map(p=>`<tr><td><input type="checkbox" data-${key}p="${p.id}" ${setP.has(p.id)?'checked':''} ${frozen(p)?'disabled':''}></td><td class="cl" data-id="${p.id}">${esc(p.cn)}${injTag(p)}${frzTag(p)}</td><td class="n">${ageOf(p,yr)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${p.contract?money(p.contract[0]):'-'}</td><td class="n">${p.contract?p.contract[1]+(p.contract[2]==='rk'?' 新秀':p.contract[2]==='tw'?' 双向':''):''}</td></tr>`).join('')}
+    </tbody></table><div style="margin-top:8px">${picksOwnedBy(t.i).map(pk=>`<label class="pill" style="background:#1c2430;margin:2px;padding:3px 8px;cursor:pointer"><input type="checkbox" data-${key}k="${pkKey(pk)}" ${setK.has(pkKey(pk))?'checked':''}> ${esc(pickLabel(pk))}${key==='m'&&setK.has(pkKey(pk))&&pk.round===1&&pk.orig===G.team&&!protOf(pk)&&!(W.off&&W.off.lottery&&pk.year===W.off.lottery.year)?` <select data-prot="${pkKey(pk)}" onclick="event.stopPropagation()">${PROT_OPTS.map(n=>`<option value="${n}" ${(TR.prot[pkKey(pk)]||0)===n?'selected':''}>${n?'前 '+n+' 保护':'不保护'}</option>`).join('')}</select>`:''}</label>`).join('')||'<span class="hint">没有选秀权</span>'}</div></div>`;
   v.innerHTML=`<h1>交易</h1><div class="sub">${W.off?'休赛期可以随时交易':'交易截止日：'+(G.season.year+1)+' 年 2 月 5 日'} · 勾选双方要交换的球员和选秀权</div>
    <div class="card"><div class="row" style="align-items:center"><span>交易对象</span><select id="tp">${TEAMS.filter(t=>t.i!==G.team).map(t=>`<option value="${t.i}" ${t.i===TR.partner?'selected':''}>${esc(t.cn)}</option>`).join('')}</select>
      <span style="margin-left:auto">对方的态度：<b style="color:${verdict[1]}">${verdict[0]}</b></span></div>
      <div class="fitbar" style="margin-top:8px">${bar(Math.min(ev.ratio,1.3),1.3,verdict[1].includes('good')?'#00c276':verdict[1].includes('warn')?'#f0a020':'#e5484d')}</div>
-     <p class="hint" style="margin-top:6px">送出薪资 ${money(ev.salOut)} · 换来薪资 ${money(ev.salIn)} · 交易后你的工资 ${money(ev.myPay)}（工资帽 ${money(CFG(yr).cap)}）</p>
+     <p class="hint" style="margin-top:6px">送出薪资 ${money(ev.salOut)} · 换来薪资 ${money(ev.salIn)} · 交易后你的工资 ${money(ev.myPay)}（工资帽 ${money(CFG(yr).cap)}，第一土豪线 ${money(CFG(yr).apron1)}，第二土豪线 ${money(CFG(yr).apron2)}）</p>
+     <p class="hint">${esc(matchTxt(ev.match))}</p>
      ${ev.issues.map(s=>`<div class="bad">${esc(s)}</div>`).join('')}
      <div style="margin-top:8px"><button class="pri" id="tgo" ${ev.issues.length||ev.ratio<1?'disabled':''}>提出交易</button> <button id="tclr">清空</button></div></div>
    <div class="row"><div class="col" style="min-width:320px">${side(me,TR.mineP,TR.mineK,'m')}</div><div class="col" style="min-width:320px">${side(pt,TR.theirP,TR.theirK,'t')}</div></div>`;
@@ -2985,6 +3034,7 @@ function vTrade(v){
   q('#tclr').onclick=()=>{ TR.mineP.clear(); TR.theirP.clear(); TR.mineK.clear(); TR.theirK.clear(); vTrade(v); };
   q('#tgo').onclick=()=>{ const txt=doTrade(); toast('交易完成'); render(); };
   const bind=(sel,set,num)=>v.querySelectorAll(sel).forEach(cb=>cb.onchange=()=>{ const k=num?+cb.getAttribute(sel.slice(1,-1)):cb.getAttribute(sel.slice(1,-1)); if(cb.checked) set.add(k); else set.delete(k); vTrade(v); });
+  v.querySelectorAll('[data-prot]').forEach(sl=>sl.onchange=()=>{ const n=+sl.value; if(n) TR.prot[sl.dataset.prot]=n; else delete TR.prot[sl.dataset.prot]; vTrade(v); });
   bind('[data-mp]',TR.mineP,true); bind('[data-tp]',TR.theirP,true); bind('[data-mk]',TR.mineK,false); bind('[data-tk]',TR.theirK,false);
   v.querySelectorAll('td[data-id]').forEach(el=>el.onclick=()=>showPlayer(PBYID[el.dataset.id]));
 }
@@ -3001,12 +3051,82 @@ function vFA(v){
    <div class="card tw"><h3>市场上的球员</h3><table><thead><tr><th>球员</th><th>位置</th><th class="n">年龄</th><th class="n">总评</th><th class="n">潜力</th><th class="n">要价</th><th></th></tr></thead><tbody>
     ${fas.map(p=>{ const a=inSeasonAsk(p), r=offerRule(G.team,a,yr); return `<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b></td><td>${p.pos}</td><td class="n">${ageOf(p,yr)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${money(a)}</td>
       <td>${r.ok?`<button class="sm pri" data-sign="${p.id}">签下（${r.kind}）</button>`:`<span class="hint">${esc(r.why)}</span>`}</td></tr>`; }).join('')}</tbody></table></div>
+   ${(()=>{ const tw=t.players.filter(p=>p.contract&&p.contract[2]==='tw'); return tw.length?`<div class="card tw"><h3>双向合同 <span class="r">${tw.length} / 3，不占 15 人名额，不算工资</span></h3><table><tbody>${tw.map(p=>`<tr><td>${esc(p.cn)} <span class="hint">${p.pos} · ${ageOf(p,yr)} 岁</span></td><td class="n">${ovrTag(p.ovr)}</td><td class="n">潜力 ${p.pot}</td><td class="n">至 ${p.contract[1]}</td><td>${rosterCount(t,yr)<15?`<button class="sm" data-tw="${p.id}">转正式合同（底薪 × 2 年）</button>`:'<span class="hint">正式合同已满 15 人</span>'}</td></tr>`).join('')}</tbody></table></div>`:''; })()}
    <div class="card tw"><h3>裁人 <span class="r">剩余合同照付，算进工资（死钱）</span></h3><table><tbody>
     ${mineStd.sort((a,b)=>a.ovr-b.ovr).map(p=>`<tr><td>${esc(p.cn)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.contract?money(p.contract[0])+' 至 '+p.contract[1]:''}</td><td>${mineStd.length>minRoster?`<button class="sm" data-waive="${p.id}">裁掉</button>`:''}</td></tr>`).join('')}</tbody></table>
     ${(W.dead[G.team]||[]).filter(d=>d.exp>yr).length?`<p class="hint" style="margin-top:6px">死钱：${W.dead[G.team].filter(d=>d.exp>yr).map(d=>`${esc(d.cn)} ${money(d.amt)} 至 ${d.exp}`).join('；')}</p>`:''}</div>`;
   v.querySelectorAll('[data-sign]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.sign]; const r=signFA(p,G.team,inSeasonAsk(p),1,yr); if(r.ok){ reindex(); fixRot(); save(); toast(`签下 ${p.cn}`); if(G.season) applyPlayerState(); } else toast(r.why); render(); });
+  v.querySelectorAll('[data-tw]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.tw]; p.contract=[CFG(yr).minSal, yr+2, 'std']; reindex(); fixRot(); save(); toast(`${p.cn} 转为正式合同`); render(); });
   v.querySelectorAll('[data-waive]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.waive]; waive(p,G.team,yr); reindex(); fixRot(); save(); toast(`裁掉了 ${p.cn}`); render(); });
   v.querySelectorAll('td[data-id]').forEach(el=>el.onclick=()=>showPlayer(PBYID[el.dataset.id]));
+}
+
+// ================= 劳资协议：薪资匹配分档、冷冻期、受保护选秀权 =================
+// 规范：《第六阶段规范.md》§1
+function dayNumOf(dt){ return Math.floor(dt.getTime()/864e5); }
+function todayNum(){ if(W.off) return dayNumOf(new Date(W.off.year,6,10)); const S=G.season; return S? dayNumOf(dateOf(S.day)) : dayNumOf(new Date(W.year,9,1)); }
+function numDateTxt(n){ const d=new Date(n*864e5+12*3600e3); return `${d.getMonth()+1}月${d.getDate()}日`; }
+function seasonYearNow(){ return W.off? W.off.year : W.year; }
+function freezeOnSign(p){ const y=seasonYearNow(), dec=dayNumOf(new Date(y,11,15)); p.frz = W.off? dec : Math.max(dec, todayNum()+90); }
+function frozen(p){ return !!(p && p.frz && p.frz>todayNum()); }
+function frzTag(p){ return frozen(p)? ` <span class="pill" style="background:#1d3a5c">冻结至 ${numDateTxt(p.frz)}</span>` : ''; }
+
+// 薪资匹配：返回 {tier, max}（max=null 表示不限）
+function matchRule(payAfter, outSal, outN, yr){
+  const C=CFG(yr), k=capMul(yr);
+  if(payAfter<=C.cap) return {tier:'帽下', max:null};
+  if(payAfter<=C.apron1){ const m= outSal<=750*k? outSal*2+25*k : outSal<=2900*k? outSal+750*k : outSal*1.25+25*k; return {tier:'帽上', max:Math.round(m)}; }
+  if(payAfter<=C.apron2) return {tier:'第一土豪线以上', max:outSal};
+  return {tier:'第二土豪线以上', max:outSal, noAgg:true};
+}
+function matchTxt(r){ return r.tier==='帽下'? '交易后在工资帽以下，换进来的薪资不限'
+  : r.tier==='帽上'? `交易后超过工资帽，换进来的薪资最多 ${money(r.max)}`
+  : r.tier==='第一土豪线以上'? `交易后超过第一土豪线，换进来的薪资不能超过换出去的（${money(r.max)}）`
+  : `交易后超过第二土豪线，换进来的不能超过换出去的（${money(r.max)}），也不能合并两人以上的工资换一个人`; }
+
+// ---------- 受保护选秀权 ----------
+const PROT_OPTS=[0,5,10,14];
+function protOf(pk){ return (W.prot||{})[pkKey(pk)]||0; }
+function protTxt(n){ return n? `前 ${n} 保护` : ''; }
+function projSlot(pk){ // 预计顺位（首轮 1–30）
+  if(W.off && W.off.lottery && pk.year===W.off.lottery.year){ const o=W.off.lottery.order.find(x=>x.round===pk.round && x.orig===pk.orig); if(o) return pk.round===1?o.no:o.no-30; }
+  const rank=TEAMS.slice().sort((a,b)=>b.top8-a.top8).findIndex(t=>t.i===pk.orig); return 30-rank;
+}
+function protFactor(pk, n){ if(!n || pk.round!==1) return 1; return projSlot(pk)<=n? .5 : 1-.15*n/14; }
+// 抽签后处理：保护范围内的签回到原球队，得签一方拿下一年的首轮（或两个次轮）
+function resolveProtections(year, r1){
+  W.prot=W.prot||{};
+  r1.forEach((orig,k)=>{ const key=`${year}-1-${orig}`, n=W.prot[key]; if(!n) return; delete W.prot[key];
+    const owner=W.picks[year][1][orig]; if(owner===orig) return;
+    if(k+1>n){ addNews('选秀权',`${TEAMS[orig].nick}送出的${year}年首轮签（前 ${n} 保护）抽到第 ${k+1} 顺位，转给${TEAMS[owner].nick}`); return; }
+    W.picks[year][1][orig]=orig; const ny=year+1; ensurePicks(ny);
+    let got;
+    if(W.picks[ny][1][orig]===orig){ W.picks[ny][1][orig]=owner; got=`${ny} 年首轮签`; }
+    else { W.picks[ny][2][orig]===orig && (W.picks[ny][2][orig]=owner); ensurePicks(ny+1); W.picks[ny+1][2][orig]===orig && (W.picks[ny+1][2][orig]=owner); got='两个次轮签'; }
+    const txt=`${TEAMS[orig].nick}的${year}年首轮签抽到第 ${k+1} 顺位，在前 ${n} 保护范围内，签留在原队；${TEAMS[owner].nick}改拿${TEAMS[orig].nick}的${got}`;
+    addNews('选秀权',txt); if(owner===G.team||orig===G.team) (G.season?G.season.inbox:[]).push({d:G.season?G.season.day:0, t:'选秀权保护生效', b:txt});
+  });
+}
+
+// ---------- 选秀夜：上位报价 ----------
+function pickUsed(k){ const O=W.off; if(!O || !O.draft || k.year!==O.draft.year) return false; const i=O.draft.order.findIndex(o=>o.round===k.round && o.orig===k.orig); return i>=0 && i<O.draft.idx; }
+function maybeDraftOffer(pk){
+  const O=W.off, D=O.draft; O.dOffered=O.dOffered||{};
+  if(pk.round!==1 || O.dOffered[pk.no]) return; O.dOffered[pk.no]=true;
+  if(rnd01()>=.35) return;
+  const mineK={year:D.year, round:1, orig:pk.orig}, vMine=pickValue(mineK,'rebuild',0);
+  const later=D.order.slice(D.idx+1).filter(o=>o.round===1 && o.owner!==G.team);
+  for(const o of later.sort(()=>rnd01()-.5).slice(0,6)){
+    const theirK={year:D.year, round:1, orig:o.orig}, gap=vMine-pickValue(theirK,'rebuild',0); if(gap<=0) continue;
+    const fut=picksOwnedBy(o.owner).filter(k=>k.year>D.year && !protOf(k)).map(k=>({k,v:pickValue(k,'rebuild')}));
+    let best=null;
+    for(let i=0;i<fut.length;i++){ const v1=fut[i].v; if(v1>=gap*.95 && v1<=gap*1.8 && (!best||v1<best.v)) best={ks:[fut[i].k],v:v1};
+      for(let j=i+1;j<fut.length;j++){ const v2=v1+fut[j].v; if(v2>=gap*.95 && v2<=gap*1.8 && (!best||v2<best.v)) best={ks:[fut[i].k,fut[j].k],v:v2}; } }
+    if(!best) continue;
+    W.offers=(W.offers||[]).filter(x=>!x.draft);
+    W.offers.push({id:'d'+Date.now(), draft:true, from:o.owner, give:{p:[], k:[theirK,...best.ks].map(pkKey)}, get:{p:[], k:[pkKey(mineK)]}, exp:{off:true, step:O.step}});
+    return;
+  }
 }
 
 // ================= AI 交易：AI 之间、AI 找玩家 =================
@@ -3014,12 +3134,16 @@ function vFA(v){
 function teamsByMode(){ const c=[], r=[]; TEAMS.forEach(t=>{ if(t.i===G.team) return; (teamMode(t.i)==='contend'?c:r).push(t.i); }); return {c,r}; }
 function tradeableAssets(ti, yr, exclude){
   const t=TEAMS[ti], top=t.players.slice().sort((a,b)=>b.ovr-a.ovr), protect=new Set(top.slice(0,exclude||0).map(p=>p.id));
-  return {players:t.players.filter(p=>!protect.has(p.id) && p.contract && p.contract[1]>yr && p.contract[2]!=='tw' && !(p.injury>200)), picks:picksOwnedBy(ti)};
+  return {players:t.players.filter(p=>!protect.has(p.id) && !frozen(p) && p.contract && p.contract[1]>yr && p.contract[2]!=='tw' && !(p.injury>200)), picks:picksOwnedBy(ti)};
 }
 // 从 giver 的资产里枚举「最多 3 人 + 2 个签」的组合：接收方得到的价值 ≥ minRecv，送出方付出的价值 ≤ maxGive，规则合规，溢价最小
 function searchPackage(giver, receiver, recvOut, recvOutK, recvVal, giveVal, minRecv, maxGive, yr, protectN, filterP){
   const A=tradeableAssets(giver,yr,protectN);
-  const P=A.players.filter(filterP||(()=>true)).map(p=>({p, r:recvVal(p), g:giveVal(p)})).filter(x=>x.r>3).sort((x,y)=>y.r-x.r).slice(0,12);
+  // 候选：对方最看重的 9 人，加上工资最高的 4 人（凑薪资用的「填充合同」）
+  const all=A.players.filter(filterP||(()=>true)).map(p=>({p, r:recvVal(p), g:giveVal(p)}));
+  const byVal=all.filter(x=>x.r>3).sort((x,y)=>y.r-x.r).slice(0,9);
+  const bySal=all.filter(x=>!byVal.includes(x)).sort((x,y)=>(y.p.contract?y.p.contract[0]:0)-(x.p.contract?x.p.contract[0]:0)).slice(0,4);
+  const P=[...byVal,...bySal];
   const K=A.picks.map(k=>({k, r:recvVal(k), g:giveVal(k)})).sort((x,y)=>y.r-x.r).slice(0,4);
   let best=null, bestScore=1e18;
   const pc=[[]]; for(let i=0;i<P.length;i++){ pc.push([i]); for(let j=i+1;j<P.length;j++){ pc.push([i,j]); for(let k=j+1;k<P.length;k++) pc.push([i,j,k]); } }
@@ -3040,12 +3164,12 @@ function searchPackage(giver, receiver, recvOut, recvOutK, recvVal, giveVal, min
 function genAITrade(bi, si, yr){
   const B=TEAMS[bi], S=TEAMS[si];
   const bTop=B.players.slice().sort((a,b)=>b.ovr-a.ovr); const fifth=bTop[4]?bTop[4].ovr:70;
-  const targets=S.players.filter(p=>p.contract && p.contract[1]>yr && p.contract[2]!=='tw' && (ageOf(p,yr)>=26||p.treq) && p.ovr>fifth && !(p.injury>30)).sort((a,b)=>(b.treq?1:0)-(a.treq?1:0)||b.ovr-a.ovr);
+  const targets=S.players.filter(p=>!frozen(p) && p.contract && p.contract[1]>yr && p.contract[2]!=='tw' && (ageOf(p,yr)>=26||p.treq) && p.ovr>fifth && !(p.injury>30)).sort((a,b)=>(b.treq?1:0)-(a.treq?1:0)||b.ovr-a.ovr);
   for(const target of targets.slice(0,3)){
     const sLose=playerValue(target,'rebuild',yr), bGain=playerValue(target,'contend',yr);
     const pk=searchPackage(bi, si, [target], [], x=>x.id!=null?playerValue(x,'rebuild',yr):pickValue(x,'rebuild'), x=>x.id!=null?playerValue(x,'contend',yr):pickValue(x,'contend'),
-      sLose*1.05+20, bGain, yr, 3);
-    if(pk) return {bi, si, outP:pk.outP, outK:pk.outK, target};
+      sLose*1.05+20, bGain*1.2+20, yr, 3);   // 争冠队愿意为即战力多付两成
+    if(pk && ownerOk(bi, (target.contract?target.contract[0]:0)-tradeSal(pk.outP,yr), yr, 1.03)) return {bi, si, outP:pk.outP, outK:pk.outK, target};
   }
   return null;
 }
@@ -3068,9 +3192,9 @@ function genUserOffer(){
   // AI 想要什么
   let target=null;
   if(mode==='contend'){ const five=TEAMS[ai].players.slice().sort((a,b)=>b.ovr-a.ovr)[4];
-    const c=U.players.filter(p=>p.contract && p.contract[1]>yr && p.contract[2]!=='tw' && ageOf(p,yr)>=25 && p.ovr>(five?five.ovr:70) && !(p.injury>20));
+    const c=U.players.filter(p=>!frozen(p) && p.contract && p.contract[1]>yr && p.contract[2]!=='tw' && ageOf(p,yr)>=25 && p.ovr>(five?five.ovr:70) && !(p.injury>20));
     if(c.length) target={p:pickOne(c.sort((a,b)=>b.ovr-a.ovr).slice(0,4))}; }
-  else { const c=U.players.filter(p=>p.contract && p.contract[2]!=='tw' && ageOf(p,yr)<=23 && p.pot>=80);
+  else { const c=U.players.filter(p=>!frozen(p) && p.contract && p.contract[2]!=='tw' && ageOf(p,yr)<=23 && p.pot>=80);
     const ks=picksOwnedBy(G.team).filter(k=>k.round===1);
     if(c.length && (rnd01()<.6 || !ks.length)) target={p:pickOne(c)}; else if(ks.length) target={k:pickOne(ks)}; }
   if(!target) return null;
@@ -3080,6 +3204,7 @@ function genUserOffer(){
   const pk=searchPackage(ai, G.team, inP, inK, x=>x.id!=null?playerValue(x,uMode,yr):pickValue(x,uMode), x=>x.id!=null?playerValue(x,mode,yr):pickValue(x,mode),
     tUser*.9, tAI*.97, yr, mode==='contend'?3:1);
   if(!pk) return null;
+  if(!ownerOk(ai, tradeSal(inP,yr)-tradeSal(pk.outP,yr), yr, 1.03)) return null;
   const outP=pk.outP, outK=pk.outK;
   const S=G.season;
   return {id:Date.now()+'-'+Math.floor(rnd01()*1e6), from:ai, give:{p:outP.map(p=>p.id), k:outK.map(pkKey)}, get:{p:inP.map(p=>p.id), k:inK.map(pkKey)},
@@ -3090,7 +3215,7 @@ function maybeUserOffer(prob){
   if(W.offers.length>=2 || rnd01()>=prob) return;
   let o=null; for(let k=0;k<4 && !o;k++) o=genUserOffer(); if(o){ W.offers.push(o); if(G.season) G.season.inbox.push({d:G.season.day, t:`${TEAMS[o.from].cn}发来交易报价`, b:'在首页的「交易报价」里查看。'}); }
 }
-function offerExpired(o){ if(o.exp.off) return !W.off || W.off.step>o.exp.step; return W.off || !G.season || G.season.day>o.exp.day || G.season.phase!=='reg'; }
+function offerExpired(o){ if([...o.give.k,...o.get.k].some(k=>pickUsed(pkFromKey(k)))) return true; if(o.exp.off) return !W.off || W.off.step>o.exp.step; return W.off || !G.season || G.season.day>o.exp.day || G.season.phase!=='reg'; }
 function offerItems(o){ return {give:o.give.p.map(id=>PBYID[id]).filter(Boolean), giveK:o.give.k.map(pkFromKey), get:o.get.p.map(id=>PBYID[id]).filter(Boolean), getK:o.get.k.map(pkFromKey)}; }
 function acceptOffer(id){
   const o=(W.offers||[]).find(x=>x.id===id); if(!o) return;
@@ -3124,6 +3249,92 @@ function bindOffers(v){
 function newsHTML(n){
   const N=(W.news||[]).slice(-(n||8)).reverse(); if(!N.length) return '';
   return `<div class="card"><h3>联盟动态</h3>${N.map(x=>`<div style="padding:5px 0;border-bottom:1px solid #1f2733"><span class="pill" style="background:${x.kind==='交易'?'#1d3a5c':x.kind==='匹配'?'#3a2a10':'#1f3a2a'}">${esc(x.kind)}</span> <span class="hint">${x.off?x.y+' 休赛期':dateTxt(Math.min(x.d,REG_DAYS+80))}</span><div style="margin-top:2px">${esc(x.txt)}</div></div>`).join('')}</div>`;
+}
+
+// ================= 财政：收入、奢侈税、老板上限 =================
+// 规范：《第六阶段规范.md》§2
+const TAX_BASE=[1.5,1.75,2.5,3.25], TAX_REP=[2.5,2.75,3.5,4.25];
+function taxBand(year){ return Math.round(500*capMul(year)); }
+function taxOf(pay, year, rep){
+  let over=pay-CFG(year).tax; if(over<=0) return 0;
+  const band=taxBand(year), R=rep?TAX_REP:TAX_BASE; let t=0, i=0;
+  while(over>0){ const r= i<4? R[i] : R[3]+.5*(i-3); const x=Math.min(band,over); t+=x*r; over-=x; i++; }
+  return Math.round(t);
+}
+function isRepeater(ti, year){ const h=((W.taxHist||{})[ti])||[]; return h.filter(y=>y>=year-4 && y<year).length>=3; }
+function teamTax(ti, year){ year=year||W.year; return taxOf(payroll(TEAMS[ti],year), year, isRepeater(ti,year)); }
+function mktF(ti){ return clamp(Math.sqrt(TEAMS[ti].pop)/Math.sqrt(19),0,1); }
+// 老板能接受的总支出（工资 + 奢侈税）
+function ownerLimit(ti, year){ year=year||W.year; return Math.round(CFG(year).tax + (1500+6000*mktF(ti))*capMul(year)); }
+function spendOf(ti, year){ year=year||W.year; const pay=payroll(TEAMS[ti],year); return pay+taxOf(pay,year,isRepeater(ti,year)); }
+function spendAfter(ti, addPay, year){ const pay=payroll(TEAMS[ti],year)+addPay; return pay+taxOf(pay,year,isRepeater(ti,year)); }
+// 不超过上限，或者不比现在花得更多（已经超了的球队可以减支，但不能再加）
+function ownerOk(ti, addPay, year, slack){ const after=spendAfter(ti,addPay,year); return after <= ownerLimit(ti,year)*(slack||1) || (addPay<=0); }
+
+function leagueShare(year){ return Math.round(CFG(year).cap*.85); }
+function localRev(ti, wp, year){ return Math.round(CFG(year).cap*(.35+.045*TEAMS[ti].pop)*(.75+.5*wp)); }
+function homeGateRev(ti, year){ return Math.round(CFG(year).cap*.012*(1+TEAMS[ti].pop/10)); }
+function opCost(year){ return Math.round(CFG(year).cap*.25); }
+function homePlayoffGames(S, ti){ let n=0; (S.playin||[]).forEach(x=>{ if(x.h===ti && x.w!=null) n++; }); if(S.po) S.po.series.forEach(sr=>sr.games.forEach(g=>{ if(g.h===ti) n++; })); return n; }
+
+// 本季财政（进行中是预计值，赛季结束后是结算值）
+function finOf(ti){
+  const S=G.season, year=S.year, R=standings()[ti], wp=R.g? R.w/R.g : .5;
+  if(S.fin && S.fin[ti] && S.fin[ti].final) return S.fin[ti];
+  const pay=S.fin&&S.fin[ti]? S.fin[ti].pay : payroll(TEAMS[ti],year), rep=isRepeater(ti,year);
+  const tax=S.fin&&S.fin[ti]? S.fin[ti].tax : taxOf(pay,year,rep);
+  const hg=homePlayoffGames(S,ti), share=S.fin&&S.fin[ti]? S.fin[ti].share||0 : 0;
+  const rev={league:leagueShare(year), local:localRev(ti,wp,year), playoff:hg*homeGateRev(ti,year), share};
+  const revT=rev.league+rev.local+rev.playoff+rev.share, cost=opCost(year);
+  return {pay, tax, rep, rev, revT, cost, profit:revT-pay-tax-cost, spend:pay+tax, limit:ownerLimit(ti,year), hg, settled:!!(S.fin&&S.fin[ti])};
+}
+// 常规赛最后一天：按工资结算奢侈税，税款平分给没交税的球队
+function settleTax(){
+  const S=G.season, year=S.year; S.fin={}; W.taxHist=W.taxHist||{}; let pool=0; const payers=[];
+  TEAMS.forEach(t=>{ const pay=payroll(t,year), rep=isRepeater(t.i,year), tax=taxOf(pay,year,rep); S.fin[t.i]={pay,tax,rep,share:0};
+    if(tax>0){ pool+=tax; payers.push(t.i); (W.taxHist[t.i]=W.taxHist[t.i]||[]).push(year); } });
+  const non=TEAMS.filter(t=>!payers.includes(t.i)); non.forEach(t=>S.fin[t.i].share=Math.round(pool/Math.max(1,non.length)));
+  if(payers.length) addNews('奢侈税',`${year}-${String((year+1)%100).padStart(2,'0')} 赛季 ${payers.length} 队交了奢侈税，共 ${money(pool)}：${payers.map(i=>TEAMS[i].nick+' '+money(S.fin[i].tax)).join('，')}`);
+  const me=S.fin[G.team]; S.inbox.push({d:S.day, t:'奢侈税结算', b: me.tax? `按常规赛最后一天的工资 ${money(me.pay)}，你交了 ${money(me.tax)} 奢侈税${me.rep?'（重复纳税，税率更高）':''}。` : `你没交奢侈税，分到其他球队交的奢侈税 ${money(me.share)}。`});
+}
+// 赛季结束：结算盈亏，超出老板上限扣信任度
+function financeSeasonEnd(){
+  const S=G.season; if(!S.fin) settleTax();
+  TEAMS.forEach(t=>{ const f=finOf(t.i); S.fin[t.i]=Object.assign(f,{final:true}); });
+  const f=S.fin[G.team]; let pen=0;
+  const first=!(G.career||[]).some(c=>c.team===G.team && c.year===S.year-1);   // 接手第一季，老板不追究前任留下的合同
+  if(f.spend>f.limit && !first) pen=Math.min(15, Math.max(1, Math.round((f.spend-f.limit)/f.limit*100)));
+  return {pen, f, first};
+}
+function finMonthlyNote(){ const f=finOf(G.team); if(f.spend>f.limit) return `财政上，预计工资加奢侈税 ${money(f.spend)}，超出老板能接受的 ${money(f.limit)}。`; return ''; }
+
+// ---------- 界面 ----------
+ICON.fin='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="3.5" width="13" height="9" rx="1.5"/><circle cx="8" cy="8" r="2"/><path d="M4 6v4M12 6v4"/></svg>';
+function vFin(v){
+  const S=G.season, t=myTeam(), year=W.off?W.off.year:S.year;
+  const row=(n,x,cls)=>`<tr><td>${n}</td><td class="n ${cls||''}">${typeof x==='number'?money(x):x}</td></tr>`;
+  let cur='';
+  if(!W.off){ const f=finOf(G.team);
+    cur=`<div class="card"><h3>${S.year}-${String((S.year+1)%100).padStart(2,'0')} 赛季 <span class="r">${f.final?'已结算':'按目前战绩预计'}</span></h3><table><tbody>
+      ${row('联盟分成（全国转播、商品）',f.rev.league)}${row(`本地收入（门票、本地转播、赞助，${TEAMS[G.team].pop} 百万人口）`,f.rev.local)}${row(`季后赛主场 ${f.hg} 场`,f.rev.playoff)}${row('奢侈税分红',f.settled?f.rev.share:'常规赛结束时结算')}
+      <tr><td><b>收入合计</b></td><td class="n"><b>${money(f.revT)}</b></td></tr>
+      ${row('工资（含死钱）',-f.pay,'bad')}${row(`奢侈税${f.rep?'（重复纳税）':''}${f.settled?'':'，预计'}`,-f.tax,f.tax?'bad':'')}${row('运营成本',-f.cost,'bad')}
+      <tr><td><b>盈亏</b></td><td class="n"><b class="${f.profit>=0?'good':'bad'}">${f.profit>=0?'+':''}${money(f.profit)}</b></td></tr></tbody></table></div>`; }
+  const pay=payroll(t,year), rep=isRepeater(G.team,year), tax=taxOf(pay,year,rep), lim=ownerLimit(G.team,year), sp=pay+tax, C=CFG(year);
+  const hist=(G.career||[]).filter(c=>c.fin);
+  v.innerHTML=`<h1>财政</h1><div class="sub">NBA 没有转会费，花钱的地方是工资和奢侈税。老板看的是总支出和盈亏。</div>
+   <div class="row"><div class="col" style="min-width:300px">${cur}
+    <div class="card"><h3>老板的底线 <span class="r">${year}-${String((year+1)%100).padStart(2,'0')} 赛季工资</span></h3>
+      <p>工资 <b>${money(pay)}</b> + 奢侈税 <b>${money(tax)}</b> = 总支出 <b class="${sp>lim?'bad':''}">${money(sp)}</b></p>
+      <div class="fitbar" style="margin:8px 0">${bar(sp,lim*1.2,sp>lim?'#e5484d':sp>lim*.93?'#f0a020':'#00c276')}<b>${Math.round(sp/lim*100)}%</b></div>
+      <p class="hint">老板能接受 ${money(lim)}，${sp>lim?`已经超出 <b class="bad">${money(sp-lim)}</b>。赛季结束时按超出比例扣信任度，每超 1% 扣 1 点，最多 15 点。接手的第一个赛季不追究，合同是前任签的。`:`还有 ${money(lim-sp)} 的余量。`}大城市的老板更舍得花钱。</p></div>
+   </div>
+   <div class="col" style="min-width:280px">
+    <div class="card tw"><h3>奢侈税 <span class="r">税线 ${money(C.tax)}</span></h3><table><thead><tr><th>超出税线</th><th class="n">税率</th><th class="n">重复纳税</th></tr></thead><tbody>
+      ${[0,1,2,3,4].map(i=>`<tr><td>${i<4?`${money(taxBand(year)*i)} – ${money(taxBand(year)*(i+1))}`:`${money(taxBand(year)*4)} 以上`}</td><td class="n">${i<4?TAX_BASE[i]:'3.75 起，每档 +0.5'}</td><td class="n">${i<4?TAX_REP[i]:'4.75 起'}</td></tr>`).join('')}</tbody></table>
+      <p class="hint" style="margin-top:6px">常规赛最后一天按当时的工资结算。过去 4 季交过 3 季税算重复纳税，你现在${rep?'<b class="bad">是</b>':'不是'}。交来的税平分给没交税的球队。</p></div>
+    ${hist.length?`<div class="card tw"><h3>往季</h3><table><thead><tr><th>赛季</th><th class="n">收入</th><th class="n">工资</th><th class="n">奢侈税</th><th class="n">盈亏</th></tr></thead><tbody>${hist.map(c=>`<tr><td>${c.year}</td><td class="n">${money(c.fin.revT)}</td><td class="n">${money(c.fin.pay)}</td><td class="n">${money(c.fin.tax)}</td><td class="n ${c.fin.profit>=0?'good':'bad'}">${c.fin.profit>=0?'+':''}${money(c.fin.profit)}</td></tr>`).join('')}</tbody></table></div>`:''}
+   </div></div>`;
 }
 
 // ================= 士气、化学反应、教练组、训练、球探 =================
@@ -3182,7 +3393,7 @@ function weeklyLife(){
 // ---------- 赛季中成长：每 14 天一次，一年 12 次，占全年的 40% ----------
 function growthBase(p, age){
   let d=AGE_DELTA(age);
-  if(d>0){ const gap=Math.max(0,p.pot-p.ovr); d*= gap>0? Math.min(1.6, 0.7+gap/25) : (age<26?.3:1); d*=.75+p.prof/200; }
+  if(d>0){ const gap=Math.max(0,p.pot-p.ovr); d*= gap>0? Math.min(1.6, 0.7+gap/25) : (age<26?.3:1); d*=.75+p.prof/200; d*=devMul(p,age); }
   else d*=1.25-p.prof/200;
   return d;
 }
@@ -3193,11 +3404,12 @@ function bumpOvr(p, dir, keys, age){
   p.ovr=calcOvr(p);
 }
 function growthTick(){
-  const S=G.season, yr=S.year+1; let changed=false;
-  TEAMS.forEach(t=>{ const m=tmeta(t.i), I=INTEN[m.inten];
+  const S=G.season, yr=S.year+1, R=standings(); let changed=false;
+  TEAMS.forEach(t=>{ const m=tmeta(t.i), I=INTEN[m.inten], tg=Math.max(1,R[t.i].g);
     t.players.forEach(p=>{
-      const age=ageOf(p,yr), base=growthBase(p,age);
-      const step=base*.4/12*trainMul(t.i,base)*(base>0?I[1]:1);
+      const age=ageOf(p,yr), base=growthBase(p,age), q=S.ps[p.id];
+      const mm= base>0 && age<=24? minMul(q?q.min/tg:0, p.contract&&p.contract[2]==='tw') : 1;
+      const step=base*.4/12*trainMul(t.i,base)*(base>0?I[1]:1)*mm;
       p.gx=(p.gx||0)+step;
       const keys=FOCUS[p.tf||m.focus][1];
       if(p.gx>=1){ p.gx-=1; if(p.ovr<p.pot){ const o=p.ovr; bumpOvr(p,1,keys,age); changed=changed||p.ovr!==o; } }
@@ -3275,10 +3487,10 @@ function vScout(v){
   const list=cls.slice().sort((a,b)=>perceivedBy(b,G.team)-perceivedBy(a,G.team));
   const mine=picksOwnedBy(G.team).filter(k=>k.year===yr);
   v.innerHTML=`<h1>球探</h1><div class="sub">${yr} 年选秀 · 球探等级 ${L} · 重点考察 ${F.size} / ${lim} 人</div>
-   <div class="card"><p>名单按你的球探看到的价值排，这就是你这边的模拟选秀顺位。总评和潜力是区间，球探等级越高越窄。重点考察过的人区间收窄到 ±1 / ±2，考察名额用掉就收不回来。</p>
+   <div class="card"><h3>球探的判断：${esc(classTxt())}</h3><p>名单按你的球探看到的价值排，这就是你这边的模拟选秀顺位。总评和潜力是区间，球探等级越高越窄。重点考察过的人区间收窄到 ±1 / ±2，还能看到他的敬业程度和伤病风险。考察名额用掉就收不回来。</p>
     <p class="hint" style="margin-top:4px">你持有的 ${yr} 年签：${mine.length?mine.map(k=>esc(pickLabel(k))).join('、'):'无'}。别的球队有自己的球探，看法和你不一样。</p></div>
-   <div class="card tw"><table><thead><tr><th class="n">顺位</th><th>新秀</th><th>位置</th><th class="n">年龄</th><th class="n">身高</th><th class="n">总评</th><th class="n">潜力</th><th>国籍</th><th></th></tr></thead><tbody>
-    ${list.map((p,i)=>`<tr style="${F.has(p.id)?'background:#2a1c10':''}"><td class="n">${i+1}</td><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b></td><td>${p.pos}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td class="n">${rangeTxt(p.scout.o)}</td><td class="n">${rangeTxt(p.scout.p)}</td><td class="hint">${esc(p.nat)}</td>
+   <div class="card tw"><table><thead><tr><th class="n">顺位</th><th>新秀</th><th>位置</th><th>原型</th><th class="n">年龄</th><th class="n">身高</th><th class="n">总评</th><th class="n">潜力</th><th>上季数据</th><th>考察</th><th></th></tr></thead><tbody>
+    ${list.map((p,i)=>`<tr style="${F.has(p.id)?'background:#2a1c10':''}"><td class="n">${i+1}</td><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b> <span class="hint">${esc(p.nat)}</span></td><td>${p.pos}</td><td>${esc(p.arch||'')}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td class="n">${rangeTxt(p.scout.o)}</td><td class="n">${rangeTxt(p.scout.p)}</td><td class="hint">${esc(preTxt(p))}</td><td class="hint">${F.has(p.id)?`敬业${profCn(p.prof)} · 伤病风险${durCn(p.dur)}`:''}</td>
       <td>${F.has(p.id)?'<span class="hint">已考察</span>':F.size<lim?`<button class="sm" data-sf="${p.id}">重点考察</button>`:''}</td></tr>`).join('')}</tbody></table></div>`;
   v.querySelectorAll('[data-sf]').forEach(b=>b.onclick=()=>{ W.scoutFocus=W.scoutFocus||[]; if(W.scoutFocus.length>=lim) return; W.scoutFocus.push(+b.dataset.sf); refreshScout(); save(); vScout(v); });
   v.querySelectorAll('td[data-id]').forEach(el=>el.onclick=()=>showPlayer(PBYID[el.dataset.id]));

@@ -54,7 +54,7 @@ function weeklyLife(){
 // ---------- 赛季中成长：每 14 天一次，一年 12 次，占全年的 40% ----------
 function growthBase(p, age){
   let d=AGE_DELTA(age);
-  if(d>0){ const gap=Math.max(0,p.pot-p.ovr); d*= gap>0? Math.min(1.6, 0.7+gap/25) : (age<26?.3:1); d*=.75+p.prof/200; }
+  if(d>0){ const gap=Math.max(0,p.pot-p.ovr); d*= gap>0? Math.min(1.6, 0.7+gap/25) : (age<26?.3:1); d*=.75+p.prof/200; d*=devMul(p,age); }
   else d*=1.25-p.prof/200;
   return d;
 }
@@ -65,11 +65,12 @@ function bumpOvr(p, dir, keys, age){
   p.ovr=calcOvr(p);
 }
 function growthTick(){
-  const S=G.season, yr=S.year+1; let changed=false;
-  TEAMS.forEach(t=>{ const m=tmeta(t.i), I=INTEN[m.inten];
+  const S=G.season, yr=S.year+1, R=standings(); let changed=false;
+  TEAMS.forEach(t=>{ const m=tmeta(t.i), I=INTEN[m.inten], tg=Math.max(1,R[t.i].g);
     t.players.forEach(p=>{
-      const age=ageOf(p,yr), base=growthBase(p,age);
-      const step=base*.4/12*trainMul(t.i,base)*(base>0?I[1]:1);
+      const age=ageOf(p,yr), base=growthBase(p,age), q=S.ps[p.id];
+      const mm= base>0 && age<=24? minMul(q?q.min/tg:0, p.contract&&p.contract[2]==='tw') : 1;
+      const step=base*.4/12*trainMul(t.i,base)*(base>0?I[1]:1)*mm;
       p.gx=(p.gx||0)+step;
       const keys=FOCUS[p.tf||m.focus][1];
       if(p.gx>=1){ p.gx-=1; if(p.ovr<p.pot){ const o=p.ovr; bumpOvr(p,1,keys,age); changed=changed||p.ovr!==o; } }
@@ -147,10 +148,10 @@ function vScout(v){
   const list=cls.slice().sort((a,b)=>perceivedBy(b,G.team)-perceivedBy(a,G.team));
   const mine=picksOwnedBy(G.team).filter(k=>k.year===yr);
   v.innerHTML=`<h1>球探</h1><div class="sub">${yr} 年选秀 · 球探等级 ${L} · 重点考察 ${F.size} / ${lim} 人</div>
-   <div class="card"><p>名单按你的球探看到的价值排，这就是你这边的模拟选秀顺位。总评和潜力是区间，球探等级越高越窄。重点考察过的人区间收窄到 ±1 / ±2，考察名额用掉就收不回来。</p>
+   <div class="card"><h3>球探的判断：${esc(classTxt())}</h3><p>名单按你的球探看到的价值排，这就是你这边的模拟选秀顺位。总评和潜力是区间，球探等级越高越窄。重点考察过的人区间收窄到 ±1 / ±2，还能看到他的敬业程度和伤病风险。考察名额用掉就收不回来。</p>
     <p class="hint" style="margin-top:4px">你持有的 ${yr} 年签：${mine.length?mine.map(k=>esc(pickLabel(k))).join('、'):'无'}。别的球队有自己的球探，看法和你不一样。</p></div>
-   <div class="card tw"><table><thead><tr><th class="n">顺位</th><th>新秀</th><th>位置</th><th class="n">年龄</th><th class="n">身高</th><th class="n">总评</th><th class="n">潜力</th><th>国籍</th><th></th></tr></thead><tbody>
-    ${list.map((p,i)=>`<tr style="${F.has(p.id)?'background:#2a1c10':''}"><td class="n">${i+1}</td><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b></td><td>${p.pos}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td class="n">${rangeTxt(p.scout.o)}</td><td class="n">${rangeTxt(p.scout.p)}</td><td class="hint">${esc(p.nat)}</td>
+   <div class="card tw"><table><thead><tr><th class="n">顺位</th><th>新秀</th><th>位置</th><th>原型</th><th class="n">年龄</th><th class="n">身高</th><th class="n">总评</th><th class="n">潜力</th><th>上季数据</th><th>考察</th><th></th></tr></thead><tbody>
+    ${list.map((p,i)=>`<tr style="${F.has(p.id)?'background:#2a1c10':''}"><td class="n">${i+1}</td><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b> <span class="hint">${esc(p.nat)}</span></td><td>${p.pos}</td><td>${esc(p.arch||'')}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td class="n">${rangeTxt(p.scout.o)}</td><td class="n">${rangeTxt(p.scout.p)}</td><td class="hint">${esc(preTxt(p))}</td><td class="hint">${F.has(p.id)?`敬业${profCn(p.prof)} · 伤病风险${durCn(p.dur)}`:''}</td>
       <td>${F.has(p.id)?'<span class="hint">已考察</span>':F.size<lim?`<button class="sm" data-sf="${p.id}">重点考察</button>`:''}</td></tr>`).join('')}</tbody></table></div>`;
   v.querySelectorAll('[data-sf]').forEach(b=>b.onclick=()=>{ W.scoutFocus=W.scoutFocus||[]; if(W.scoutFocus.length>=lim) return; W.scoutFocus.push(+b.dataset.sf); refreshScout(); save(); vScout(v); });
   v.querySelectorAll('td[data-id]').forEach(el=>el.onclick=()=>showPlayer(PBYID[el.dataset.id]));

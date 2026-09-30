@@ -16,9 +16,9 @@ function contractYears(age){ return age<=24? 3+(rnd01()<.5?1:0) : age<=29? 2+Mat
 // ---------- 1. 赛季总结：存档数据、成长衰退、退役 ----------
 const PHYS=['spd','jmp','str','sta'], SKILL=['three','ft','mid','pass','oiq','diq','handle','post'];
 const AGE_DELTA=a=> a<=20?4 : a===21?3.5 : a===22?3 : a===23?2.2 : a===24?1.5 : a===25?1 : a===26?.5 : a===27?0 : a===28?-.3 : a===29?-.7 : a===30?-1.2 : a===31?-1.8 : a===32?-2.5 : a===33?-3.2 : a===34?-4 : -5;
-function progressPlayer(p, age, ti){
-  // 全年成长的六成在这里结算，另外四成在赛季里每两周结算（第五阶段）
-  let d=growthBase(p,age); d*=.6*trainMul(ti==null?-1:ti,d);
+function progressPlayer(p, age, ti, mm){
+  // 全年成长的六成在这里结算，另外四成在赛季里每两周结算（第五阶段）；年轻人再乘上场时间系数（第六阶段）
+  let d=growthBase(p,age); d*=.6*trainMul(ti==null?-1:ti,d); if(d>0 && age<=24) d*=(mm||1);
   d+=gauss(0,1.5);
   if(d>0 && p.ovr+d>p.pot) d=Math.max(0,p.pot-p.ovr);
   const target=clamp(Math.round(p.ovr+d),30,99), old=p.ovr;
@@ -30,7 +30,7 @@ function progressPlayer(p, age, ti){
   fitOvr(p, target);
   p.ovr=calcOvr(p);
   // 潜力
-  if(age<25) p.pot=Math.round(clamp(p.pot+gauss(-.3,1.5),p.ovr,99));
+  if(age<25) p.pot=Math.round(clamp(p.pot+potDrift(p,age),p.ovr,99));
   else p.pot=Math.max(p.ovr, Math.round(p.pot-(p.pot-p.ovr)*.5));
   p.dur=clamp(Math.round(p.dur - (age>=31?rnd01()*3:0) + gauss(0,1.5)),30,99);
   return p.ovr-old;
@@ -57,7 +57,7 @@ function offSummary(){
   archiveStats();
   const all=[]; TEAMS.forEach(t=>t.players.forEach(p=>all.push([p,t.i]))); FREE.forEach(p=>all.push([p,-1]));
   all.forEach(([p,ti])=>{
-    const age=ageOf(p,nextYear); const old=p.ovr; const d=progressPlayer(p,age,ti); p.age=age; delete p.gx;
+    const age=ageOf(p,nextYear); const old=p.ovr; const q=S.ps[p.id], mpg=q?q.min/82:0; const d=progressPlayer(p,age,ti,ti>=0?minMul(mpg,p.contract&&p.contract[2]==='tw'):.9); p.age=age; delete p.gx;
     const r={id:p.id, cn:p.cn, team:ti, old, now:p.ovr, age};
     if(ti===G.team) rep.mine.push(r);
     rep.risers.push(r);
@@ -81,14 +81,48 @@ const CN_SURNAME=['王','李','张','刘','陈','杨','赵','黄','周','吴','�
 const CN_GIVEN=['子轩','浩然','宇航','俊杰','天佑','明哲','嘉豪','博文','一鸣','思远','晨阳','梓涵','瀚文','志强','振宇'];
 const NATS=[['美国',75],['加拿大',5],['法国',4],['塞尔维亚',2],['澳大利亚',3],['西班牙',2],['立陶宛',1.5],['喀麦隆',1.5],['尼日利亚',2],['德国',1.5],['中国',1.5],['土耳其',1]];
 function pickNat(){ let r=rnd01()*NATS.reduce((s,x)=>s+x[1],0); for(const [n,w] of NATS){ r-=w; if(r<=0) return n; } return '美国'; }
-function genProspect(rank, year){
-  // rank 0 = 最好；按顺位设定总评和潜力的期望值
+// 原型：属性加减（第六阶段 §3.2）
+const ARCH={
+  运动型:{pos:POS, d:{spd:8,jmp:9,str:6,dunk:6,finish:2,three:-6,mid:-6,ft:-5,handle:-4,pass:-4,post:-3,oiq:-7,diq:-4}, pot:3},
+  射手:{pos:['PG','SG','SF'], d:{three:10,mid:8,ft:8,oiq:2,str:-4,spd:-2,jmp:-3,perD:-4,intD:-4,blk:-3}, pot:0},
+  组织者:{pos:['PG','SG'], d:{pass:10,handle:9,oiq:7,str:-6,dunk:-4,blk:-3,oreb:-3}, pot:0},
+  护框者:{pos:['PF','C'], d:{blk:10,intD:9,dreb:7,oreb:6,str:4,three:-10,mid:-7,handle:-8,pass:-3,ft:-5}, pot:0},
+  锋线防守者:{pos:['SG','SF','PF'], d:{perD:10,stl:8,diq:8,spd:4,hustle:5,three:-3,mid:-4,pass:-3,post:-3}, pot:0},
+  得分手:{pos:['PG','SG','SF','PF'], d:{finish:6,mid:6,three:5,handle:5,perD:-6,diq:-6,hustle:-4,pass:-2}, pot:1},
+  老成型:{pos:POS, d:{oiq:7,diq:6,pass:6,ft:6,hustle:4,spd:-5,jmp:-6}, pot:-4, age:[21,22]},
+};
+function rollDev(p, rng){ rng=rng||rnd01; const r=rng(); p.dev= r<.2?'early' : r<.8?'normal' : 'late'; const v=rng(); p.vol= v<.6?1 : v<.88?2 : 3; }
+function ensureDev(p){ if(!p.dev) rollDev(p, srand(p.id*7919+13)); }
+const DEV_CN={early:'早熟',normal:'正常',late:'大器晚成'};
+function devMul(p, age){ ensureDev(p); if(p.dev==='early') return age<=21?1.35 : age<=24?.75 : 1; if(p.dev==='late') return age<=21?.65 : age<=24?1.45 : 1; return 1; }
+function potDrift(p, age){ ensureDev(p); const sd=[0,1.5,2.5,4][p.vol||1];
+  let bias=-.3; if(p.dev==='late' && age>=21 && age<=24) bias=.6; if(p.dev==='early' && age>=22) bias=-.9; return gauss(bias, sd); }
+function minMul(mpg, tw){ if(tw) return 1; return mpg>=28?1.3 : mpg>=18?1.1 : mpg>=10?1 : .8; }
+function genPre(p){
+  const a=p.a, age=p.age, lg= (p.nat==='美国'||p.nat==='加拿大')? (rnd01()<.1?'G联盟':'NCAA') : p.nat==='澳大利亚'?'澳洲 NBL' : p.nat==='中国'?'CBA' : '欧洲联赛';
+  const tough= lg==='NCAA'||lg==='G联盟'? 1 : .78, lvl=(p.ovr-60)/15;
+  const pts=clamp((9+lvl*9+(age-19)*.9+((a.finish+a.three+a.mid)/3-60)/6+gauss(0,2.5))*tough,3,32);
+  const reb=clamp(2+((a.oreb+a.dreb)/2-45)/7+(p.ht-195)/6+gauss(0,1.2),1,15), ast=clamp(1+((a.pass+a.handle)/2-50)/7+gauss(0,1),.3,10);
+  const fg=clamp(.42+(a.finish-60)/400+(p.pos==='C'||p.pos==='PF'?.06:0)+gauss(0,.03),.35,.68), tp=clamp(.3+(a.three-60)/250+gauss(0,.04),.15,.48);
+  const r1=x=>Math.round(x*10)/10;
+  return {lg, g:Math.round(lg==='NCAA'?30+rnd01()*8:24+rnd01()*14), pts:r1(pts), reb:r1(reb), ast:r1(ast), fg:Math.round(fg*1000)/10, tp:Math.round(tp*1000)/10};
+}
+function preTxt(p){ const x=p.pre; return x? `${x.lg} ${x.pts} 分 ${x.reb} 板 ${x.ast} 助 · 命中 ${x.fg}% · 三分 ${x.tp}%` : ''; }
+function profCn(v){ return v>=70?'高':v>=45?'中':'低'; }
+function durCn(v){ return v>=85?'低':v>=72?'中':'高'; }
+function genProspect(rank, year, boost, gen){
+  // rank 0 = 最好；按顺位设定总评和潜力的期望值，boost 是这一届的强弱
   const t=rank/69;
-  const ovr=Math.round(clamp(76-18*Math.pow(t,.85)+gauss(0,1.8),50,79));
-  const pot=Math.round(clamp(93-24*Math.pow(t,.8)+gauss(0,3),ovr+2,99));
-  const r=rnd01(); const age = r<.4?19 : r<.65?20 : r<.85?21 : 22;
-  // 模板：同位置的现役轮换球员
+  let ovr=Math.round(clamp(76-18*Math.pow(t,.85)+gauss(0,1.8)+boost*1.2,50,79));
+  let pot=Math.round(clamp(93-24*Math.pow(t,.8)+gauss(0,3)+boost*2.5,ovr+2,99));
+  if(gen){ ovr=79+Math.floor(rnd01()*4); pot=97+Math.floor(rnd01()*3); }
+  const r=rnd01(); let age = r<.4?19 : r<.65?20 : r<.85?21 : 22;
+  // 模板：同位置的现役轮换球员（只用身材），属性形状看原型
   const pos=pickOne(POS);
+  const archs=Object.keys(ARCH).filter(k=>ARCH[k].pos.includes(pos) && (!ARCH[k].age || !gen));
+  const arch=pickOne(archs), A=ARCH[arch];
+  if(A.age && age<A.age[0]) age=A.age[0]+Math.floor(rnd01()*2);
+  if(!gen) pot=Math.round(clamp(pot+A.pot,ovr+2,99));
   const pool=[]; TEAMS.forEach(tm=>tm.players.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,9).forEach(p=>{ if(p.pos===pos) pool.push(p); }));
   const tpl=pickOne(pool.length?pool:TEAMS[0].players);
   const nat=pickNat();
@@ -96,27 +130,31 @@ function genProspect(rank, year){
   const by=year-age, bm=1+Math.floor(rnd01()*12);
   const p={id:PID++, en:cn, cn, pos, pos2: tpl.pos2? tpl.pos2.slice():[], born:`${by}-${String(bm).padStart(2,'0')}`, jersey:String(Math.floor(rnd01()*50)),
     ht:Math.round(tpl.ht+gauss(0,2.5)), ws:Math.round(tpl.ws+gauss(0,3)), wt:Math.round(tpl.wt+gauss(0,4)), nat, pot, dur:Math.round(clamp(gauss(80,8),50,98)), prof:Math.round(clamp(gauss(60,15),20,99)),
-    a:Object.assign({},tpl.a), contract:null, hist:[]};
-  // 身体属性年轻人略低、技术略粗糙，再整体缩放到目标总评
-  KEYS.forEach(k=>{ p.a[k]=clamp(Math.round(p.a[k]+gauss(0,4)),20,99); });
-  // 先按比例粗缩放，再逐点微调
+    a:Object.assign({},tpl.a), contract:null, hist:[], arch};
+  // 模板属性加上原型的加减和随机噪声，再整体缩放到目标总评
+  KEYS.forEach(k=>{ p.a[k]=clamp(Math.round(p.a[k]+(A.d[k]||0)*1.2+gauss(0,4)),20,99); });
   { const cur=calcOvr(p); const k0=(ovr-40)/Math.max(1,cur-40); KEYS.forEach(k=>{ p.a[k]=clamp(Math.round(40+(p.a[k]-40)*k0),20,99); }); }
   fitOvr(p, ovr);
   p.ovr=calcOvr(p); p.pot=Math.max(p.pot,p.ovr+2); p.age=ageOf(p,year);
+  rollDev(p); if(gen){ p.dev='normal'; p.vol=1; p.prof=Math.max(p.prof,70); }
+  p.pre=genPre(p);
   // 球探误差：标准正态，显示区间的宽度看球探等级（refreshScout）
   p.sz=[gauss(0,1),gauss(0,1)];
   return p;
 }
 function genDraftClass(year){
-  const arr=[]; for(let i=0;i<70;i++) arr.push(genProspect(i,year));
+  const s=clamp(gauss(0,1),-2,2), gen=rnd01()<.07;
+  W.dcStr={s:Math.round(s*100)/100, gen};
+  const arr=[]; for(let i=0;i<70;i++) arr.push(genProspect(i,year, i<20? s*(1-i/20) : 0, gen&&i===0));
   arr.forEach(p=>PBYID[p.id]=p);
   return arr;
 }
+function classTxt(){ const c=W.dcStr; if(!c) return ''; return (c.s>=.7?'大年，前几顺位的成色明显好过往年' : c.s<=-.7?'小年，前几顺位没有往年扎实' : '普通年份')+(c.gen?'。另外，今年有一个被看作世代级的天才':''); }
 
 // ---------- 选秀权 ----------
 function ensurePicks(year){ W.picks[year]=W.picks[year]||{1:{},2:{}}; [1,2].forEach(r=>{ for(let i=0;i<30;i++) if(W.picks[year][r][i]==null) W.picks[year][r][i]=i; }); }
 function picksOwnedBy(ti){ const out=[]; Object.keys(W.picks).forEach(y=>[1,2].forEach(r=>Object.entries(W.picks[y][r]).forEach(([orig,own])=>{ if(own===ti) out.push({year:+y,round:r,orig:+orig}); }))); return out.sort((a,b)=>a.year-b.year||a.round-b.round); }
-function pickLabel(pk){ return `${pk.year} 年${pk.round===1?'首轮':'次轮'}（${TEAMS[pk.orig].nick}）`; }
+function pickLabel(pk){ const n=pk.round===1&&typeof protOf==='function'?protOf(pk):0; return `${pk.year} 年${pk.round===1?'首轮':'次轮'}（${TEAMS[pk.orig].nick}${n?'，前 '+n+' 保护':''}）`; }
 
 // ---------- 3. 抽签 ----------
 const LOTTO=[140,140,140,125,105,90,75,60,45,30,20,15,10,5];
@@ -129,6 +167,7 @@ function runLottery(){
   const pool=non.map((i,k)=>({i,w:LOTTO[k]})), top=[];
   for(let k=0;k<4;k++){ let r=rnd01()*pool.reduce((s,x)=>s+x.w,0); const j=pool.findIndex(x=>(r-=x.w)<=0); top.push(pool[j].i); pool.splice(j,1); }
   const r1=[...top, ...pool.map(x=>x.i), ...po];
+  resolveProtections(year, r1);
   const r2=[...non, ...po];
   const order=[]; r1.forEach((orig,k)=>order.push({no:k+1,round:1,orig,owner:W.picks[year][1][orig]}));
   r2.forEach((orig,k)=>order.push({no:31+k,round:2,orig,owner:W.picks[year][2][orig]}));
@@ -149,6 +188,7 @@ function draftPlayer(pk, p){
   p.drafted=true; p.draft={year:D.year,round:pk.round,no:pk.no,team:pk.owner};
   const t=TEAMS[pk.owner];
   if(pk.round===1){ p.contract=[rookieScale(pk.no), yr+2, 'rk']; p.rkOpt=2; p.rk1=true; }
+  else if(t.players.filter(x=>x.contract&&x.contract[2]==='tw').length<3){ p.contract=[Math.round(CFG(yr).minSal*.5), yr+2, 'tw']; p.rkOpt=0; p.rk1=false; }
   else { p.contract=[CFG(yr).minSal, yr+2, 'rk']; p.rkOpt=0; p.rk1=false; }
   t.players.push(p); PBYID[p.id]=p; chemHit(pk.owner,.25); D.log.push({no:pk.no, round:pk.round, team:pk.owner, pid:p.id});
 }
@@ -156,7 +196,7 @@ function draftAdvance(untilUser){ // 一直选到轮到玩家（或者选完）
   const D=W.off.draft;
   while(D.idx<D.order.length){
     const pk=D.order[D.idx];
-    if(pk.owner===G.team && untilUser) return;
+    if(pk.owner===G.team && untilUser){ maybeDraftOffer(pk); return; }
     const p=aiDraftPick(pk.owner); if(!p) break;
     draftPlayer(pk,p); D.idx++;
   }
@@ -202,8 +242,8 @@ function aiResign(ti){
     const et=expType(p);
     if(et==='option'){ if(p.ovr>=66||p.pot>=78) exerciseOption(p); else releaseToFA(p,ti,ask); return; }
     if(et==='rfa'){ if(p.ovr>=68||p.pot>=80) giveQO(p,ti,ask); else releaseToFA(p,ti,ask); return; }
-    const keep = !ask.refuse && t.players.filter(x=>x.contract && x.contract[1]>yr).length < 15 && payroll(t,yr)+ask.amt <= C.apron2 && (ask.amt<=worth*1.12) && p.ovr>=66 && rnd01()<.8;
-    if(keep) p.contract=[ask.amt, yr+ask.yrs, 'std']; else releaseToFA(p, ti, ask);
+    const keep = !ask.refuse && t.players.filter(x=>x.contract && x.contract[1]>yr).length < 15 && ownerOk(ti,ask.amt,yr) && payroll(t,yr)+ask.amt <= C.apron2*1.08 && (ask.amt<=worth*1.12) && p.ovr>=66 && rnd01()<.8;
+    if(keep){ const old=p.contract[0]; p.contract=[ask.amt, yr+ask.yrs, 'std']; if(ask.amt>old*1.2) freezeOnSign(p); } else releaseToFA(p, ti, ask);
   });
 }
 function releaseToFA(p, ti, ask){
@@ -229,7 +269,7 @@ function signFA(p, ti, amt, yrs, yr){
   const r=offerRule(ti,amt,yr); if(!r.ok) return r;
   if(r.kind && r.kind.includes('中产')){ W.mle[yr]=W.mle[yr]||{}; W.mle[yr][ti]=true; }
   const i=FREE.indexOf(p); if(i>=0) FREE.splice(i,1);
-  p.contract=[amt, yr+yrs, 'std']; delete p.fa; TEAMS[ti].players.push(p); PBYID[p.id]=p; chemHit(ti,1);
+  p.contract=[amt, yr+yrs, 'std']; delete p.fa; TEAMS[ti].players.push(p); PBYID[p.id]=p; chemHit(ti,1); freezeOnSign(p);
   const t=TEAMS[ti]; t._rot=null; t.top8=t.players.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,8).reduce((s,q)=>s+q.ovr,0)/Math.max(1,Math.min(8,t.players.length));
   return {ok:true, kind:r.kind};
 }
@@ -257,6 +297,7 @@ function faRound(){
       else if(!(W.mle[yr]||{})[t.i] && pay<C.apron2 && want<=C.mleTP) amt=want;
       else if(want<=C.minSal*1.25 && cnt<14) amt=C.minSal;
       if(amt==null || rnd01()<.2) continue;
+      if(amt>C.minSal && !ownerOk(t.i, amt+(pay-payroll(t,yr)), yr)) continue;
       add(p.id,{ti:t.i, amt, yrs:a.yrs}); n++; pay+=amt;
     }
   });
@@ -273,7 +314,7 @@ function faRound(){
       if(p.rfa && offerRule(o.ti,o.amt,yr).ok){ // 报价单：原球队有匹配权
         const orig=p.rfa.team;
         if(orig===G.team){ W.off.sheets=W.off.sheets||[]; W.off.sheets.push({pid:p.id, ti:o.ti, amt:o.amt, yrs:o.yrs}); p.sheet=true; break; }
-        const match = o.amt<=marketSalary(p.ovr,ageOf(p,yr),yr)*1.2 && payroll(TEAMS[orig],yr)+o.amt<=CFG(yr).apron2 && rosterCount(TEAMS[orig],yr)<15;
+        const match = o.amt<=marketSalary(p.ovr,ageOf(p,yr),yr)*1.2 && ownerOk(orig,o.amt,yr,1.05) && rosterCount(TEAMS[orig],yr)<15;
         if(match){ signDirect(p,orig,o.amt,o.yrs,yr); signed.push({pid:p.id, ti:orig, amt:o.amt, yrs:o.yrs, matched:o.ti, user:false}); addNews('匹配',`${TEAMS[orig].nick}匹配了${TEAMS[o.ti].nick}给 ${p.cn} 的报价单（${money(o.amt)} × ${o.yrs} 年）`); break; }
       }
       const r=signFA(p,o.ti,o.amt,o.yrs,yr); if(r.ok){ signed.push({pid:p.id, ti:o.ti, amt:o.amt, yrs:o.yrs, user:o.ti===G.team}); if(p.ovr>=80) addNews('签约',`${p.cn}（${p.ovr}）加盟${TEAMS[o.ti].nick}，${money(o.amt)} × ${o.yrs} 年`); break; }

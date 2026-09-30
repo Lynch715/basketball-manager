@@ -69,7 +69,7 @@ function newSeason(year){
   const S={ year, seed, day:0, phase:'reg', games:genSchedule(seed, cupPairSet(cupGroups)), boxes:{}, ps:{}, pps:{}, cond:{}, inj:{},
     inbox:[], playin:null, po:null, awards:null, champion:null, lastMonth:SEASON_START.getMonth(), userFinal:null, ovr0:{} };
   TEAMS.forEach(t=>t.players.forEach(p=>S.ovr0[p.id]=p.ovr));
-  S.cup={groups:cupGroups, ko:null, champ:null}; ensureDraftClass(year+1);
+  S.cup={groups:cupGroups, ko:null, champ:null}; ensureDraftClass(year+1); ensurePicks(year+1); ensurePicks(year+2);
   // 老板目标
   const rank=TEAMS.slice().sort((a,b)=>b.top8-a.top8).findIndex(t=>t.i===G.team)+1;
   const tier = rank<=3?0 : rank<=8?1 : rank<=16?2 : rank<=22?3 : 4;
@@ -242,14 +242,14 @@ function monthlyBoard(){
   const diff=r.pct-GOALS[S.board.tier].exp;
   const delta=Math.round(clamp(diff*40,-8,8));
   S.board.conf=clamp(S.board.conf+delta,0,100);
-  S.inbox.push({d:S.day, t:'老板的月度评价', b:`目前 ${r.w} 胜 ${r.l} 负。${delta>2?'老板对球队的表现很满意。':delta<-2?'老板对战绩不太满意，希望尽快改善。':'老板觉得还行，继续保持。'}信任度 ${S.board.conf}（${delta>=0?'+':''}${delta}）。`});
+  S.inbox.push({d:S.day, t:'老板的月度评价', b:`目前 ${r.w} 胜 ${r.l} 负。${delta>2?'老板对球队的表现很满意。':delta<-2?'老板对战绩不太满意，希望尽快改善。':'老板觉得还行，继续保持。'}信任度 ${S.board.conf}（${delta>=0?'+':''}${delta}）。${finMonthlyNote()}`});
   checkFired();
 }
 function checkFired(){ const S=G.season; if(S.board.conf<15 && !S.fired){ S.fired=true; S.inbox.push({d:S.day,t:'你被解雇了',b:'老板对球队失去了信心，决定换帅。你可以接手另一支球队重新开始。'}); } }
 
 // ---------- 常规赛结束：奖项、附加赛 ----------
 function endRegular(){
-  const S=G.season; const R=standings();
+  const S=G.season; settleTax(); const R=standings();
   S.final=R.map(r=>({i:r.i,w:r.w,l:r.l}));
   S.seeds={东:confRank(R,'东').map(r=>r.i), 西:confRank(R,'西').map(r=>r.i)};
   S.awards=calcAwards(R);
@@ -359,10 +359,13 @@ function finishSeason(){
   const close = !met && ({0:roundWon===3, 1:roundWon===1, 2:seed<=10, 3:seed<=12, 4:r.w>=20})[S.board.tier];
   const delta = exceed?25 : met?15 : close?-8 : -18;
   S.board.conf=clamp(S.board.conf+delta,0,100);
-  S.userFinal={w:r.w,l:r.l,res,met,exceed,delta,seed};
+  const fe=financeSeasonEnd(), ff=fe.f;
+  if(!fe.pen && fe.first && ff.spend>ff.limit) S.inbox.push({d:S.day, t:'老板提醒开支', b:`工资加奢侈税一共 ${money(ff.spend)}，超出老板能接受的 ${money(ff.limit)}。这些合同是前任签的，今年不追究；从下个赛季起，超出的部分会扣信任度。`});
+  if(fe.pen){ S.board.conf=clamp(S.board.conf-fe.pen,0,100); S.inbox.push({d:S.day, t:'老板对开支不满', b:`工资加奢侈税一共 ${money(ff.spend)}，超出老板能接受的 ${money(ff.limit)}。信任度 −${fe.pen}。`}); }
+  S.userFinal={w:r.w,l:r.l,res,met,exceed,delta,seed,finPen:fe.pen};
   S.inbox.push({d:S.day,t: S.champion===G.team?'总冠军！':'赛季结束', b:`${TEAMS[S.champion].cn} 拿下总冠军。你的球队：${r.w} 胜 ${r.l} 负，${res}。老板目标「${GOALS[S.board.tier].txt}」${met?(exceed?'超额完成':'完成'):close?'差一点完成':'没有完成'}，信任度 ${delta>0?'+':''}${delta}，现在 ${S.board.conf}。`});
   G.career=G.career||[];
-  G.career.push({year:S.year, team:G.team, w:r.w, l:r.l, res, champ:S.champion===G.team, cup:!!(S.cup&&S.cup.champ===G.team), goal:GOALS[S.board.tier].name, met, fmvp:null, mvp:S.awards&&S.awards.mvp});
+  G.career.push({year:S.year, team:G.team, w:r.w, l:r.l, res, champ:S.champion===G.team, cup:!!(S.cup&&S.cup.champ===G.team), goal:GOALS[S.board.tier].name, met, fmvp:null, mvp:S.awards&&S.awards.mvp, fin:{revT:ff.revT, pay:ff.pay, tax:ff.tax, profit:ff.profit}});
   G.board={conf:S.board.conf};
   checkFired(); save();
 }

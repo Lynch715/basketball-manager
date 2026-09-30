@@ -30,11 +30,11 @@ function vOff(v){
   else if(O.step===2){ const D=O.draft, cur=D.order[D.idx], myTurn=cur && cur.owner===G.team && !D.done;
     refreshScout(); const avail=W.draftClass.filter(p=>!p.drafted).sort((a,b)=>perceivedBy(b,G.team)-perceivedBy(a,G.team));
     body=`<div class="card"><h3>${D.done?'选秀结束':myTurn?`轮到你了：第 ${cur.no} 顺位`:`第 ${cur.no} 顺位：${esc(TEAMS[cur.owner].cn)}`}</h3>
-      ${myTurn?'<p class="hint">在下面的名单里挑一个人。总评和潜力是球探给的区间，不一定准。</p>':''}
-      <div class="ctrl" style="margin-top:4px">${myTurn?'<button id="autopick">让系统替我选</button>':''}${!D.done&&!myTurn?'<button id="tomypick">选到我的下一个签位</button>':''}</div></div>
-     <div class="row"><div class="col card tw" style="min-width:320px;flex:1.6"><h3>新秀 <span class="r">${avail.length} 人可选</span></h3><table><thead><tr><th>新秀</th><th>位置</th><th class="n">年龄</th><th class="n">身高</th><th class="n">总评</th><th class="n">潜力</th><th class="n">三分</th><th class="n">终结</th><th class="n">外防</th><th class="n">内防</th><th>国籍</th><th></th></tr></thead><tbody>
-      ${avail.map(p=>`<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b></td><td>${p.pos}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td class="n">${rangeTxt(p.scout.o)}</td><td class="n">${rangeTxt(p.scout.p)}</td>
-        ${['three','finish','perD','intD'].map(k=>{ const r=srand(p.id*7+3); KEYS.slice(0,KEYS.indexOf(k)).forEach(()=>r()); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0]; const x=clamp(Math.round(p.a[k]+(r()*2-1)*hw*1.5),20,99); return `<td class="n" style="color:${attrCol(x)}">${x}</td>`; }).join('')}<td class="hint">${esc(p.nat)}</td><td>${myTurn?`<button class="sm pri" data-pick="${p.id}">选他</button>`:''}</td></tr>`).join('')}</tbody></table></div>
+      <p class="hint">${esc(classTxt())}。${myTurn?'在下面的名单里挑一个人。总评和潜力是球探给的区间，不一定准。':''}</p>
+      <div class="ctrl" style="margin-top:4px">${myTurn?'<button id="autopick">让系统替我选</button>':''}${!D.done&&!myTurn?'<button id="tomypick">选到我的下一个签位</button>':''}${!D.done?` <button id="tradepick">交易签位</button>`:''}</div></div>
+     <div class="row"><div class="col card tw" style="min-width:320px;flex:1.6"><h3>新秀 <span class="r">${avail.length} 人可选</span></h3><table><thead><tr><th>新秀</th><th>位置</th><th class="n">年龄</th><th class="n">身高</th><th>原型</th><th class="n">总评</th><th class="n">潜力</th><th class="n">三分</th><th class="n">终结</th><th class="n">外防</th><th class="n">内防</th><th>上季数据</th><th></th></tr></thead><tbody>
+      ${avail.map(p=>`<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b></td><td>${p.pos}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td>${esc(p.arch||'')}</td><td class="n">${rangeTxt(p.scout.o)}</td><td class="n">${rangeTxt(p.scout.p)}</td>
+        ${['three','finish','perD','intD'].map(k=>{ const r=srand(p.id*7+3); KEYS.slice(0,KEYS.indexOf(k)).forEach(()=>r()); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0]; const x=clamp(Math.round(p.a[k]+(r()*2-1)*hw*1.5),20,99); return `<td class="n" style="color:${attrCol(x)}">${x}</td>`; }).join('')}<td class="hint">${esc(preTxt(p))}</td><td>${myTurn?`<button class="sm pri" data-pick="${p.id}">选他</button>`:''}</td></tr>`).join('')}</tbody></table></div>
       <div class="col card tw" style="min-width:240px"><h3>已选</h3><table><tbody>${D.log.slice().reverse().map(x=>{ const p=PBYID[x.pid]; return `<tr style="${x.team===G.team?'background:#2a1c10':''}"><td class="n">${x.no}</td><td>${logo(TEAMS[x.team],16)}</td><td class="cl" data-id="${x.pid}">${esc(p?p.cn:'')}</td><td class="hint">${p?p.pos:''}</td></tr>`; }).join('')||'<tr><td class="hint">还没开始</td></tr>'}</tbody></table></div></div>`;
     next = D.done? '进入续约' : '跳过剩下的选秀（系统替我选）';
   }
@@ -81,10 +81,11 @@ function vOff(v){
   v.querySelectorAll('[data-id]').forEach(el=>el.onclick=()=>showPlayer(PBYID[el.dataset.id]));
   if(q('#autopick')) q('#autopick').onclick=()=>{ const D=O.draft, pk=D.order[D.idx]; draftPlayer(pk, aiDraftPick(G.team)); D.idx++; draftAdvance(true); save(); render(); };
   if(q('#tomypick')) q('#tomypick').onclick=()=>{ draftAdvance(true); save(); render(); };
+  if(q('#tradepick')) q('#tradepick').onclick=()=>{ const cur=O.draft.order[O.draft.idx]; if(cur && cur.owner!==G.team) TR.partner=cur.owner; G.view='trade'; render(); };
   v.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{ const D=O.draft, pk=D.order[D.idx]; draftPlayer(pk, PBYID[b.dataset.pick]); D.idx++; draftAdvance(true); save(); render(); });
-  v.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.rs], a=O.asks[p.id]; p.contract=[a.amt, O.year+a.yrs, 'std']; save(); render(); });
+  v.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.rs], a=O.asks[p.id]; const old=p.contract[0]; p.contract=[a.amt, O.year+a.yrs, 'std']; if(a.amt>old*1.2) freezeOnSign(p); save(); render(); });
   v.querySelectorAll('[data-rsd]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.rsd], a=O.asks[p.id]; const pAccept = a.mood<1? .8 : a.mood<1.12? .5 : .25;
-    if(rnd01()<pAccept){ p.contract=[Math.round(a.amt*.9), O.year+a.yrs, 'std']; toast(`${p.cn} 同意了：${money(Math.round(a.amt*.9))} × ${a.yrs} 年`); }
+    if(rnd01()<pAccept){ const old=p.contract[0]; p.contract=[Math.round(a.amt*.9), O.year+a.yrs, 'std']; if(a.amt*.9>old*1.2) freezeOnSign(p); toast(`${p.cn} 同意了：${money(Math.round(a.amt*.9))} × ${a.yrs} 年`); }
     else { releaseToFA(p,G.team,a); toast(`${p.cn} 拒绝压价，进入自由市场`); }
     save(); render(); });
   v.querySelectorAll('[data-opt]').forEach(b=>b.onclick=()=>{ exerciseOption(PBYID[b.dataset.opt]); save(); render(); });
