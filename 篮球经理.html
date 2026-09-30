@@ -24,7 +24,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 html{background:var(--bg2);-webkit-text-size-adjust:100%;overscroll-behavior:none;touch-action:pan-x pan-y}
-body{background:var(--bg);color:var(--txt);font:13px/1.5 -apple-system,"PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
+body{background:var(--bg2);color:var(--txt);font:13px/1.5 -apple-system,"PingFang SC","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
   overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:rgba(255,138,31,.18)}
 input,select{-webkit-user-select:text;user-select:text}
 ::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:#333d4b;border-radius:5px}
@@ -34,7 +34,7 @@ input,select{-webkit-user-select:text;user-select:text}
 #tb-name{font-weight:700;font-size:14px;line-height:1.15}#tb-name small{display:block;font-weight:400;font-size:11px;color:var(--dim)}
 #tb-spacer{flex:1}#tb-stats{display:flex}
 .tb-stat{text-align:center;padding:0 10px;border-left:1px solid var(--line);min-width:70px}.tb-stat b{display:block;font-size:13px}.tb-stat span{font-size:10px;color:var(--dim)}
-#main{flex:1;display:flex;min-height:0}
+#main{flex:1;display:flex;min-height:0;background:var(--bg)}
 #side{width:calc(150px + var(--sal));flex:0 0 calc(150px + var(--sal));background:var(--bg2);border-right:1px solid var(--line);overflow-y:auto;padding:6px 0 var(--sab) var(--sal)}
 .nav{display:flex;align-items:center;gap:9px;padding:9px 14px;cursor:pointer;color:var(--dim);border-left:3px solid transparent;font-size:13px}
 .nav:hover{background:var(--bg3);color:var(--txt)}.nav.on{background:var(--bg3);color:var(--acc);border-left-color:var(--acc);font-weight:600}
@@ -3914,6 +3914,16 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
     navigator.serviceWorker.addEventListener('controllerchange', ()=>{ if(reloading) return; reloading=true; location.reload(); });
   });
 }
+
+// iPhone 从桌面图标打开（全屏、状态栏透明）时，WebKit 算出来的视口比屏幕矮一个状态栏的高度，
+// 底部会露出一条黑边。按屏幕实际高度把整个界面撑满。
+function fixAppHeight(){
+  const app=document.getElementById('app'); if(!app) return;
+  if(!(IS_IOS && isStandalone())){ app.style.height=''; app.style.bottom=''; return; }
+  const portrait=innerHeight>=innerWidth, full=portrait? Math.max(screen.width,screen.height) : Math.min(screen.width,screen.height);
+  app.style.bottom='auto'; app.style.height=Math.max(full, innerHeight)+'px';
+}
+fixAppHeight(); addEventListener('resize', fixAppHeight); addEventListener('orientationchange', ()=>setTimeout(fixAppHeight,300));
 
 // ================= 存档、读档、新开一局、联系方式 =================
 // 当前进度自动存在 localStorage（bbm_v1 / bbm_world_v1 / bbm_season_v1）；

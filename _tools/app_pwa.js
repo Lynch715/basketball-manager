@@ -54,3 +54,13 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
     navigator.serviceWorker.addEventListener('controllerchange', ()=>{ if(reloading) return; reloading=true; location.reload(); });
   });
 }
+
+// iPhone 从桌面图标打开（全屏、状态栏透明）时，WebKit 算出来的视口比屏幕矮一个状态栏的高度，
+// 底部会露出一条黑边。按屏幕实际高度把整个界面撑满。
+function fixAppHeight(){
+  const app=document.getElementById('app'); if(!app) return;
+  if(!(IS_IOS && isStandalone())){ app.style.height=''; app.style.bottom=''; return; }
+  const portrait=innerHeight>=innerWidth, full=portrait? Math.max(screen.width,screen.height) : Math.min(screen.width,screen.height);
+  app.style.bottom='auto'; app.style.height=Math.max(full, innerHeight)+'px';
+}
+fixAppHeight(); addEventListener('resize', fixAppHeight); addEventListener('orientationchange', ()=>setTimeout(fixAppHeight,300));
