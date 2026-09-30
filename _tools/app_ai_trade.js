@@ -104,7 +104,7 @@ function offersHTML(){
   if(!W.offers.length) return '';
   const yr=ctxYear();
   return `<div class="card" style="border-color:var(--acc)"><h3>交易报价</h3>${W.offers.map(o=>{ const it=offerItems(o), t=TEAMS[o.from];
-    const line=(ps,ks)=>[...ps.map(p=>`${esc(p.cn)} ${ovrTag(p.ovr)} <span class="hint">${ageOf(p,yr)} 岁 · ${p.contract?money(p.contract[0]):''}</span>`), ...ks.map(k=>esc(pickLabel(k)))].join('<br>')||'无';
+    const line=(ps,ks)=>[...ps.map(p=>`<span class="offitem">${esc(p.cn)} ${ovrTag(p.ovr)}<span class="hint">${ageOf(p,yr)} 岁 · ${p.contract?money(p.contract[0]):''}</span></span>`), ...ks.map(k=>`<span class="offitem">${esc(pickLabel(k))}</span>`)].join('')||'无';
     const dPay=tradeSal(it.give,yr)-tradeSal(it.get,yr);
     return `<div style="padding:8px 0;border-bottom:1px solid #1f2733"><div style="margin-bottom:6px">${logo(t,18)} <b>${esc(t.cn)}</b> <span class="hint">${teamMode(t.i)==='contend'?'争冠中':'重建中'} · ${o.exp.off?'这一步结束前有效':'3 天内有效'}</span></div>
       <div class="row"><div class="col"><div class="hint">你送出</div>${line(it.get,it.getK)}</div><div class="col"><div class="hint">你得到</div>${line(it.give,it.giveK)}</div></div>

@@ -162,7 +162,7 @@ function showPlayer(p){
   if(pros){ refreshScout(); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0], r=srand(p.id*7+3);
     p={...p, a:Object.fromEntries(KEYS.map(k=>[k,clamp(Math.round(p.a[k]+(r()*2-1)*hw*1.5),20,99)]))}; }
   m.innerHTML=`<div class="modal"><div class="box">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">${pros?'':ovrTag(p.ovr)}<div><h1 style="margin:0">${esc(p.cn)}</h1>
+    <div class="pmhead" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">${pros?'':ovrTag(p.ovr)}<div><h1 style="margin:0">${esc(p.cn)}</h1>
     <div class="hint">${p.en!==p.cn?esc(p.en)+' · ':''}${POS_CN[p.pos]}${p.pos2.length?'（可打 '+p.pos2.map(x=>POS_CN[x]).join('、')+'）':''} · ${ageOf(p,(W.off?W.off.year:W.year))} 岁 · ${esc(p.nat)}</div></div>
     <div style="margin-left:auto;text-align:right">${pros?`<div>总评 <b>${rangeTxt(p.scout.o)}</b> · 潜力 <b>${rangeTxt(p.scout.p)}</b></div><div class="hint">球探报告，属性也有误差</div>`:`<div>潜力 <b>${p.pot}</b></div><div class="hint">${contractTxt(p.contract)}</div>${G.team!=null&&teamOfId(p.id)>=0?`<div class="hint">士气 ${morTag(p)}</div>`:''}`}</div></div>
     ${pros?`<div class="card" style="margin-bottom:10px;padding:10px"><div>原型：<b>${esc(p.arch||'')}</b> · ${esc(preTxt(p))}</div>${(W.scoutFocus||[]).includes(p.id)?`<div class="hint" style="margin-top:4px">重点考察：敬业${profCn(p.prof)}，伤病风险${durCn(p.dur)}</div>`:''}</div>`:(p.arch&&p.draft?`<div class="hint" style="margin-bottom:8px">选秀时的原型：${esc(p.arch)}</div>`:'')}

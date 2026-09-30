@@ -56,13 +56,13 @@ function vHome(v){
   } else if(ug){
     const h=ug.g?ug.g[1]:ug.h, a=ug.g?ug.g[2]:ug.a, o=TEAMS[h===G.team?a:h], orr=R[o.i];
     gameCard=`<div class="card"><h3>今天有比赛 <span class="r">${esc(ug.label||'常规赛')}</span></h3>
-      <div style="display:flex;align-items:center;gap:14px;justify-content:center;margin:6px 0 12px">${logo(TEAMS[h],52)}<b>${esc(TEAMS[h].cn)}</b><span class="hint">主</span><span style="font-size:18px;color:var(--dim)">VS</span><span class="hint">客</span><b>${esc(TEAMS[a].cn)}</b>${logo(TEAMS[a],52)}</div>
+      <div style="display:flex;align-items:center;gap:14px;justify-content:center;margin:6px 0 12px">${logo(TEAMS[h],52)}<b><span class="mfull">${esc(TEAMS[h].cn)}</span><span class="mshort">${esc(TEAMS[h].nick)}</span></b><span class="hint">主</span><span style="font-size:18px;color:var(--dim)">VS</span><span class="hint">客</span><b><span class="mfull">${esc(TEAMS[a].cn)}</span><span class="mshort">${esc(TEAMS[a].nick)}</span></b>${logo(TEAMS[a],52)}</div>
       <div class="hint" style="text-align:center;margin-bottom:10px">${esc(o.cn)} ${orr.w}-${orr.l} · 前 8 人均值 ${o.top8.toFixed(1)}${ug.series?` · 系列赛 ${ug.series.h===G.team?ug.series.hw:ug.series.aw} : ${ug.series.h===G.team?ug.series.aw:ug.series.hw}`:''}</div>
       <div style="text-align:center"><button class="pri" id="golive" style="padding:9px 26px">看直播</button> <button id="goquick">直接出结果</button> <button id="gotac">先调战术</button></div></div>`;
   } else {
     gameCard=`<div class="card"><h3>下一场 <span class="r">${ng?esc(ng.label):''}</span></h3>${ng?`<div style="display:flex;align-items:center;gap:10px">${logo(TEAMS[ng.opp],36)}<div><b>${ng.home?'主场':'客场'} 对 ${esc(TEAMS[ng.opp].cn)}</b><div class="hint">${dateTxt(ng.day,true)}</div></div></div>`:'<div class="hint">暂时没有你的比赛</div>'}</div>`;
   }
-  const adv = (S.phase==='done'||S.fired)?'':`<div class="card"><h3>推进 <span class="r" id="advprog"></span></h3><div class="ctrl" style="margin-top:0">
+  const adv = (S.phase==='done'||S.fired)?'':`<div class="card"><h3>推进 <span class="r" id="advprog"></span></h3><div class="ctrl advgrid" style="margin-top:0">
       <button data-adv="day" ${ug?'disabled':''}>下一天</button><button data-adv="next" ${ug?'disabled':''}>到下一场</button><button data-adv="week">模拟一周</button>
       <button data-adv="${S.phase==='reg'?'regular':'end'}">${S.phase==='reg'?'到常规赛结束':'到赛季结束'}</button>
       <label class="hint" style="margin-left:6px"><input type="checkbox" id="automine" ${G.autoMine?'checked':''}> 连续模拟时我的比赛直接出结果</label></div></div>`;

@@ -44,14 +44,13 @@ function copyWx(){
 }
 function contactHTML(){
   return `<div class="card"><h3>反馈和建议</h3><p class="hint" style="margin-bottom:8px">遇到 bug、觉得哪里数值不对，或者想要什么新功能，加微信直接说：</p>
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><b id="wx-id" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:20px;letter-spacing:1px;color:var(--acc);-webkit-user-select:all;user-select:all">lynchrrr</b><button class="sm" id="copywx">复制微信号</button></div>
-    <p class="hint" style="margin-top:6px">作者 Lynch · GitHub @Lynch715</p></div>`;
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><b id="wx-id" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:20px;letter-spacing:1px;color:var(--acc);-webkit-user-select:all;user-select:all">lynchrrr</b><button class="sm" id="copywx">复制微信号</button></div></div>`;
 }
 async function slotsHTML(canSave){
   const S=[]; for(let i=1;i<=SLOT_N;i++) S.push(await slotGet('s'+i));
   return `<div class="card"><h3>存档位</h3>${S.map((s,k)=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #1f2733;flex-wrap:wrap">
       <b style="width:22px;color:var(--dim)">${k+1}</b><div style="flex:1;min-width:180px">${metaTxt(s)}</div>
-      <div>${canSave?`<button class="sm pri" data-ss="${k+1}">存到这里</button> `:''}${s?`<button class="sm" data-sl="${k+1}">读取</button> <button class="sm" data-sd="${k+1}">删除</button>`:''}</div></div>`).join('')}
+      <div>${canSave?`<button class="sm" data-ss="${k+1}">存到这里</button> `:''}${s?`<button class="sm pri" data-sl="${k+1}">读取</button> <button class="sm" data-sd="${k+1}">删除</button>`:''}</div></div>`).join('')}
     <p class="hint" style="margin-top:8px">存档位只在这台设备的这个浏览器里。换手机、换电脑，或者清理浏览器数据之前，先导出存档文件。</p>
     <div style="margin-top:10px">${canSave?'<button id="exportsave">导出存档文件</button> ':''}<button id="importbtn">导入存档文件</button><input type="file" id="importfile" accept=".json,application/json" style="display:none"></div></div>`;
 }

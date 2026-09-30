@@ -59,7 +59,7 @@ function finMonthlyNote(){ const f=finOf(G.team); if(f.spend>f.limit) return `�
 ICON.fin='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="3.5" width="13" height="9" rx="1.5"/><circle cx="8" cy="8" r="2"/><path d="M4 6v4M12 6v4"/></svg>';
 function vFin(v){
   const S=G.season, t=myTeam(), year=W.off?W.off.year:S.year;
-  const row=(n,x,cls)=>`<tr><td>${n}</td><td class="n ${cls||''}">${typeof x==='number'?money(x):x}</td></tr>`;
+  const row=(n,x,cls)=>`<tr><td class="wrap">${n}</td><td class="n ${cls||''}">${typeof x==='number'?money(x):x}</td></tr>`;
   let cur='';
   if(!W.off){ const f=finOf(G.team);
     cur=`<div class="card tw"><h3>${S.year}-${String((S.year+1)%100).padStart(2,'0')} 赛季 <span class="r">${f.final?'已结算':'按目前战绩预计'}</span></h3><table><tbody>

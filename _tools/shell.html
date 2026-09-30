@@ -95,6 +95,20 @@ input[type=number]{width:58px;text-align:right}
 .sysgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
 .short{display:none}.seg{justify-self:start}
 .warn{color:var(--warn)}.bad{color:var(--bad)}.good{color:var(--good)}
+/* ---- UI 审计（2026-09-30）：字号整体上调一档，进度条拉长，表格首列可换行 ---- */
+body{font-size:14px}
+h1{font-size:20px}.sub{font-size:13px;line-height:1.55}
+.card>h3{font-size:14px}.card>h3 .r{font-size:12.5px}
+table{font-size:13px}th{font-size:12px}
+.hint{font-size:12.5px;line-height:1.55}
+.pill{font-size:11.5px}.ovr{font-size:12.5px;min-width:30px}
+.attr{font-size:13px}.tcard b{font-size:14px}.tcard span{font-size:12px}
+.nav{font-size:14px}
+button.sm{padding:5px 10px;font-size:12.5px}
+.fitbar .bar{flex:1;max-width:280px;height:6px}
+td.wrap{white-space:normal;min-width:120px}
+.mshort{display:none}
+.offitem{display:block;margin-bottom:4px}.offitem .hint{display:block}
 @media(max-width:760px){
   #main{flex-direction:column-reverse}
   #side{width:100%;flex:0 0 auto;display:grid;grid-template-columns:repeat(var(--navcols,9),minmax(0,1fr));border-right:0;border-top:1px solid var(--line);padding:0 var(--sar) var(--sab) var(--sal);overflow:visible}
@@ -102,7 +116,18 @@ input[type=number]{width:58px;text-align:right}
   .nav span{max-width:100%;overflow:hidden;text-overflow:clip}
   .nav svg{width:17px;height:17px;flex:0 0 17px}
   .nav.on{border-top-color:var(--acc)}
-  #view{padding:12px}
+  #view{padding:14px 12px}
+  /* 手机：按钮和输入框加高到手指好点的尺寸；输入框 16px，避免 iPhone 聚焦时自动放大 */
+  button{min-height:40px;padding:8px 14px}
+  button.sm{min-height:34px;padding:6px 11px;font-size:13px}
+  select,input[type=number]{font-size:16px;min-height:38px;padding:6px 8px}
+  input[type=number]{width:72px}
+  input[type=checkbox]{width:20px;height:20px;vertical-align:middle}
+  .mfull{display:none}.mshort{display:inline}
+  .advgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.advgrid button{width:100%}.advgrid label{grid-column:1/-1}
+  .pmhead{flex-wrap:wrap}.pmhead>div:last-child{margin-left:0!important;text-align:left!important;width:100%}
+  .card{padding:13px}
+  .modal{padding:10px}.modal>.box{padding:14px;max-height:92%}
   .tb-stat{display:none}
   #scoreboard .tn{min-width:0;font-size:13px}#scoreboard .sc{font-size:24px;min-width:90px}
   #scoreboard .full{display:none}#scoreboard .short{display:inline}#scoreboard{gap:8px}#sbinfo{gap:10px}

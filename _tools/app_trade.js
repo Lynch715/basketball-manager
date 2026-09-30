@@ -80,18 +80,18 @@ function vTrade(v){
   if(!op.ok){ v.innerHTML=`<h1>交易</h1><div class="card"><p>${esc(op.why)}</p></div>`; return; }
   if(TR.partner==null || TR.partner===G.team) TR.partner=(G.team+1)%30;
   const yr=ctxYear(), me=myTeam(), pt=TEAMS[TR.partner];
-  const ev=evalTrade();
+  const ev=evalTrade(), empty=!TR.mineP.size&&!TR.theirP.size&&!TR.mineK.size&&!TR.theirK.size;
   const verdict = ev.ratio>=1? ['会接受','var(--good)'] : ev.ratio>=.85? ['差一点','var(--warn)'] : ['差很远','var(--bad)'];
   const side=(t,setP,setK,key)=>`<div class="card tw"><h3>${logo(t,20)} ${esc(t.cn)} <span class="r">${t===pt?(ev.mode==='rebuild'?'重建中，看重年轻人和选秀权':'争冠中，看重即战力'):''} 工资 ${money(payroll(t,yr))}</span></h3><table><thead><tr><th></th><th>球员</th><th class="n">年龄</th><th class="n">总评</th><th class="n">潜力</th><th class="n">年薪</th><th class="n">到期</th></tr></thead><tbody>
     ${t.players.slice().sort((a,b)=>b.ovr-a.ovr).map(p=>`<tr><td><input type="checkbox" data-${key}p="${p.id}" ${setP.has(p.id)?'checked':''} ${frozen(p)?'disabled':''}></td><td class="cl" data-id="${p.id}">${esc(p.cn)}${injTag(p)}${frzTag(p)}</td><td class="n">${ageOf(p,yr)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${p.contract?money(p.contract[0]):'-'}</td><td class="n">${p.contract?p.contract[1]+(p.contract[2]==='rk'?' 新秀':p.contract[2]==='tw'?' 双向':''):''}</td></tr>`).join('')}
     </tbody></table><div style="margin-top:8px">${picksOwnedBy(t.i).map(pk=>`<label class="pill" style="background:#1c2430;margin:2px;padding:3px 8px;cursor:pointer"><input type="checkbox" data-${key}k="${pkKey(pk)}" ${setK.has(pkKey(pk))?'checked':''}> ${esc(pickLabel(pk))}${key==='m'&&setK.has(pkKey(pk))&&pk.round===1&&pk.orig===G.team&&!protOf(pk)&&!(W.off&&W.off.lottery&&pk.year===W.off.lottery.year)?` <select data-prot="${pkKey(pk)}" onclick="event.stopPropagation()">${PROT_OPTS.map(n=>`<option value="${n}" ${(TR.prot[pkKey(pk)]||0)===n?'selected':''}>${n?'前 '+n+' 保护':'不保护'}</option>`).join('')}</select>`:''}</label>`).join('')||'<span class="hint">没有选秀权</span>'}</div></div>`;
   v.innerHTML=`<h1>交易</h1><div class="sub">${W.off?'休赛期可以随时交易':'交易截止日：'+(G.season.year+1)+' 年 2 月 5 日'} · 勾选双方要交换的球员和选秀权</div>
    <div class="card"><div class="row" style="align-items:center"><span>交易对象</span><select id="tp">${TEAMS.filter(t=>t.i!==G.team).map(t=>`<option value="${t.i}" ${t.i===TR.partner?'selected':''}>${esc(t.cn)}</option>`).join('')}</select>
-     <span style="margin-left:auto">对方的态度：<b style="color:${verdict[1]}">${verdict[0]}</b></span></div>
-     <div class="fitbar" style="margin-top:8px">${bar(Math.min(ev.ratio,1.3),1.3,verdict[1].includes('good')?'#00c276':verdict[1].includes('warn')?'#f0a020':'#e5484d')}</div>
+     ${empty?'':`<span style="margin-left:auto">对方的态度：<b style="color:${verdict[1]}">${verdict[0]}</b></span>`}</div>
+     ${empty?`<p class="hint" style="margin-top:8px">在下面勾选你送出的和想要的球员、选秀权，这里会显示对方的态度和薪资规则。</p>`:`<div class="fitbar" style="margin-top:8px">${bar(Math.min(ev.ratio,1.3),1.3,verdict[1].includes('good')?'#00c276':verdict[1].includes('warn')?'#f0a020':'#e5484d')}</div>
      <p class="hint" style="margin-top:6px">送出薪资 ${money(ev.salOut)} · 换来薪资 ${money(ev.salIn)} · 交易后你的工资 ${money(ev.myPay)}（工资帽 ${money(CFG(yr).cap)}，第一土豪线 ${money(CFG(yr).apron1)}，第二土豪线 ${money(CFG(yr).apron2)}）</p>
      <p class="hint">${esc(matchTxt(ev.match))}</p>
-     ${ev.issues.map(s=>`<div class="bad">${esc(s)}</div>`).join('')}
+     ${ev.issues.map(s=>`<div class="bad">${esc(s)}</div>`).join('')}`}
      <div style="margin-top:8px"><button class="pri" id="tgo" ${ev.issues.length||ev.ratio<1?'disabled':''}>提出交易</button> <button id="tclr">清空</button></div></div>
    <div class="row"><div class="col" style="min-width:320px">${side(me,TR.mineP,TR.mineK,'m')}</div><div class="col" style="min-width:320px">${side(pt,TR.theirP,TR.theirK,'t')}</div></div>`;
   const q=s=>v.querySelector(s);
