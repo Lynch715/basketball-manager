@@ -76,7 +76,7 @@ async function vSave(v){
   if(G.view!=='save') return;
   v.querySelector('#savebody').innerHTML=`${html}
     <div class="card"><h3>新开一局</h3><p class="hint" style="margin-bottom:8px">放弃当前进度，回到 2026-27 赛季季前重新选队。手动存档位里的存档不受影响。</p><button class="sm" id="newgame" style="border-color:var(--bad);color:var(--bad)">新开一局</button></div>
-    ${installCardHTML()}${contactHTML()}`;
+    ${installCardHTML()}${contactHTML()}<p class="hint" style="margin-top:10px;font-size:11px;opacity:.7">${screenDiag()}</p>`;
   bindSave(v, ()=>vSave(v));
 }
 // 选队页：读档、导入、联系方式
