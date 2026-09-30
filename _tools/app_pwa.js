@@ -55,17 +55,6 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   });
 }
 
-// iPhone 从桌面图标打开（全屏、状态栏透明）时，WebKit 算出来的视口比屏幕矮一个状态栏的高度，
-// 底部会露出一条黑边。按屏幕实际高度把整个界面撑满。
-function fixAppHeight(){
-  const app=document.getElementById('app'); if(!app) return;
-  if(!(IS_IOS && isStandalone())){ app.style.height=''; app.style.bottom=''; return; }
-  const portrait=innerHeight>=innerWidth, full=portrait? Math.max(screen.width,screen.height) : Math.min(screen.width,screen.height);
-  app.style.bottom='auto'; app.style.height=Math.max(full, innerHeight)+'px';
-  // 这种模式下 iOS 报的底部安全区有时偏大，底栏下面会空出一大块；超过 34 就按 34 算
-  const sab=measureInset('bottom'); document.documentElement.style.setProperty('--sab', Math.min(sab,34)+'px');
-}
 function measureInset(side){ const d=document.createElement('div'); d.style.cssText='position:fixed;left:0;top:0;visibility:hidden;padding-'+side+':env(safe-area-inset-'+side+',0px)'; document.body.appendChild(d); const v=parseFloat(getComputedStyle(d)['padding'+side[0].toUpperCase()+side.slice(1)])||0; d.remove(); return v; }
 function screenDiag(){ const a=document.getElementById('app'), sd=document.getElementById('side'); const r=a?a.getBoundingClientRect():{top:0,bottom:0}, q=sd?sd.getBoundingClientRect():{top:0,bottom:0};
   return `屏幕 ${screen.width}×${screen.height} · 视口 ${innerWidth}×${innerHeight} · 安全区 上${measureInset('top')} 下${measureInset('bottom')} · 界面 ${Math.round(r.top)}–${Math.round(r.bottom)} · 底栏 ${Math.round(q.top)}–${Math.round(q.bottom)} · ${isStandalone()?'桌面图标':'浏览器'}`; }
-fixAppHeight(); addEventListener('resize', fixAppHeight); addEventListener('orientationchange', ()=>setTimeout(fixAppHeight,300));

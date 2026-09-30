@@ -105,9 +105,10 @@ function render(){
   const r=standings()[G.team];
   ts.innerHTML=`<div class="tb-stat"><b>${dateTxt(Math.min(S.day,REG_DAYS+80),true)}</b><span>${phaseTxt()}</span></div><div class="tb-stat"><b>${r.w}-${r.l}</b><span>战绩</span></div><div class="tb-stat"><b style="color:${S.board.conf>=50?'var(--good)':S.board.conf>=25?'var(--warn)':'var(--bad)'}">${S.board.conf}</b><span>老板信任</span></div>`;
   const navs=[['home','首页'],['roster','阵容'],['rot','轮换'],['tac','战术'],['train','训练'],['fin','财政'],['trade','交易'],['fa','自由球员'],['scout','球探'],['sched','赛程'],['stand','战绩榜'],['stats','数据'],['events','赛事'],['po','季后赛'],['career','生涯'],['save','存档']];
-  if(W.off){ navs.unshift(['off','休赛期']); if(G.view==='home') G.view='off'; }
-  if(LIVE) navs.splice(1,0,['match','直播']);
-  side.style.setProperty('--navcols', Math.min(9,Math.ceil(navs.length/2)));
+  // 底栏固定 16 格：休赛期、直播时占用「首页」那一格，图标数量不变
+  if(W.off){ navs[0]=['off','休赛期']; if(G.view==='home') G.view='off'; }
+  if(LIVE) navs[0]=['match','直播'];
+  side.style.setProperty('--navcols', Math.ceil(navs.length/2));
   side.innerHTML=navs.map(([k,n])=>`<div class="nav ${G.view===k?'on':''}" data-v="${k}">${ICON[k]||ICON.match}<span>${n}</span></div>`).join('');
   side.querySelectorAll('.nav').forEach(el=>el.onclick=()=>{ const k=el.dataset.v;
     if(LIVE && !LIVE.M.done && k!=='match') pauseLive();

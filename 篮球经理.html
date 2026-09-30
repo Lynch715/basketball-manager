@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="篮球经理">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <style>
 :root{
   --bg:#0d1117; --bg2:#151b24; --bg3:#1c2430; --line:#2a3441;
@@ -1537,9 +1537,10 @@ function render(){
   const r=standings()[G.team];
   ts.innerHTML=`<div class="tb-stat"><b>${dateTxt(Math.min(S.day,REG_DAYS+80),true)}</b><span>${phaseTxt()}</span></div><div class="tb-stat"><b>${r.w}-${r.l}</b><span>战绩</span></div><div class="tb-stat"><b style="color:${S.board.conf>=50?'var(--good)':S.board.conf>=25?'var(--warn)':'var(--bad)'}">${S.board.conf}</b><span>老板信任</span></div>`;
   const navs=[['home','首页'],['roster','阵容'],['rot','轮换'],['tac','战术'],['train','训练'],['fin','财政'],['trade','交易'],['fa','自由球员'],['scout','球探'],['sched','赛程'],['stand','战绩榜'],['stats','数据'],['events','赛事'],['po','季后赛'],['career','生涯'],['save','存档']];
-  if(W.off){ navs.unshift(['off','休赛期']); if(G.view==='home') G.view='off'; }
-  if(LIVE) navs.splice(1,0,['match','直播']);
-  side.style.setProperty('--navcols', Math.min(9,Math.ceil(navs.length/2)));
+  // 底栏固定 16 格：休赛期、直播时占用「首页」那一格，图标数量不变
+  if(W.off){ navs[0]=['off','休赛期']; if(G.view==='home') G.view='off'; }
+  if(LIVE) navs[0]=['match','直播'];
+  side.style.setProperty('--navcols', Math.ceil(navs.length/2));
   side.innerHTML=navs.map(([k,n])=>`<div class="nav ${G.view===k?'on':''}" data-v="${k}">${ICON[k]||ICON.match}<span>${n}</span></div>`).join('');
   side.querySelectorAll('.nav').forEach(el=>el.onclick=()=>{ const k=el.dataset.v;
     if(LIVE && !LIVE.M.done && k!=='match') pauseLive();
@@ -3941,20 +3942,9 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   });
 }
 
-// iPhone 从桌面图标打开（全屏、状态栏透明）时，WebKit 算出来的视口比屏幕矮一个状态栏的高度，
-// 底部会露出一条黑边。按屏幕实际高度把整个界面撑满。
-function fixAppHeight(){
-  const app=document.getElementById('app'); if(!app) return;
-  if(!(IS_IOS && isStandalone())){ app.style.height=''; app.style.bottom=''; return; }
-  const portrait=innerHeight>=innerWidth, full=portrait? Math.max(screen.width,screen.height) : Math.min(screen.width,screen.height);
-  app.style.bottom='auto'; app.style.height=Math.max(full, innerHeight)+'px';
-  // 这种模式下 iOS 报的底部安全区有时偏大，底栏下面会空出一大块；超过 34 就按 34 算
-  const sab=measureInset('bottom'); document.documentElement.style.setProperty('--sab', Math.min(sab,34)+'px');
-}
 function measureInset(side){ const d=document.createElement('div'); d.style.cssText='position:fixed;left:0;top:0;visibility:hidden;padding-'+side+':env(safe-area-inset-'+side+',0px)'; document.body.appendChild(d); const v=parseFloat(getComputedStyle(d)['padding'+side[0].toUpperCase()+side.slice(1)])||0; d.remove(); return v; }
 function screenDiag(){ const a=document.getElementById('app'), sd=document.getElementById('side'); const r=a?a.getBoundingClientRect():{top:0,bottom:0}, q=sd?sd.getBoundingClientRect():{top:0,bottom:0};
   return `屏幕 ${screen.width}×${screen.height} · 视口 ${innerWidth}×${innerHeight} · 安全区 上${measureInset('top')} 下${measureInset('bottom')} · 界面 ${Math.round(r.top)}–${Math.round(r.bottom)} · 底栏 ${Math.round(q.top)}–${Math.round(q.bottom)} · ${isStandalone()?'桌面图标':'浏览器'}`; }
-fixAppHeight(); addEventListener('resize', fixAppHeight); addEventListener('orientationchange', ()=>setTimeout(fixAppHeight,300));
 
 // ================= 存档、读档、新开一局、联系方式 =================
 // 当前进度自动存在 localStorage（bbm_v1 / bbm_world_v1 / bbm_season_v1）；
