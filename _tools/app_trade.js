@@ -32,8 +32,11 @@ function checkTrade(ai, outA, bi, outB, yr, labels){
     if(r.noAgg && out.filter(p=>p.contract&&p.contract[2]!=='tw').length>=2 && sIn>Math.max(0,...out.map(p=>p.contract?p.contract[0]:0))) iss.push(`${lb}交易后超过第二土豪线，不能合并两人以上的工资换人`);
     out.forEach(p=>{ if(frozen(p)) iss.push(`${p.cn} 刚签约，要到 ${numDateTxt(p.frz)} 才能交易`); });
     const std=ps=>ps.filter(p=>p.contract&&p.contract[2]!=='tw').length;
-    const n=rosterCount(t,yr)-std(out)+std(inn), lo=W.off?8:13, hi=W.off?17:15;
-    if(n>hi) iss.push(`${lb}交易后有 ${n} 人，超过 ${hi} 人上限`); if(n<lo) iss.push(`${lb}交易后只剩 ${n} 人，少于 ${lo} 人`);
+    const delta=std(inn)-std(out), n=rosterCount(t,yr)+delta, lo=W.off?8:13, hi=W.off?17:15;
+    // 选秀权及人数不变的交易不应被已有的阵容人数问题拦截。
+    if(delta!==0){
+      if(n>hi) iss.push(`${lb}交易后有 ${n} 人，超过 ${hi} 人上限`); if(n<lo) iss.push(`${lb}交易后只剩 ${n} 人，少于 ${lo} 人`);
+    }
   });
   return iss;
 }
