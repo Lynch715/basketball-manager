@@ -58,7 +58,7 @@ function vHome(v){
     gameCard=`<div class="card"><h3>今天有比赛 <span class="r">${esc(ug.label||'常规赛')}</span></h3>
       <div style="display:flex;align-items:center;gap:14px;justify-content:center;margin:6px 0 12px">${logo(TEAMS[h],52)}<b><span class="mfull">${esc(TEAMS[h].cn)}</span><span class="mshort">${esc(TEAMS[h].nick)}</span></b><span class="hint">主</span><span style="font-size:18px;color:var(--dim)">VS</span><span class="hint">客</span><b><span class="mfull">${esc(TEAMS[a].cn)}</span><span class="mshort">${esc(TEAMS[a].nick)}</span></b>${logo(TEAMS[a],52)}</div>
       <div class="hint" style="text-align:center;margin-bottom:10px">${esc(o.cn)} ${orr.w}-${orr.l} · 前 8 人均值 ${o.top8.toFixed(1)}${ug.series?` · 系列赛 ${ug.series.h===G.team?ug.series.hw:ug.series.aw} : ${ug.series.h===G.team?ug.series.aw:ug.series.hw}`:''}</div>
-      <div style="text-align:center"><button class="pri" id="golive" style="padding:9px 26px">看直播</button> <button id="goquick">直接出结果</button> <button id="gotac">先调战术</button></div></div>`;
+      ${t.players.filter(p=>!(p.injury>0)).length<5?'<p class="bad">可上场球员不足五人，继续比赛将判负；可先到自由球员页补员。</p>':''}<div style="text-align:center"><button class="pri" id="golive" style="padding:9px 26px">看直播</button> <button id="goquick">直接出结果</button> <button id="gotac">先调战术</button></div></div>`;
   } else {
     gameCard=`<div class="card"><h3>下一场 <span class="r">${ng?esc(ng.label):''}</span></h3>${ng?`<div style="display:flex;align-items:center;gap:10px">${logo(TEAMS[ng.opp],36)}<div><b>${ng.home?'主场':'客场'} 对 ${esc(TEAMS[ng.opp].cn)}</b><div class="hint">${dateTxt(ng.day,true)}</div></div></div>`:'<div class="hint">暂时没有你的比赛</div>'}</div>`;
   }
@@ -166,7 +166,8 @@ function vPO(v){
   if(S.po){ const col=(cf,r)=>S.po.series.filter(x=>x.cf===cf&&x.round===r).sort((a,b)=>a.slot-b.slot).map(sr).join('');
     html+=`<div style="display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:8px;overflow-x:auto;align-items:center">
       <div>${col('东',1)}</div><div>${col('东',2)}</div><div>${col('东',3)}</div><div><div class="hint" style="text-align:center;margin-bottom:6px">总决赛</div>${S.po.series.filter(x=>x.round===4).map(sr).join('')}</div><div>${col('西',3)}</div><div>${col('西',2)}</div><div>${col('西',1)}</div></div>`; }
-  if(S.awards) html+=`<div class="card"><h3>常规赛奖项</h3>${[['mvp','MVP'],['dpoy','最佳防守球员'],['roy','最佳新秀'],['smoy','最佳第六人']].map(([k,n])=>S.awards[k]?`<div>${n}：<b>${esc(PBYID[S.awards[k]].cn)}</b></div>`:'').join('')}</div>`;
+  if(S.fmvp) html+=`<div class="card"><h3>总决赛 MVP</h3>${esc(S.fmvpName||awardName(S.fmvp,S))}</div>`;
+  if(S.awards) html+=`<div class="card"><h3>常规赛奖项</h3>${[['mvp','MVP'],['dpoy','最佳防守球员'],['roy','最佳新秀'],['smoy','最佳第六人']].map(([k,n])=>S.awards[k]?`<div>${n}：<b>${esc(awardName(S.awards[k],S))}</b></div>`:'').join('')}</div>`;
   v.innerHTML=html;
 }
 
@@ -175,5 +176,5 @@ function vCareer(v){
   const C=G.career||[], rings=C.filter(c=>c.champ).length, cups=C.filter(c=>c.cup).length;
   v.innerHTML=`<h1>生涯</h1><div class="sub">总冠军 ${rings} 个 · NBA 杯 ${cups} 个 · 执教 ${C.length} 个完整赛季</div>
    <div class="card tw"><table><thead><tr><th>赛季</th><th>球队</th><th class="n">战绩</th><th>季后赛</th><th>老板目标</th><th>完成</th></tr></thead><tbody>
-   ${C.map(c=>`<tr><td>${c.year}-${String((c.year+1)%100).padStart(2,'0')}</td><td>${logo(TEAMS[c.team],16)} ${esc(TEAMS[c.team].cn)}</td><td class="n">${c.w}-${c.l}</td><td>${c.champ?'<b style="color:var(--acc)">总冠军</b>':esc(c.res)}${c.cup?' <span class="pill" style="background:#3a2a10">NBA 杯</span>':''}</td><td>${esc(c.goal)}</td><td class="${c.met?'good':'bad'}">${c.met?'是':'否'}</td></tr>`).join('')||'<tr><td class="hint">还没有打完的赛季</td></tr>'}</tbody></table></div>`;
+   ${C.map(c=>`<tr><td>${c.year}-${String((c.year+1)%100).padStart(2,'0')}</td><td>${logo(TEAMS[c.team],16)} ${esc(TEAMS[c.team].cn)}</td><td class="n">${c.w}-${c.l}</td><td>${c.champ?'<b style="color:var(--acc)">总冠军</b>':esc(c.res)}${c.fmvp?` <span class="hint">FMVP：${esc(c.fmvpName||awardName(c.fmvp,G.season))}</span>`:''}${c.cup?' <span class="pill" style="background:#3a2a10">NBA 杯</span>':''}</td><td>${esc(c.goal)}</td><td class="${c.met?'good':'bad'}">${c.met?'是':'否'}</td></tr>`).join('')||'<tr><td class="hint">还没有打完的赛季</td></tr>'}</tbody></table></div>`;
 }

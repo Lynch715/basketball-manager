@@ -228,10 +228,10 @@ for ab,city,nick,conf,div in TEAMS:
     tm.append([ab, t['region'], t['name'], city, nick, conf, div, t['pop'], t['colors'][:3]])
 out.append('// [缩写,英文城市,英文队名,中文城市,中文队名,联盟,赛区,市场规模(百万人),[队色]]')
 out.append(f'const TEAM_DATA={js(tm)};')
-out.append('// [英文名,中文名,主位置,[副位置],出生年月,身高cm,臂展cm,体重kg,国籍,潜力值,耐久,职业态度,[21项属性],[年薪万美元,到期年,类型std/rk/tw]|null]')
+out.append('// [英文名,中文名,主位置,[副位置],出生年月,身高cm,臂展cm,体重kg,国籍,潜力值,耐久,职业态度,[21项属性],[年薪万美元,到期年,类型std/rk/tw]|null,球衣号码,首次参赛赛季]')
 roster = collections.OrderedDict((ab,[]) for ab,*_ in TEAMS); roster['FA'] = []
 for p in sorted(players, key=lambda p:-p['ovr']):
-    roster[p['team']].append([p['en'],p['cn'],p['pos'],p['pos2'],p['born'],p['ht'],p['ws'],p['wt'],p['nat'],p['pot'],p['dur'],p['prof'],p['a'],p['c'],p['jersey']])
+    roster[p['team']].append([p['en'],p['cn'],p['pos'],p['pos2'],p['born'],p['ht'],p['ws'],p['wt'],p['nat'],p['pot'],p['dur'],p['prof'],p['a'],p['c'],p['jersey'],SEASON if p['rookie2026'] else ((p['bb'].get('draft') or {}).get('year',SEASON-1)+1 if p['bb'] else None)])
 out.append('const REAL_ROSTERS={')
 out.append(',\n'.join(f'{js(ab)}:[\n'+',\n'.join(js(x) for x in lst)+']' for ab,lst in roster.items()))
 out.append('};')

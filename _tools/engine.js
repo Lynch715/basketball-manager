@@ -118,6 +118,7 @@ function autoRotation(team){
       if(s>bestS){bestS=s; best=pm.map(j=>set[j]);}
     }
   }
+  best=best||byOvr.slice(0,5);
   const starters=best.map(p=>p.id);
   const bench=byOvr.filter(p=>!starters.includes(p.id));
   const minutes={}; const sMin=[36,34,32,30,28];
@@ -126,7 +127,7 @@ function autoRotation(team){
   bench.forEach((p,i)=>minutes[p.id]=bMin[i]||0);
   // 合计补到 240
   let tot=Object.values(minutes).reduce((a,b)=>a+b,0), ids=[...starters, ...bench.map(p=>p.id)], i=0;
-  while(tot!==240 && i<200){ const id=ids[i%7]; const d=tot<240?1:-1; if(minutes[id]+d>=0 && minutes[id]+d<=40){minutes[id]+=d; tot+=d;} i++; }
+  while(tot!==240 && i<200){ const id=ids[i%ids.length]; const d=tot<240?1:-1; if(minutes[id]+d>=0 && minutes[id]+d<=(ids.length===5?48:40)){minutes[id]+=d; tot+=d;} i++; }
   team.players.forEach(p=>{ if(minutes[p.id]==null) minutes[p.id]=0; });
   return {starters, order:bench.map(p=>p.id), minutes};
 }
@@ -171,7 +172,8 @@ function createMatch(home, away, opts){
   { let z=0; for(let k=0;k<6;k++) z+=rng(); M.pace=1+(z-3)*Math.sqrt(2)*P.gamePaceSD; }
   M.first=M.poss;
   [home,away].forEach((tm,side)=>{
-    const rot=tm.rotation||autoRotation(tm);
+    const healthy=tm.players.filter(p=>!(p.injury>0));
+    const supplied=tm.rotation, rot=supplied && supplied.starters.length===5 && supplied.starters.every(id=>healthy.some(p=>p.id===id))? supplied : autoRotation(tm);
     const tac=Object.assign({pace:'mid',system:'bal',focus:'bal',stars:[],defense:'man',reb:'bal',matchups:{},pnrD:'std',double:null,smallOn:false}, tm.tactics||autoTactics(tm,rot));
     if(tac.defense==='zone') tac.defense='zone23';
     const men=tm.players.map(p=>({ id:p.id, p, c:composite(p), oiq:p.a.oiq/100, energy:clamp(p.energy!=null?p.energy:1,.5,1), mul:p.formMul||1,
@@ -184,7 +186,16 @@ function createMatch(home, away, opts){
       home: side===0 && !M.neutral, chemAdj:clamp(tm.chemAdj||0,-.01,.01), injMul:tm.injMul||1, allStar:!!tm.allStar, dirty:true, eff:null, syn:{off:.5,def:.5,reb:.5}, fit:.5,
       st:{pts:0, fast:0, paint:0, second:0, offTov:0, bench:0} });
   });
+  const short=M.teams.find(T=>T.men.filter(m=>!m.out).length<5);
+  if(short) forfeitMatch(M,short.side);
   return M;
+}
+function forfeitMatch(M,side){
+  if(M.done) return;
+  M.forfeit=side; M.score[1-side]=Math.max(20,M.score[1-side],M.score[side]+1);
+  M.teams.forEach(T=>{ M.qScore[T.side].push(M.score[T.side]-M.qScore[T.side].reduce((a,b)=>a+b,0)); });
+  M.done=true; M.clock=0;
+  ev(M,{type:'forfeit',t:side});
 }
 
 function refresh(T){
@@ -440,6 +451,8 @@ function rebound(M,O,D,dur,type,afterFT){
 // ---------- 换人 ----------
 function doSubs(M, side){
   const T=M.teams[side], rng=M.rng;
+  if(M.done) return;
+  if(T.men.filter(m=>!m.out).length<5){ forfeitMatch(M,side); return; }
   const elapsed=((Math.min(M.q,4)-1)*720+(720-M.clock))+(M.q>4?(M.q-4)*300:0);
   const g=clamp(elapsed/2880,0,1);
   const diff=M.score[side]-M.score[1-side];
@@ -516,6 +529,7 @@ function timeout(M, side){
 }
 
 function endPeriod(M){
+  const short=M.teams.find(T=>T.men.filter(m=>!m.out).length<5); if(short){ forfeitMatch(M,short.side); return; }
   M.qScore[0].push(M.score[0]-M.qScore[0].reduce((a,b)=>a+b,0));
   M.qScore[1].push(M.score[1]-M.qScore[1].reduce((a,b)=>a+b,0));
   ev(M,{type:'eoq'});

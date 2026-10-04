@@ -88,7 +88,7 @@ function resetPlayers(){ TEAMS.forEach(t=>t.players.forEach(p=>{ p.injury=0; p.e
 
 // ---------- 存档 ----------
 const SEASON_KEY='bbm_season_v1';
-function saveSeason(){ try{ localStorage.setItem(SEASON_KEY, JSON.stringify(G.season)); }catch(e){} }
+function saveSeason(){ try{ localStorage.setItem(SEASON_KEY, JSON.stringify(G.season)); }catch(e){ saveFailure(e); } }
 function loadSeason(){ try{ const s=JSON.parse(localStorage.getItem(SEASON_KEY)||'null'); if(s && s.games && s.games.length>1000){ G.season=s; setSeasonYear(s.year); } }catch(e){} }
 function applyPlayerState(){ const S=G.season; if(!S) return;
   TEAMS.forEach(t=>t.players.forEach(p=>{ p.injury = S.inj[p.id]? S.inj[p.id].days : 0; const c=S.cond[p.id]; p.energy = clamp((c==null?100:c)/100,.8,1); })); applyLife(); }
@@ -147,6 +147,11 @@ function recordGame(M, hIdx, aIdx, gameRef, playoff){
         if(q.team===G.team) S.inbox.push({d:S.day, t:`${p.cn} 受伤`, b:`${r.name}，预计缺阵 ${r.days>=300?'整个赛季':r.days+' 天'}。`}); }
     });
   });
+  if(playoff===true && S.phase==='po' && S.po?.round===4){
+    S.fmvpStats=S.fmvpStats||{};
+    M.teams.forEach((T,side)=>T.men.filter(m=>m.secs>0).forEach(m=>{ const q=S.fmvpStats[m.id]||(S.fmvpStats[m.id]={id:m.id,cn:m.p.cn,team:side===0?hIdx:aIdx,g:0,value:0}); q.g++; q.value+=E.gameScore(m); }));
+  }
+  if(M.forfeit!=null) S.inbox.push({d:S.day,t:'比赛因人数不足结束',b:`${TEAMS[M.forfeit===0?hIdx:aIdx].cn}可上场球员不足五人，判负 ${M.score[0]}-${M.score[1]}。`});
   const bs=E.boxScore(M);
   if(hIdx===G.team || aIdx===G.team) S.boxes[gameRef.key]={h:hIdx,a:aIdx,score:M.score.slice(),q:M.qScore,ot:M.ot,box:bs.map(t=>({pts:t.pts,st:t.st,system:t.system,fit:t.fit,players:t.players.map(p=>{ const o={id:p.id}; PS_KEYS.forEach(k=>o[k]=k==='min'?Math.round(p.min*10)/10:p[k]); o.starter=p.starter; o.inj=p.inj; o.gs=p.gs; return o; })}))};
 }
@@ -212,7 +217,7 @@ function endDay(){
   else if(S.phase==='playin' && S.playin.every(x=>x.w!=null) && S.playin.length===6) startPlayoffs();
   else if(S.phase==='playin') advancePlayin();
   else if(S.phase==='po') advancePlayoffs();
-  applyPlayerState(); saveSeason();
+  applyPlayerState(); save(); saveSeason();
 }
 function teamOfPlayer(p){ return TEAMS.findIndex(t=>t.players.includes(p)); }
 
@@ -252,7 +257,7 @@ function endRegular(){
   const S=G.season; settleTax(); const R=standings();
   S.final=R.map(r=>({i:r.i,w:r.w,l:r.l}));
   S.seeds={东:confRank(R,'东').map(r=>r.i), 西:confRank(R,'西').map(r=>r.i)};
-  S.awards=calcAwards(R);
+  S.awards=calcAwards(R); S.awardNames={}; Object.values(S.awards).filter(Boolean).forEach(id=>S.awardNames[id]=awardName(id,S));
   S.inbox.push({d:S.day,t:'常规赛结束',b:`常规赛 MVP：${PBYID[S.awards.mvp].cn}。最佳防守球员：${PBYID[S.awards.dpoy].cn}。最佳新秀：${S.awards.roy?PBYID[S.awards.roy].cn:'无'}。最佳第六人：${S.awards.smoy?PBYID[S.awards.smoy].cn:'无'}。`});
   S.phase='playin'; S.playin=[]; S.day+=2; S.poDay=S.day;
   ['东','西'].forEach(cf=>{ const s=S.seeds[cf];
@@ -269,16 +274,25 @@ function advancePlayin(){
     }
   });
 }
+function rookieYearOf(p){
+  if(p.draft) return p.draft.year;
+  if(p.rookieYear!=null) return p.rookieYear;
+  const old=(p.hist||[]).filter(h=>!h[2] && h[3]>0).map(h=>h[0]);
+  if(old.length) return Math.min(...old);
+  const raw=Object.values(REAL_ROSTERS).flat().find(r=>r[0]===p.en);
+  return raw?raw[15]:null;
+}
+function awardName(id,S){ return PBYID[id]?.cn || (S.awardNames||{})[id] || '已退役球员'; }
 function calcAwards(R){
   const S=G.season, pct=i=>R[i].pct;
   let best={}; const upd=(k,id,v)=>{ if(!best[k]||v>best[k].v) best[k]={id,v}; };
   Object.entries(S.ps).forEach(([id,q])=>{
-    if(q.g<55) return; const p=PBYID[id]; const g=q.g, t=q.team;
+    if(q.g<55 || !PBYID[id]) return; const p=PBYID[id]; const g=q.g, t=q.team;
     const per=k=>q[k]/g;
     const base=per('pts')+1.1*(per('oreb')+per('dreb'))+1.4*per('ast')+2*per('stl')+2*per('blk')-per('tov')-.4*(per('fga')-per('fgm'));
     upd('mvp',id,base*(0.55+pct(t)));
     upd('dpoy',id,(2.2*per('stl')+2.6*per('blk')+.35*per('dreb'))*(0.7+pct(t)*.6)+p.a.perD/40+p.a.intD/40);
-    if(p.age<=21 && p.contract && p.contract[2]==='rk') upd('roy',id,base);
+    if(rookieYearOf(p)===S.year) upd('roy',id,base);
     if(q.gs<q.g*.25) upd('smoy',id,base);
   });
   return {mvp:best.mvp&&best.mvp.id, dpoy:best.dpoy&&best.dpoy.id, roy:best.roy&&best.roy.id, smoy:best.smoy&&best.smoy.id};
@@ -343,6 +357,9 @@ function userPoResult(){ // 玩家在季后赛走到哪
 }
 function finishSeason(){
   const S=G.season, r=S.final.find(x=>x.i===G.team), res=userPoResult();
+  const fm=Object.values(S.fmvpStats||{}).filter(q=>q.team===S.champion).sort((a,b)=>b.value-a.value)[0];
+  S.fmvp=fm?fm.id:null; S.fmvpName=fm?fm.cn:'';
+  if(fm) S.inbox.push({d:S.day,t:'总决赛 MVP',b:`${TEAMS[S.champion].cn}的${fm.cn}获得总决赛 MVP。`});
   const roundWon = res==='总冠军'?5 : res==='总决赛失利'?4 : res==='分区决赛出局'?3 : res==='分区半决赛出局'?2 : res==='首轮出局'?1 : 0;
   const inPO = roundWon>=1 || S.po.series.some(sr=>sr.h===G.team||sr.a===G.team);
   const seed = S.seeds[TEAMS[G.team].conf].indexOf(G.team)+1;
@@ -365,7 +382,7 @@ function finishSeason(){
   S.userFinal={w:r.w,l:r.l,res,met,exceed,delta,seed,finPen:fe.pen};
   S.inbox.push({d:S.day,t: S.champion===G.team?'总冠军！':'赛季结束', b:`${TEAMS[S.champion].cn} 拿下总冠军。你的球队：${r.w} 胜 ${r.l} 负，${res}。老板目标「${GOALS[S.board.tier].txt}」${met?(exceed?'超额完成':'完成'):close?'差一点完成':'没有完成'}，信任度 ${delta>0?'+':''}${delta}，现在 ${S.board.conf}。`});
   G.career=G.career||[];
-  G.career.push({year:S.year, team:G.team, w:r.w, l:r.l, res, champ:S.champion===G.team, cup:!!(S.cup&&S.cup.champ===G.team), goal:GOALS[S.board.tier].name, met, fmvp:null, mvp:S.awards&&S.awards.mvp, fin:{revT:ff.revT, pay:ff.pay, tax:ff.tax, profit:ff.profit}});
+  G.career.push({year:S.year, team:G.team, w:r.w, l:r.l, res, champ:S.champion===G.team, cup:!!(S.cup&&S.cup.champ===G.team), goal:GOALS[S.board.tier].name, met, fmvp:S.fmvp, fmvpName:S.fmvpName, mvp:S.awards&&S.awards.mvp, fin:{revT:ff.revT, pay:ff.pay, tax:ff.tax, profit:ff.profit}});
   G.board={conf:S.board.conf};
   checkFired(); save();
 }

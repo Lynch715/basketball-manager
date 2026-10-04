@@ -6,7 +6,7 @@ const POS = E.POS, POS_CN = {PG:'控卫',SG:'分卫',SF:'小前',PF:'大前',C:'
 const SYS_DESC = {bal:'不偏重任何打法', pnr:'持球人和大个子挡拆，顺下或者分球', iso:'球交给最强的人一对一', post:'内线要位单打，外线等分球', motion:'无球跑动、空切、手递手', spread:'五人拉开，突破分球投三分'};
 const esc = s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const clamp=(x,a,b)=>x<a?a:x>b?b:x;
-const sn = p=>p.cn.includes('·')?p.cn.split('·').pop():p.cn;
+const sn = p=>!p?'已退役球员':p.cn.includes('·')?p.cn.split('·').pop():p.cn;
 
 // ---------- 数据 ----------
 // W：联盟层面的状态（年份、选秀权、死钱、选秀、休赛期进度），和球员一起存进「联盟存档」
@@ -23,14 +23,14 @@ function ageOf(p, year){ const [by,bm]=birthYM(p); return (year||W.year)-by-(bm>
 function makePlayer(r){
   const [en,cn,pos,pos2,born,ht,ws,wt,nat,pot,dur,prof,a,c,jersey]=r;
   const A={}; KEYS.forEach((k,i)=>A[k]=a[i]);
-  const p={id:PID++, en, cn, pos, pos2, born, jersey:jersey||'', ht, ws, wt, nat, pot, dur, prof, a:A, contract:c, hist:[]};
+  const p={id:PID++, en, cn, pos, pos2, born, jersey:jersey||'', ht, ws, wt, nat, pot, dur, prof, a:A, contract:c, hist:[], rookieYear:r[15]??null};
   p.age=ageOf(p,2026); p.ovr=calcOvr(p); p.pot=Math.max(p.pot,p.ovr); return p;
 }
 function calcOvr(p){ return E.ovrOf(p,OVR_W,OVR_STRETCH,KEYS); }
 E.setCenters(TEAMS); W.centers=E.C;
 let PBYID={};
 function reindex(){ PBYID={}; TEAMS.forEach(t=>{ t.players.forEach(p=>PBYID[p.id]=p); t.top8=t.players.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,8).reduce((s,p)=>s+p.ovr,0)/Math.max(1,Math.min(8,t.players.length)); t._rot=null; t._rkey=null; });
-  FREE.forEach(p=>PBYID[p.id]=p); (W.draftClass||[]).forEach(p=>PBYID[p.id]=p); }
+  (W.retired||[]).forEach(p=>{ if(!PBYID[p.id]) PBYID[p.id]=p; }); FREE.forEach(p=>PBYID[p.id]=p); (W.draftClass||[]).forEach(p=>PBYID[p.id]=p); }
 reindex();
 TEAMS.forEach(t=>{ t.aiRot=E.autoRotation(t); t.aiTac=E.autoTactics(t,t.aiRot); });
 // 薪资帽每季 +5%
@@ -44,13 +44,13 @@ function payroll(t, year){ year=year||W.year; let s=0;
 
 // ---------- 联盟存档 ----------
 const WORLD_KEY='bbm_world_v1';
-const PFIELDS=['id','en','cn','pos','pos2','born','jersey','ht','ws','wt','nat','pot','dur','prof','a','contract','ovr','hist','draft','fa','twoWay','rkOpt','rk1','rfa','sheet','mor','treq','tf','gx','sz','frz','arch','dev','vol','pre'];
+const PFIELDS=['id','en','cn','pos','pos2','born','jersey','ht','ws','wt','nat','pot','dur','prof','a','contract','ovr','hist','draft','fa','twoWay','rkOpt','rk1','rfa','sheet','mor','treq','tf','gx','sz','frz','arch','dev','vol','pre','rookieYear'];
 function saveWorld(){ try{
   const pl=[]; const put=(p,team)=>{ const o={}; PFIELDS.forEach(k=>{ if(p[k]!==undefined) o[k]=p[k]; }); o.team=team; pl.push(o); };
   TEAMS.forEach(t=>t.players.forEach(p=>put(p,t.i))); FREE.forEach(p=>put(p,-1));
   const w=Object.assign({},W,{draftClass:(W.draftClass||[]).map(p=>{ const o={}; PFIELDS.forEach(k=>{ if(p[k]!==undefined) o[k]=p[k]; }); o.scout=p.scout; o.drafted=p.drafted; return o; })});
   localStorage.setItem(WORLD_KEY, JSON.stringify({W:w, players:pl, PID}));
-}catch(e){ console.error('saveWorld',e); } }
+}catch(e){ saveFailure(e); } }
 function loadWorld(){ try{
   const s=JSON.parse(localStorage.getItem(WORLD_KEY)||'null'); if(!s || !s.players) return false;
   W=s.W; PID=s.PID; if(W.centers) E.setC(W.centers);
@@ -65,12 +65,13 @@ function loadWorld(){ try{
 // ---------- 存档 ----------
 const SAVE_KEY='bbm_v1';
 let G = {team:null, rot:null, tac:null, view:'home', season:null, career:[], board:null, autoMine:false};
-function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify({team:G.team, rot:G.rot, tac:G.tac, career:G.career, board:G.board, autoMine:G.autoMine})); }catch(e){} saveWorld(); }
+function saveFailure(e){ console.error('存档写入失败',e); if(!window._saveWarning){ window._saveWarning=true; toast('自动存档失败，请检查浏览器存储空间并导出存档'); } }
+function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify({team:G.team, rot:G.rot, tac:G.tac, career:G.career, board:G.board, autoMine:G.autoMine})); }catch(e){ saveFailure(e); } saveWorld(); }
 function load(){ try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); if(s && s.team!=null && TEAMS[s.team]){ loadWorld(); Object.assign(G,s); fixRot(); loadSeason(); if(!G.season) newSeason(W.year); if(!W.off){ ensurePicks(W.year+1); ensurePicks(W.year+2); } applyPlayerState(); } }catch(e){ console.error(e); } }
 function myTeam(){ return TEAMS[G.team]; }
 function fixRot(){ // 存档里的球员 id 对不上时重置
   const t=myTeam(), ids=new Set(t.players.map(p=>p.id));
-  if(G.rot && G.rot.starters && G.rot.starters.some(id=>!ids.has(id))) G.rot=null;
+  if(G.rot && G.rot.starters && (G.rot.starters.some(id=>!ids.has(id)) || (G.rot.starters.length<5 && t.players.filter(p=>!(p.injury>0)).length>=5))) G.rot=null;
   if(G.rot){ G.rot.order=(G.rot.order||[]).filter(id=>ids.has(id)); t.players.forEach(p=>{ if(!G.rot.starters.includes(p.id) && !G.rot.order.includes(p.id)) G.rot.order.push(p.id); }); Object.keys(G.rot.minutes||{}).forEach(id=>{ if(!ids.has(+id)) delete G.rot.minutes[id]; }); t.players.forEach(p=>{ if(G.rot.minutes[p.id]==null) G.rot.minutes[p.id]=0; }); }
   if(!G.rot || !G.rot.starters.every(id=>ids.has(id)) || !G.rot.order.every(id=>ids.has(id))) G.rot=E.autoRotation(t);
   if(!G.tac) G.tac=E.autoTactics(t,G.rot);
@@ -273,6 +274,7 @@ function startLive(){
   const hs=sideFor(h), as=sideFor(a);
   const mine = h===G.team? hs : as; mine.tactics.matchups = PREP.muFor===ugKey(ug)? Object.assign({},PREP.mu) : {}; mine.tactics.double = PREP.muFor===ugKey(ug)? PREP.dbl : null;
   const M=E.createMatch(hs, as, {record:true});
+  if(M.done){ playDay(M); afterDay(); toast('可上场球员不足五人，本场已判负'); return; }
   M.userSide = h===G.team?0:1;
   LIVE={M, H:TEAMS[h], A:TEAMS[a], shown:0, playing:false, speed:1, acc:0, last:0, raf:0, tab:'pbp', dots:[], finished:false, label:ug.label||'常规赛', showNames:true};
   LIVE.frame=tipFrame(M); LIVE.pos=Object.assign({},LIVE.frame.pos); LIVE.ball=LIVE.frame.ball.slice(); LIVE.holder=null;
@@ -328,6 +330,7 @@ function pbpText(e){
     case 'small': return `${teamOf(e.t).nick} 换上小球阵容。`;
     case 'injury': return `${n} 受伤倒地，被扶下场。`;
     case 'foulout': return `${n} 六次犯规，被罚出场。`;
+    case 'forfeit': return `${teamOf(e.t).cn} 可上场球员不足五人，比赛判负。`;
     default: return '';
   }
 }
@@ -413,7 +416,7 @@ function renderTab(full){
 }
 function boxHTML(bs, tOf, showMvp){
   let mvp=null; bs.forEach((t,side)=>t.players.forEach(p=>{ if(!mvp||p.gs>mvp.gs) mvp=Object.assign({t:side},p); }));
-  return (showMvp&&mvp?`<div style="padding:10px 10px 0"><span class="hint">本场最佳</span> <b>${esc(PBYID[mvp.id].cn)}</b> ${mvp.pts} 分 ${mvp.oreb+mvp.dreb} 篮板 ${mvp.ast} 助攻</div>`:'')+
+  return (showMvp&&mvp?`<div style="padding:10px 10px 0"><span class="hint">本场最佳</span> <b>${esc(awardName(mvp.id,G.season))}</b> ${mvp.pts} 分 ${mvp.oreb+mvp.dreb} 篮板 ${mvp.ast} 助攻</div>`:'')+
    bs.map((t,side)=>`<div class="tw" style="padding:10px"><b>${logo(tOf(side),16)} ${esc(tOf(side).nick)}</b> <span class="hint">${E.SYSTEMS[t.system].name}，契合度 ${Math.round(t.fit*100)}% · 快攻 ${t.st.fast} · 内线 ${t.st.paint} · 二次进攻 ${t.st.second} · 替补 ${t.st.bench}</span>
     <table style="margin-top:6px"><thead><tr><th>球员</th><th class="n">时间</th><th class="n">得分</th><th class="n">投篮</th><th class="n">三分</th><th class="n">罚球</th><th class="n">篮板</th><th class="n">助攻</th><th class="n">抢断</th><th class="n">盖帽</th><th class="n">失误</th><th class="n">犯规</th><th class="n">+/-</th></tr></thead><tbody>
     ${t.players.sort((a,b)=>b.starter-a.starter||b.min-a.min).map(p=>`<tr><td>${p.starter?'<b>':''}${esc(sn(PBYID[p.id]))}${p.starter?'</b>':''}${p.inj?' <span class="bad">伤</span>':''}</td>

@@ -83,12 +83,12 @@ function vOff(v){
   if(q('#tomypick')) q('#tomypick').onclick=()=>{ draftAdvance(true); save(); render(); };
   if(q('#tradepick')) q('#tradepick').onclick=()=>{ const cur=O.draft.order[O.draft.idx]; if(cur && cur.owner!==G.team) TR.partner=cur.owner; G.view='trade'; render(); };
   v.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{ const D=O.draft, pk=D.order[D.idx]; draftPlayer(pk, PBYID[b.dataset.pick]); D.idx++; draftAdvance(true); save(); render(); });
-  v.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.rs], a=O.asks[p.id]; const old=p.contract[0]; p.contract=[a.amt, O.year+a.yrs, 'std']; if(a.amt>old*1.2) freezeOnSign(p); save(); render(); });
+  v.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.rs], a=O.asks[p.id]; const r=signDirect(p,G.team,a.amt,a.yrs,O.year); if(!r.ok) toast(r.why); save(); render(); });
   v.querySelectorAll('[data-rsd]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.rsd], a=O.asks[p.id]; const pAccept = a.mood<1? .8 : a.mood<1.12? .5 : .25;
-    if(rnd01()<pAccept){ const old=p.contract[0]; p.contract=[Math.round(a.amt*.9), O.year+a.yrs, 'std']; if(a.amt*.9>old*1.2) freezeOnSign(p); toast(`${p.cn} 同意了：${money(Math.round(a.amt*.9))} × ${a.yrs} 年`); }
+    if(rnd01()<pAccept){ const r=signDirect(p,G.team,Math.max(CFG(O.year).minSal,Math.round(a.amt*.9)),a.yrs,O.year); toast(r.ok?`${p.cn} 同意了：${money(p.contract[0])} × ${a.yrs} 年`:r.why); }
     else { releaseToFA(p,G.team,a); toast(`${p.cn} 拒绝压价，进入自由市场`); }
     save(); render(); });
-  v.querySelectorAll('[data-opt]').forEach(b=>b.onclick=()=>{ exerciseOption(PBYID[b.dataset.opt]); save(); render(); });
+  v.querySelectorAll('[data-opt]').forEach(b=>b.onclick=()=>{ const r=exerciseOption(PBYID[b.dataset.opt]); if(!r.ok) toast(r.why); save(); render(); });
   v.querySelectorAll('[data-qo]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.qo]; giveQO(p,G.team,O.asks[p.id]); toast(`向 ${p.cn} 发出资格报价`); save(); render(); });
   v.querySelectorAll('[data-sheet]').forEach(b=>b.onclick=()=>{ const sh=(O.sheets||[]).find(x=>x.pid==b.dataset.sheet); if(sh) decideSheet(sh, b.dataset.m==='1'); save(); render(); });
   v.querySelectorAll('[data-rsx]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.rsx]; releaseToFA(p,G.team,O.asks[p.id]); save(); render(); });

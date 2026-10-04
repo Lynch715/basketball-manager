@@ -209,6 +209,7 @@ function tick(now){
     if(M.done){ finishLive(); return; }
     const B=captureBefore(M), n0=M.events.length;
     E.step(M);
+    if(M.forfeit!==undefined){ L.revealTo=null; updLive(); finishLive(); return; }
     const evs=M.events.slice(n0).filter(e=>e.type!=='sub'&&e.type!=='timeout'&&e.type!=='eoq'&&e.type!=='injury'&&e.type!=='foulout');
     L.scene=buildScene(L,B,evs,{clock:M.clock});
     const weight=Math.min(1.6, Math.max(.45, L.scene.moments.reduce((s,m)=>s+m.w,0)/3.2));

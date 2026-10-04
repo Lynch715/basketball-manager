@@ -88,10 +88,11 @@ function offerExpired(o){ if([...o.give.k,...o.get.k].some(k=>pickUsed(pkFromKey
 function offerItems(o){ return {give:o.give.p.map(id=>PBYID[id]).filter(Boolean), giveK:o.give.k.map(pkFromKey), get:o.get.p.map(id=>PBYID[id]).filter(Boolean), getK:o.get.k.map(pkFromKey)}; }
 function acceptOffer(id){
   const o=(W.offers||[]).find(x=>x.id===id); if(!o) return;
+  if(offerExpired(o) || !tradeOpen().ok){ rejectOffer(id); toast('交易报价已过期'); return; }
   const it=offerItems(o), yr=ctxYear();
-  const valid = it.give.every(p=>TEAMS[o.from].players.includes(p)) && it.get.every(p=>myTeam().players.includes(p))
+  const valid = it.give.length===o.give.p.length && it.get.length===o.get.p.length && it.give.every(p=>TEAMS[o.from].players.includes(p)) && it.get.every(p=>myTeam().players.includes(p))
     && it.giveK.every(k=>W.picks[k.year]&&W.picks[k.year][k.round][k.orig]===o.from) && it.getK.every(k=>W.picks[k.year]&&W.picks[k.year][k.round][k.orig]===G.team);
-  const iss=valid? checkTrade(G.team,it.get,o.from,it.give,yr,['你方','对方']) : ['阵容已经变了，这份报价作废'];
+  const iss=valid? [...checkTrade(G.team,it.get,o.from,it.give,yr,['你方','对方']), ...checkTradeAssets(G.team,it.get,it.getK,yr), ...checkTradeAssets(o.from,it.give,it.giveK,yr)] : ['阵容已经变了，这份报价作废'];
   W.offers=W.offers.filter(x=>x!==o);
   if(iss.length){ toast(iss[0]); save(); return; }
   const txt=execTrade(G.team,it.get,it.getK,o.from,it.give,it.giveK);

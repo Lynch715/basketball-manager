@@ -39,7 +39,11 @@ function resolveProtections(year, r1){
     W.picks[year][1][orig]=orig; const ny=year+1; ensurePicks(ny);
     let got;
     if(W.picks[ny][1][orig]===orig){ W.picks[ny][1][orig]=owner; got=`${ny} 年首轮签`; }
-    else { W.picks[ny][2][orig]===orig && (W.picks[ny][2][orig]=owner); ensurePicks(ny+1); W.picks[ny+1][2][orig]===orig && (W.picks[ny+1][2][orig]=owner); got='两个次轮签'; }
+    else {
+      const delivered=[];
+      for(let y=ny; delivered.length<2; y++){ ensurePicks(y); if(W.picks[y][2][orig]===orig && !pickUsed({year:y,round:2,orig})){ W.picks[y][2][orig]=owner; delivered.push(`${y} 年次轮签`); } }
+      got=delivered.join('、');
+    }
     const txt=`${TEAMS[orig].nick}的${year}年首轮签抽到第 ${k+1} 顺位，在前 ${n} 保护范围内，签留在原队；${TEAMS[owner].nick}改拿${TEAMS[orig].nick}的${got}`;
     addNews('选秀权',txt); if(owner===G.team||orig===G.team) (G.season?G.season.inbox:[]).push({d:G.season?G.season.day:0, t:'选秀权保护生效', b:txt});
   });
