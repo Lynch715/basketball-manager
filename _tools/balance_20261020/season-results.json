@@ -1,0 +1,30 @@
+[
+  {
+    "seed": 7,
+    "phase": "done",
+    "day": 208,
+    "games": 1230,
+    "invalidScores": 0,
+    "champion": 20,
+    "fmvp": 351,
+    "condRange": [
+      50,
+      100
+    ],
+    "psFinite": true
+  },
+  {
+    "seed": 41,
+    "phase": "done",
+    "day": 210,
+    "games": 1230,
+    "invalidScores": 0,
+    "champion": 26,
+    "fmvp": 454,
+    "condRange": [
+      52,
+      100
+    ],
+    "psFinite": true
+  }
+]

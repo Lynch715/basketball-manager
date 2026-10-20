@@ -24,7 +24,7 @@ const P = {
   subEnergy: .55, injury: .00012,
   durK: 1.13,
   gamePaceSD: .05,         // 每场双方共用的节奏波动
-  rubber: .003, rubberFrom: 3, rubberCap: .06,     // 比分效应：领先超过 3 分后，每多 1 分，领先方命中率 −0.3%，最多 −6%
+  rubber: .0015, rubberFrom: 3, rubberCap: .03,   // 比分效应：领先超过 3 分后，每多 1 分，领先方命中率 −0.15 个百分点，最多 −3 个百分点
 };
 // 联盟基准（各合成能力在轮换球员里的均值）。setCenters 按实际数据算，这里是兜底值
 let C = {rim:.7,post:.6,mid:.7,three:.68,handle:.65,passing:.62,drawFoul:.7,perDef:.66,intDef:.62,block:.5,blockMax:.7,steal:.6,spd:.65,oreb:.5,dreb:.6,hand3:.72};
@@ -176,7 +176,7 @@ function createMatch(home, away, opts){
     const supplied=tm.rotation, rot=supplied && supplied.starters.length===5 && supplied.starters.every(id=>healthy.some(p=>p.id===id))? supplied : autoRotation(tm);
     const tac=Object.assign({pace:'mid',system:'bal',focus:'bal',stars:[],defense:'man',reb:'bal',matchups:{},pnrD:'std',double:null,smallOn:false}, tm.tactics||autoTactics(tm,rot));
     if(tac.defense==='zone') tac.defense='zone23';
-    const men=tm.players.map(p=>({ id:p.id, p, c:composite(p), oiq:p.a.oiq/100, energy:clamp(p.energy!=null?p.energy:1,.5,1), mul:p.formMul||1,
+    const men=tm.players.map(p=>({ id:p.id, p, c:composite(p), oiq:p.a.oiq/100, energy:clamp(p.energy!=null?p.energy:1,.2,1), mul:p.formMul||1,
       target:(rot.minutes[p.id]||0)*60, secs:0, slot:null, out:!!(p.injury>0), inj:false,
       pts:0,fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0,oreb:0,dreb:0,ast:0,stl:0,blk:0,tov:0,pf:0,pm:0,
       starter:rot.starters.includes(p.id) }));
@@ -247,10 +247,17 @@ function shotXY(rng, type){
 }
 
 function doFT(M, side, man, n){
-  let made=0;
-  for(let i=0;i<n;i++){ man.fta++; if(M.rng()<.35+.55*man.c.ft){ man.ftm++; made++; addPts(M,side,man,1);} }
+  let made=0, lastMade=false;
+  for(let i=0;i<n;i++){ man.fta++; lastMade=M.rng()<.35+.55*man.c.ft; if(lastMade){ man.ftm++; made++; addPts(M,side,man,1);} }
   ev(M,{t:side,type:'ft',pid:man.id,n,made});
-  return made;
+  return {made,lastMade};
+}
+
+// 只有最后一罚不中才产生篮板；投篮犯规、加罚、犯满罚球和故意犯规共用。
+function finishFT(M, O, D, man, n, dur, type){
+  const {lastMade}=doFT(M,O.side,man,n);
+  if(lastMade){ M.last='made'; return dur; }
+  return rebound(M,O,D,dur,type,true);
 }
 
 function foulOn(M, D, dIdx, side){
@@ -275,7 +282,7 @@ function possession(M){
   if(late && diffO>=1 && diffO<=6 && M.clock>1.5 && M.clock<=(diffO<=3?24:60)){
     const worst=O.on.reduce((a,b)=>a.c.ft<b.c.ft?a:b); const dIdx=Math.floor(rng()*5);
     foulOn(M,D,dIdx,side); ev(M,{t:1-side,type:'ifoul',pid:D.on[dIdx].id,on:worst.id});
-    doFT(M,side,worst,2); M.last='made'; return 1+rng()*2.5;
+    return finishFT(M,O,D,worst,2,1+rng()*2.5,'rim');
   }
   // 末节领先方拖时间（24 秒内领先，对方来不及了）
   if(M.q>=4 && M.clock<=24 && diffO>0){ M.last='runout'; return M.clock; }
@@ -324,7 +331,7 @@ function possession(M){
   if(rng()<P.nsFoulBase*(D.tac.defense==='press'?1.45:1)*(D.home?0.97:1)){
     const dIdx=Math.floor(rng()*5); const dm=foulOn(M,D,dIdx,side);
     ev(M,{t:1-side,type:'pf',pid:dm.id});
-    if(M.teamFouls[1-side]>=5){ const tgt=pickW(rng,O.on,m=>m.c.usage); doFT(M,side,tgt,2); M.last='ft'; return dur*.5; }
+    if(M.teamFouls[1-side]>=5){ const tgt=pickW(rng,O.on,m=>m.c.usage); return finishFT(M,O,D,tgt,2,dur*.5,'rim'); }
     M.last='nsfoul'; M.keep=true; return dur*.4;
   }
 
@@ -408,10 +415,7 @@ function takeShot(M,O,D,i,dIdx,type,dur){
   if(fouled && !made){
     sh.fga--; if(three) sh.tpa--;   // 被犯规未进不算出手
     const dm=foulOn(M,D,fIdx,side); ev(M,{t:side,type:'sfoul',pid:sh.id,by:dm.id,shot:type,...xy});
-    const mk=doFT(M,side,sh,pts);
-    if(mk===pts){ M.last='made'; return dur; }
-    // 最后一罚不中也可能抢到篮板，简化：按正常篮板
-    return rebound(M,O,D,dur*.6,type,true);
+    return finishFT(M,O,D,sh,pts,dur,type);
   }
   if(made){
     sh.fgm++; if(three) sh.tpm++;
@@ -421,7 +425,7 @@ function takeShot(M,O,D,i,dIdx,type,dur){
     let asst=null;
     if(assisted){ const cand=O.on.filter(m=>m!==sh); asst=pickW(rng,cand,m=>Math.pow(m.c.passing,7)*Math.pow(m.c.usage,2)); asst.ast++; }
     let and1=false;
-    if(rng()<P.andOne[type]*Math.pow(c.drawFoul/C.drawFoul,2)){ and1=true; const dm=foulOn(M,D,fIdx,side); ev(M,{t:side,type:'made',pid:sh.id,shot:type,pts,ast:asst&&asst.id,and1:dm.id,...xy}); doFT(M,side,sh,1); }
+    if(rng()<P.andOne[type]*Math.pow(c.drawFoul/C.drawFoul,2)){ and1=true; const dm=foulOn(M,D,fIdx,side); ev(M,{t:side,type:'made',pid:sh.id,shot:type,pts,ast:asst&&asst.id,and1:dm.id,...xy}); return finishFT(M,O,D,sh,1,dur,type); }
     else ev(M,{t:side,type:'made',pid:sh.id,shot:type,pts,ast:asst&&asst.id,...xy});
     M.last='made'; return dur;
   }

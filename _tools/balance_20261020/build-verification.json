@@ -1,0 +1,11 @@
+{
+  "onlyExpectedHtmlChanges": true,
+  "sha256": {
+    "index.html": "565523c4e1942676593d3e2caa90a5a13130506d29f3e96cc1b8a5250df523f6",
+    "篮球经理.html": "565523c4e1942676593d3e2caa90a5a13130506d29f3e96cc1b8a5250df523f6",
+    "_tools/engine.js": "bd48d89a9ac445ebaaaa11be82b7bb04e7d523ef036a6725ea03da572cd5d474",
+    "_tools/app_season.js": "4c2f379e6d05d6bf16b561eaed9c04c13991d3081f403413dc27c95abef4bcc1",
+    "_tools/real_data.js": "e2af34bcbb6c99be707348437069b4e5397d91c8430ecf60be2750a957c0904a",
+    "sw.js": "81ad2cc5abada19d8d5f218014f801d14b715fa73f5e5bf361c3d95928ff0b39"
+  }
+}

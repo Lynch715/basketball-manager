@@ -1,0 +1,17 @@
+{
+  "url": "http://127.0.0.1:18765/index.html?balance=20261020",
+  "build": {
+    "reducedRubber": true,
+    "fixedLastFreeThrow": true,
+    "realFatigue": true
+  },
+  "errors": [],
+  "verified": [
+    "缓存更新后测试进度保留",
+    "快速模拟一周完成4场",
+    "直播逐回合运行",
+    "直播结算94:114，测试队战绩4-1",
+    "刷新后10月30日、4-1、化学反应51和伤病天数保留"
+  ],
+  "scope": "应用内浏览器桌面验收，独立localhost测试进度"
+}

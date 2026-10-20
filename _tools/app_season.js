@@ -91,7 +91,7 @@ const SEASON_KEY='bbm_season_v1';
 function saveSeason(){ try{ localStorage.setItem(SEASON_KEY, JSON.stringify(G.season)); }catch(e){ saveFailure(e); } }
 function loadSeason(){ try{ const s=JSON.parse(localStorage.getItem(SEASON_KEY)||'null'); if(s && s.games && s.games.length>1000){ G.season=s; setSeasonYear(s.year); } }catch(e){} }
 function applyPlayerState(){ const S=G.season; if(!S) return;
-  TEAMS.forEach(t=>t.players.forEach(p=>{ p.injury = S.inj[p.id]? S.inj[p.id].days : 0; const c=S.cond[p.id]; p.energy = clamp((c==null?100:c)/100,.8,1); })); applyLife(); }
+  TEAMS.forEach(t=>t.players.forEach(p=>{ p.injury = S.inj[p.id]? S.inj[p.id].days : 0; const c=S.cond[p.id]; p.energy = clamp((c==null?100:c)/100,.2,1); })); applyLife(); }
 
 // ---------- 伤病 ----------
 const INJ_TABLE=[ [.55,1,3,['脚踝扭伤','手指挫伤','背部痉挛','膝盖挫伤','臀部挫伤']], [.25,7,14,['腘绳肌拉伤','小腿拉伤','脚踝扭伤','腹股沟拉伤']],
