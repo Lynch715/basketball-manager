@@ -28,13 +28,14 @@ function vOff(v){
     next='开始选秀大会';
   }
   else if(O.step===2){ const D=O.draft, cur=D.order[D.idx], myTurn=cur && cur.owner===G.team && !D.done;
-    refreshScout(); const avail=W.draftClass.filter(p=>!p.drafted).sort((a,b)=>perceivedBy(b,G.team)-perceivedBy(a,G.team));
+    const reveal=scoutRevealed();
+    refreshScout(); const avail=W.draftClass.filter(p=>!p.drafted).sort((a,b)=>scoutDisplayValue(b)-scoutDisplayValue(a));
     body=`<div class="card"><h3>${D.done?'选秀结束':myTurn?`轮到你了：第 ${cur.no} 顺位`:`第 ${cur.no} 顺位：${esc(TEAMS[cur.owner].cn)}`}</h3>
-      <p class="hint">${esc(classTxt())}。${myTurn?'在下面的名单里挑一个人。总评和潜力是球探给的区间，不一定准。':''}</p>
+      <p class="hint">${esc(classTxt())}。${myTurn?(reveal?'在下面的名单里挑一个人。当前显示真实数据。':'在下面的名单里挑一个人。总评和潜力是球探给的区间，不一定准。'):''}</p>
       <div class="ctrl" style="margin-top:4px">${myTurn?'<button id="autopick">让系统替我选</button>':''}${!D.done&&!myTurn?'<button id="tomypick">选到我的下一个签位</button>':''}${!D.done?` <button id="tradepick">交易签位</button>`:''}</div></div>
-     <div class="row"><div class="col card tw" style="min-width:320px;flex:1.6"><h3>新秀 <span class="r">${avail.length} 人可选</span></h3><table><thead><tr><th>新秀</th><th>位置</th><th class="n">年龄</th><th class="n">身高</th><th>原型</th><th class="n">总评</th><th class="n">潜力</th><th class="n">三分</th><th class="n">终结</th><th class="n">外防</th><th class="n">内防</th><th>上季数据</th><th></th></tr></thead><tbody>
-      ${avail.map(p=>`<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b></td><td>${p.pos}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td>${esc(p.arch||'')}</td><td class="n">${rangeTxt(p.scout.o)}</td><td class="n">${rangeTxt(p.scout.p)}</td>
-        ${['three','finish','perD','intD'].map(k=>{ const r=srand(p.id*7+3); KEYS.slice(0,KEYS.indexOf(k)).forEach(()=>r()); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0]; const x=clamp(Math.round(p.a[k]+(r()*2-1)*hw*1.5),20,99); return `<td class="n" style="color:${attrCol(x)}">${x}</td>`; }).join('')}<td class="hint">${esc(preTxt(p))}</td><td>${myTurn?`<button class="sm pri" data-pick="${p.id}">选他</button>`:''}</td></tr>`).join('')}</tbody></table></div>
+     <div class="row"><div class="col card tw" style="min-width:320px;flex:1.6"><h3>新秀 <span class="r">${avail.length} 人可选</span></h3><table><thead><tr><th>新秀</th><th>位置</th><th class="n">年龄</th><th class="n">身高</th><th>原型</th><th class="n">总评</th><th class="n">潜力</th><th class="n">三分</th><th class="n">终结</th><th class="n">外防</th><th class="n">内防</th><th>上季数据</th>${reveal?'<th>发展类型</th>':''}<th></th></tr></thead><tbody>
+      ${avail.map(p=>`<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b></td><td>${p.pos}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td>${esc(p.arch||'')}</td><td class="n">${reveal?p.ovr:rangeTxt(p.scout.o)}</td><td class="n">${reveal?p.pot:rangeTxt(p.scout.p)}</td>
+        ${['three','finish','perD','intD'].map(k=>{ const r=srand(p.id*7+3); KEYS.slice(0,KEYS.indexOf(k)).forEach(()=>r()); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0]; const x=reveal?p.a[k]:clamp(Math.round(p.a[k]+(r()*2-1)*hw*1.5),20,99); return `<td class="n" style="color:${attrCol(x)}">${x}</td>`; }).join('')}<td class="hint">${esc(preTxt(p))}</td>${reveal?`<td>${esc(DEV_CN[p.dev]||'未知')}</td>`:''}<td>${myTurn?`<button class="sm pri" data-pick="${p.id}">选他</button>`:''}</td></tr>`).join('')}</tbody></table></div>
       <div class="col card tw" style="min-width:240px"><h3>已选</h3><table><tbody>${D.log.slice().reverse().map(x=>{ const p=PBYID[x.pid]; return `<tr style="${x.team===G.team?'background:#2a1c10':''}"><td class="n">${x.no}</td><td>${logo(TEAMS[x.team],16)}</td><td class="cl" data-id="${x.pid}">${esc(p?p.cn:'')}</td><td class="hint">${p?p.pos:''}</td></tr>`; }).join('')||'<tr><td class="hint">还没开始</td></tr>'}</tbody></table></div></div>`;
     next = D.done? '进入续约' : '跳过剩下的选秀（系统替我选）';
   }

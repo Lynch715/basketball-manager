@@ -12,7 +12,12 @@ function isRepeater(ti, year){ const h=((W.taxHist||{})[ti])||[]; return h.filte
 function teamTax(ti, year){ year=year||W.year; return taxOf(payroll(TEAMS[ti],year), year, isRepeater(ti,year)); }
 function mktF(ti){ return clamp(Math.sqrt(TEAMS[ti].pop)/Math.sqrt(19),0,1); }
 // 老板能接受的总支出（工资 + 奢侈税）
-function ownerLimit(ti, year){ year=year||W.year; return Math.round(CFG(year).tax + (1500+6000*mktF(ti))*capMul(year)); }
+function baseOwnerLimit(ti, year){ return Math.round(CFG(year).tax + (1500+6000*mktF(ti))*capMul(year)); }
+function ownerLimit(ti, year){
+  year=year||W.year;
+  const limit=G.cheats?.budgets?.[ti]?.[year];
+  return Number.isSafeInteger(limit) && limit>0 ? limit : baseOwnerLimit(ti,year);
+}
 function spendOf(ti, year){ year=year||W.year; const pay=payroll(TEAMS[ti],year); return pay+taxOf(pay,year,isRepeater(ti,year)); }
 function spendAfter(ti, addPay, year){ const pay=payroll(TEAMS[ti],year)+addPay; return pay+taxOf(pay,year,isRepeater(ti,year)); }
 // 不超过上限，或者不比现在花得更多（已经超了的球队可以减支，但不能再加）
@@ -74,7 +79,7 @@ function vFin(v){
     <div class="card"><h3>老板的底线 <span class="r">${year}-${String((year+1)%100).padStart(2,'0')} 赛季工资</span></h3>
       <p>工资 <b>${money(pay)}</b> + 奢侈税 <b>${money(tax)}</b> = 总支出 <b class="${sp>lim?'bad':''}">${money(sp)}</b></p>
       <div class="fitbar" style="margin:8px 0">${bar(sp,lim*1.2,sp>lim?'#e5484d':sp>lim*.93?'#f0a020':'#00c276')}<b>${Math.round(sp/lim*100)}%</b></div>
-      <p class="hint">老板能接受 ${money(lim)}，${sp>lim?`已经超出 <b class="bad">${money(sp-lim)}</b>。赛季结束时按超出比例扣信任度，每超 1% 扣 1 点，最多 15 点。接手的第一个赛季不追究，合同是前任签的。`:`还有 ${money(lim-sp)} 的余量。`}大城市的老板更舍得花钱。</p></div>
+      <p class="hint">老板能接受 ${money(lim)}${lim!==baseOwnerLimit(t.i,year)?'（作弊台已调整）':''}，${sp>lim?`已经超出 <b class="bad">${money(sp-lim)}</b>。赛季结束时按超出比例扣信任度，每超 1% 扣 1 点，最多 15 点。接手的第一个赛季不追究，合同是前任签的。`:`还有 ${money(lim-sp)} 的余量。`}</p></div>
    </div>
    <div class="col" style="min-width:280px">
     <div class="card tw"><h3>奢侈税 <span class="r">税线 ${money(C.tax)}</span></h3><table><thead><tr><th>超出税线</th><th class="n">税率</th><th class="n">重复纳税</th></tr></thead><tbody>

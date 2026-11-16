@@ -109,6 +109,17 @@ button.sm{padding:5px 10px;font-size:12.5px}
 td.wrap{white-space:normal;min-width:120px}
 .mshort{display:none}
 .offitem{display:block;margin-bottom:4px}.offitem .hint{display:block}
+.cheat-grid .card{min-width:min(100%,300px);flex-basis:calc(50% - 7px)}
+.cheat-grid select{max-width:100%}
+.cheat-actions{display:grid;gap:8px;margin:12px 0}
+.cheat-actions>div{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.cheat-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:8px}
+.cheat-fields label,.cheat-contract label{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.cheat-fields label{background:var(--bg);padding:5px 7px;border:1px solid var(--line);border-radius:6px}
+.cheat-fields input[type=number]{width:54px}
+.cheat-contract input[type=number],#cheat-budget input[type=number]{width:92px}
+.cheat-check{display:block;margin-top:8px}
+#cheat-trade-title+p,#cheat-trade-title~.tw{margin-top:8px}
 @media(max-width:760px){
   #main{flex-direction:column-reverse}
   #side{width:100%;flex:0 0 auto;display:grid;grid-template-columns:repeat(var(--navcols,9),minmax(0,1fr));border-right:0;border-top:1px solid var(--line);padding:0 var(--sar) var(--sab) var(--sal);overflow:visible}

@@ -24,20 +24,25 @@ function pkFromKey(k){ const [y,r,o]=k.split('-').map(Number); return {year:y,ro
 function activeContract(p, yr){ return !!(p && p.contract && p.contract[1]>yr); }
 function tradeSal(ps, yr){ return ps.reduce((s,p)=>s+(p.contract&&p.contract[1]>yr&&p.contract[2]!=='tw'?p.contract[0]:0),0); }
 // A 送出 outA（球员）outAk（选秀权），B 送出 outB、outBk。返回违反规则的说明
-function checkTrade(ai, outA, bi, outB, yr, labels){
-  const C=CFG(yr), iss=[]; labels=labels||[TEAMS[ai].nick, TEAMS[bi].nick];
+function checkTrade(ai, outA, bi, outB, yr, labels, skipSalary=false){
+  const iss=[]; labels=labels||[TEAMS[ai].nick, TEAMS[bi].nick];
   [[ai,outA,outB,labels[0]],[bi,outB,outA,labels[1]]].forEach(([ti,out,inn,lb])=>{
     const t=TEAMS[ti], pay=payroll(t,yr)-tradeSal(out,yr)+tradeSal(inn,yr), sIn=tradeSal(inn,yr), sOut=tradeSal(out,yr);
     const r=matchRule(pay, sOut, out.length, yr);
-    if(r.max!=null && sIn>r.max) iss.push(`${lb}：${matchTxt(r)}，现在是 ${money(sIn)}`);
-    if(r.noAgg && out.filter(p=>p.contract&&p.contract[2]!=='tw').length>=2 && sIn>Math.max(0,...out.map(p=>p.contract?p.contract[0]:0))) iss.push(`${lb}交易后超过第二土豪线，不能合并两人以上的工资换人`);
+    if(!skipSalary){
+      if(r.max!=null && sIn>r.max) iss.push(`${lb}：${matchTxt(r)}，现在是 ${money(sIn)}`);
+      if(r.noAgg && out.filter(p=>p.contract&&p.contract[2]!=='tw').length>=2 && sIn>Math.max(0,...out.map(p=>p.contract?p.contract[0]:0))) iss.push(`${lb}交易后超过第二土豪线，不能合并两人以上的工资换人`);
+    }
     out.forEach(p=>{ if(!t.players.includes(p) || !activeContract(p,yr)) iss.push(`${lb}的交易球员已离队或合同已到期`); if(frozen(p)) iss.push(`${p.cn} 刚签约，要到 ${numDateTxt(p.frz)} 才能交易`); });
     const std=ps=>ps.filter(p=>activeContract(p,yr)&&p.contract[2]!=='tw').length;
+    const twoWay=ps=>ps.filter(p=>activeContract(p,yr)&&p.contract[2]==='tw').length;
     const delta=std(inn)-std(out), n=rosterCount(t,yr)+delta, lo=W.off?8:13, hi=W.off?17:15;
     // 选秀权及人数不变的交易不应被已有的阵容人数问题拦截。
     if(delta!==0){
       if(n>hi) iss.push(`${lb}交易后有 ${n} 人，超过 ${hi} 人上限`); if(n<lo) iss.push(`${lb}交易后只剩 ${n} 人，少于 ${lo} 人`);
     }
+    const addedTwoWay=twoWay(inn)-twoWay(out);
+    if(addedTwoWay>0 && twoWay(t.players)+addedTwoWay>3) iss.push(`${lb}交易后将超过 3 份双向合同`);
   });
   return iss;
 }
@@ -49,16 +54,21 @@ function checkTradeAssets(ai, ps, ks, yr){
   return iss;
 }
 function pkgValue(ti, players, picks, yr, mode){ mode=mode||teamMode(ti); return players.reduce((s,p)=>s+playerValue(p,mode,yr),0)+picks.reduce((s,k)=>s+pickValue(k,mode),0); }
-function execTrade(ai, outA, outAk, bi, outB, outBk, protA){
+function execTrade(ai, outA, outAk, bi, outB, outBk, protA, skipSalary=false){
   const A=TEAMS[ai], B=TEAMS[bi], yr=ctxYear();
-  const issues=[...checkTrade(ai,outA,bi,outB,yr), ...checkTradeAssets(ai,outA,outAk,yr), ...checkTradeAssets(bi,outB,outBk,yr)];
+  const issues=[...checkTrade(ai,outA,bi,outB,yr,undefined,skipSalary), ...checkTradeAssets(ai,outA,outAk,yr), ...checkTradeAssets(bi,outB,outBk,yr)];
   if(issues.length) throw new Error(issues[0]);
   outA.forEach(p=>{ A.players=A.players.filter(x=>x!==p); B.players.push(p); });
   outB.forEach(p=>{ B.players=B.players.filter(x=>x!==p); A.players.push(p); });
   [...outA,...outB].forEach(p=>{ setMor(p,mor(p)-8); delete p.treq; }); chemHit(ai,outB.length); chemHit(bi,outA.length);
   outAk.forEach(pk=>{ W.picks[pk.year][pk.round][pk.orig]=bi; const n=protA&&protA[pkKey(pk)]; if(n && pk.orig===ai && pk.round===1){ W.prot=W.prot||{}; W.prot[pkKey(pk)]=n; } });
   outBk.forEach(pk=>{ W.picks[pk.year][pk.round][pk.orig]=ai; });
-  if(W.off && W.off.draft && !W.off.draft.done) W.off.draft.order.slice(W.off.draft.idx).forEach(o=>{ if(W.picks[W.off.draft.year]) o.owner=W.picks[W.off.draft.year][o.round][o.orig]; });
+  if(W.off){
+    const draft=W.off.draft, lottery=W.off.lottery;
+    const order=draft ? draft.order.slice(draft.idx) : lottery?.order;
+    const picks=W.picks[(draft||lottery)?.year];
+    if(picks && order) order.forEach(o=>{ o.owner=picks[o.round][o.orig]; });
+  }
   const desc=(ps,ks)=>[...ps.map(p=>p.cn), ...ks.map(pickLabel)].join('、')||'无';
   const txt=`${A.nick} 得到 ${desc(outB,outBk)}；${B.nick} 得到 ${desc(outA,outAk)}`;
   addNews('交易', txt);
@@ -76,19 +86,32 @@ function evalTrade(){
   const best=pt.players.slice().sort((a,b)=>b.ovr-a.ovr)[0];
   const need = lose*(best && TR.theirP.has(best.id)? 1.3 : 1.05) + 20;
   const ratio = need>0? gain/need : (gain>0?9:0);
-  const issues=[...checkTrade(me.i,outP,pt.i,inP,yr,['你方','对方']), ...checkTradeAssets(me.i,outP,outK,yr), ...checkTradeAssets(pt.i,inP,inK,yr)];
-  if(outP.length!==TR.mineP.size || inP.length!==TR.theirP.size) issues.push('交易球员已离队，请重新选择');
-  if(!outP.length && !outK.length && !inP.length && !inK.length) issues.push('还没选任何人');
+  const assetIssues=[...checkTradeAssets(me.i,outP,outK,yr), ...checkTradeAssets(pt.i,inP,inK,yr)];
+  if(outP.length!==TR.mineP.size || inP.length!==TR.theirP.size) assetIssues.push('交易球员已离队，请重新选择');
+  if(!outP.length && !outK.length && !inP.length && !inK.length) assetIssues.push('还没选任何人');
+  const labels=['你方','对方'];
+  const issues=[...checkTrade(me.i,outP,pt.i,inP,yr,labels), ...assetIssues];
+  const blocking=[...checkTrade(me.i,outP,pt.i,inP,yr,labels,true), ...assetIssues];
   const match=matchRule(payroll(me,yr)-tradeSal(outP,yr)+tradeSal(inP,yr), tradeSal(outP,yr), outP.length, yr);
-  return {ratio, issues, match, myPay:payroll(me,yr)-tradeSal(outP,yr)+tradeSal(inP,yr), ptPay:payroll(pt,yr)-tradeSal(inP,yr)+tradeSal(outP,yr), salOut:tradeSal(outP,yr), salIn:tradeSal(inP,yr), mode};
+  const std=ps=>ps.filter(p=>activeContract(p,yr) && p.contract[2]!=='tw').length;
+  const delta=std(inP)-std(outP);
+  return {ratio, issues, blocking, match, myPay:payroll(me,yr)-tradeSal(outP,yr)+tradeSal(inP,yr),
+    ptPay:payroll(pt,yr)-tradeSal(inP,yr)+tradeSal(outP,yr), salOut:tradeSal(outP,yr), salIn:tradeSal(inP,yr),
+    myCount:rosterCount(me,yr)+delta, ptCount:rosterCount(pt,yr)-delta, mode, outP, inP, outK, inK};
 }
-function doTrade(){
-  const ev=evalTrade(), op=tradeOpen(); if(!op.ok || ev.issues.length || ev.ratio<1) throw new Error(op.why || ev.issues[0] || '对方不接受这份交易');
+function doTrade(approval){
+  const special=approval?.force===true;
+  if(special && (!cheatsEnabled() || !cheatBusy)) throw new Error('请从作弊台提交交易特批');
+  const ev=evalTrade(), op=tradeOpen(), skipSalary=special && approval.salary===true;
+  const issues=skipSalary?ev.blocking:ev.issues;
+  if(!op.ok || issues.length || (!special && ev.ratio<1)) throw new Error(op.why || issues[0] || '对方不接受这份交易');
   const me=myTeam(), pt=TEAMS[TR.partner];
-  const txt=execTrade(me.i,[...TR.mineP].map(id=>PBYID[id]),[...TR.mineK].map(pkFromKey), pt.i,[...TR.theirP].map(id=>PBYID[id]),[...TR.theirK].map(pkFromKey), TR.prot);
+  const txt=execTrade(me.i,ev.outP,ev.outK,pt.i,ev.inP,ev.inK,TR.prot,skipSalary);
   if(G.season) G.season.inbox.push({d:G.season.day, t:`和${pt.cn}完成交易`, b:txt});
   TR.mineP.clear(); TR.theirP.clear(); TR.mineK.clear(); TR.theirK.clear(); TR.prot={};
-  save(); return txt;
+  if(special) applyLife();
+  else save();
+  return txt;
 }
 function vTrade(v){
   const op=tradeOpen();
@@ -107,12 +130,15 @@ function vTrade(v){
      <p class="hint" style="margin-top:6px">送出薪资 ${money(ev.salOut)} · 换来薪资 ${money(ev.salIn)} · 交易后你的工资 ${money(ev.myPay)}（工资帽 ${money(CFG(yr).cap)}，第一土豪线 ${money(CFG(yr).apron1)}，第二土豪线 ${money(CFG(yr).apron2)}）</p>
      <p class="hint">${esc(matchTxt(ev.match))}</p>
      ${ev.issues.map(s=>`<div class="bad">${esc(s)}</div>`).join('')}`}
-     <div style="margin-top:8px"><button class="pri" id="tgo" ${ev.issues.length||ev.ratio<1?'disabled':''}>提出交易</button> <button id="tclr">清空</button></div></div>
+     <div class="ctrl"><button class="pri" id="tgo" ${ev.issues.length||ev.ratio<1?'disabled':''}>提出交易</button>
+     ${cheatsEnabled()?`<button id="cheat-trade" ${empty||ev.blocking.length||!cheatActionAvailable()?'disabled':''}>特批本笔交易</button>`:''}
+     <button id="tclr">清空</button></div></div>
    <div class="row"><div class="col" style="min-width:320px">${side(me,TR.mineP,TR.mineK,'m')}</div><div class="col" style="min-width:320px">${side(pt,TR.theirP,TR.theirK,'t')}</div></div>`;
   const q=s=>v.querySelector(s);
   q('#tp').onchange=e=>{ TR.partner=+e.target.value; TR.theirP.clear(); TR.theirK.clear(); vTrade(v); };
   q('#tclr').onclick=()=>{ TR.mineP.clear(); TR.theirP.clear(); TR.mineK.clear(); TR.theirK.clear(); vTrade(v); };
   q('#tgo').onclick=()=>{ try{ doTrade(); toast('交易完成'); }catch(e){ toast(e.message); } render(); };
+  if(q('#cheat-trade')) q('#cheat-trade').onclick=showCheatTrade;
   const bind=(sel,set,num)=>v.querySelectorAll(sel).forEach(cb=>cb.onchange=()=>{ const k=num?+cb.getAttribute(sel.slice(1,-1)):cb.getAttribute(sel.slice(1,-1)); if(cb.checked) set.add(k); else set.delete(k); vTrade(v); });
   v.querySelectorAll('[data-prot]').forEach(sl=>sl.onchange=()=>{ const n=+sl.value; if(n) TR.prot[sl.dataset.prot]=n; else delete TR.prot[sl.dataset.prot]; vTrade(v); });
   bind('[data-mp]',TR.mineP,true); bind('[data-tp]',TR.theirP,true); bind('[data-mk]',TR.mineK,false); bind('[data-tk]',TR.theirK,false);

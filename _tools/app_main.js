@@ -45,11 +45,14 @@ function payroll(t, year){ year=year||W.year; let s=0;
 // ---------- 联盟存档 ----------
 const WORLD_KEY='bbm_world_v1';
 const PFIELDS=['id','en','cn','pos','pos2','born','jersey','ht','ws','wt','nat','pot','dur','prof','a','contract','ovr','hist','draft','fa','twoWay','rkOpt','rk1','rfa','sheet','mor','treq','tf','gx','sz','frz','arch','dev','vol','pre','rookieYear'];
-function saveWorld(){ try{
+function worldSaveData(){
   const pl=[]; const put=(p,team)=>{ const o={}; PFIELDS.forEach(k=>{ if(p[k]!==undefined) o[k]=p[k]; }); o.team=team; pl.push(o); };
   TEAMS.forEach(t=>t.players.forEach(p=>put(p,t.i))); FREE.forEach(p=>put(p,-1));
   const w=Object.assign({},W,{draftClass:(W.draftClass||[]).map(p=>{ const o={}; PFIELDS.forEach(k=>{ if(p[k]!==undefined) o[k]=p[k]; }); o.scout=p.scout; o.drafted=p.drafted; return o; })});
-  localStorage.setItem(WORLD_KEY, JSON.stringify({W:w, players:pl, PID}));
+  return {W:w, players:pl, PID};
+}
+function saveWorld(){ try{
+  localStorage.setItem(WORLD_KEY, JSON.stringify(worldSaveData()));
 }catch(e){ saveFailure(e); } }
 function loadWorld(){ try{
   const s=JSON.parse(localStorage.getItem(WORLD_KEY)||'null'); if(!s || !s.players) return false;
@@ -66,7 +69,13 @@ function loadWorld(){ try{
 const SAVE_KEY='bbm_v1';
 let G = {team:null, rot:null, tac:null, view:'home', season:null, career:[], board:null, autoMine:false};
 function saveFailure(e){ console.error('存档写入失败',e); if(!window._saveWarning){ window._saveWarning=true; toast('自动存档失败，请检查浏览器存储空间并导出存档'); } }
-function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify({team:G.team, rot:G.rot, tac:G.tac, career:G.career, board:G.board, autoMine:G.autoMine})); }catch(e){ saveFailure(e); } saveWorld(); }
+function gameSaveData(){
+  const {team,rot,tac,career,board,autoMine,cheats}=G;
+  return {team,rot,tac,career,board,autoMine,cheats};
+}
+function cheatsEnabled(){ return G.cheats?.enabled===true; }
+function scoutRevealed(){ return cheatsEnabled() && G.cheats.reveal===true; }
+function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(gameSaveData())); }catch(e){ saveFailure(e); } saveWorld(); }
 function load(){ try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); if(s && s.team!=null && TEAMS[s.team]){ loadWorld(); Object.assign(G,s); fixRot(); loadSeason(); if(!G.season) newSeason(W.year); if(!W.off){ ensurePicks(W.year+1); ensurePicks(W.year+2); } applyPlayerState(); } }catch(e){ console.error(e); } }
 function myTeam(){ return TEAMS[G.team]; }
 function fixRot(){ // 存档里的球员 id 对不上时重置
@@ -116,7 +125,7 @@ function render(){
     G.view=k; render(); });
   if(G.view==='match' && !LIVE) G.view='home';
   if(G.view==='off' && !W.off) G.view='home';
-  ({home:vHome, roster:vRoster, rot:vRot, tac:vTac, match:vLive, sched:vSched, stand:vStand, stats:vStats, po:vPO, career:vCareer, off:vOff, trade:vTrade, fa:vFA, train:vTrain, scout:vScout, events:vEvents, save:vSave, fin:vFin})[G.view](v);
+  ({home:vHome, roster:vRoster, rot:vRot, tac:vTac, match:vLive, sched:vSched, stand:vStand, stats:vStats, po:vPO, career:vCareer, off:vOff, trade:vTrade, fa:vFA, train:vTrain, scout:vScout, events:vEvents, save:vSave, fin:vFin, cheats:vCheats})[G.view](v);
 }
 function phaseTxt(){ const S=G.season; if(W.off) return '休赛期'; return {reg:'常规赛',playin:'附加赛',po:'季后赛',done:'赛季结束'}[S.phase]; }
 function confirmLeave(){ try{ return window.confirm('这场比赛还没打完，离开就算放弃。确定吗？'); }catch(e){ return true; } }
@@ -161,13 +170,14 @@ function vRoster(v){
 function showPlayer(p){
   const m=document.getElementById('modal');
   const pros=(W.draftClass||[]).includes(p) && !p.drafted;
-  if(pros){ refreshScout(); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0], r=srand(p.id*7+3);
+  const reveal=pros && scoutRevealed();
+  if(pros && !reveal){ refreshScout(); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0], r=srand(p.id*7+3);
     p={...p, a:Object.fromEntries(KEYS.map(k=>[k,clamp(Math.round(p.a[k]+(r()*2-1)*hw*1.5),20,99)]))}; }
   m.innerHTML=`<div class="modal"><div class="box">
     <div class="pmhead" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">${pros?'':ovrTag(p.ovr)}<div><h1 style="margin:0">${esc(p.cn)}</h1>
     <div class="hint">${p.en!==p.cn?esc(p.en)+' · ':''}${POS_CN[p.pos]}${p.pos2.length?'（可打 '+p.pos2.map(x=>POS_CN[x]).join('、')+'）':''} · ${ageOf(p,(W.off?W.off.year:W.year))} 岁 · ${esc(p.nat)}</div></div>
-    <div style="margin-left:auto;text-align:right">${pros?`<div>总评 <b>${rangeTxt(p.scout.o)}</b> · 潜力 <b>${rangeTxt(p.scout.p)}</b></div><div class="hint">球探报告，属性也有误差</div>`:`<div>潜力 <b>${p.pot}</b></div><div class="hint">${contractTxt(p.contract)}</div>${G.team!=null&&teamOfId(p.id)>=0?`<div class="hint">士气 ${morTag(p)}</div>`:''}`}</div></div>
-    ${pros?`<div class="card" style="margin-bottom:10px;padding:10px"><div>原型：<b>${esc(p.arch||'')}</b> · ${esc(preTxt(p))}</div>${(W.scoutFocus||[]).includes(p.id)?`<div class="hint" style="margin-top:4px">重点考察：敬业${profCn(p.prof)}，伤病风险${durCn(p.dur)}</div>`:''}</div>`:(p.arch&&p.draft?`<div class="hint" style="margin-bottom:8px">选秀时的原型：${esc(p.arch)}</div>`:'')}
+    <div style="margin-left:auto;text-align:right">${pros?`<div>总评 <b>${reveal?p.ovr:rangeTxt(p.scout.o)}</b> · 潜力 <b>${reveal?p.pot:rangeTxt(p.scout.p)}</b></div><div class="hint">${reveal?'真实数据':'球探报告，属性也有误差'}</div>`:`<div>潜力 <b>${p.pot}</b></div><div class="hint">${contractTxt(p.contract)}</div>${G.team!=null&&teamOfId(p.id)>=0?`<div class="hint">士气 ${morTag(p)}</div>`:''}`}</div></div>
+    ${pros?`<div class="card" style="margin-bottom:10px;padding:10px"><div>原型：<b>${esc(p.arch||'')}</b> · ${esc(preTxt(p))}</div>${reveal?`<div>发展类型 <b>${esc(DEV_CN[p.dev]||'未知')}</b> · 敬业${profCn(p.prof)} · 伤病风险${durCn(p.dur)}</div>`:(W.scoutFocus||[]).includes(p.id)?`<div class="hint" style="margin-top:4px">重点考察：敬业${profCn(p.prof)}，伤病风险${durCn(p.dur)}</div>`:''}</div>`:(p.arch&&p.draft?`<div class="hint" style="margin-bottom:8px">选秀时的原型：${esc(p.arch)}</div>`:'')}
     <div class="row" style="margin-bottom:10px;font-size:12px"><span>身高 <b>${p.ht}</b> cm</span><span>臂展 <b>${p.ws}</b> cm</span><span>体重 <b>${p.wt}</b> kg</span><span>出生 ${p.born}</span></div>
     ${ATTR_GROUPS.map(([g,ks])=>`<h2>${g}</h2><div class="attrs">${ks.map(k=>`<div class="attr"><span>${ATTR_CN[k]}</span><b style="color:${attrCol(p.a[k])}">${p.a[k]}</b></div>`).join('')}</div>`).join('')}
     ${(p.hist&&p.hist.length)?`<h2>生涯数据</h2><div class="tw"><table><thead><tr><th>赛季</th><th>球队</th><th class="n">出场</th><th class="n">时间</th><th class="n">得分</th><th class="n">篮板</th><th class="n">助攻</th><th class="n">抢断</th><th class="n">盖帽</th><th class="n">命中率</th><th class="n">三分%</th></tr></thead><tbody>${p.hist.map(h=>`<tr><td>${h[0]}-${String((h[0]+1)%100).padStart(2,'0')}${h[2]?' 季后赛':''}</td><td>${h[1]>=0&&TEAMS[h[1]]?logo(TEAMS[h[1]],14)+' '+esc(TEAMS[h[1]].nick):''}</td>${h.slice(3).map(x=>`<td class="n">${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:''}${p.draft?`<p class="hint" style="margin-top:8px">${p.draft.year} 年第 ${p.draft.no} 顺位，被${TEAMS[p.draft.team]?TEAMS[p.draft.team].cn:''}选中</p>`:''}

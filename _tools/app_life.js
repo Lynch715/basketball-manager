@@ -95,6 +95,9 @@ function perceivedBy(p, ti){
   const r=srand(p.id*1009+ti*31), z=()=>(r()+r()+r()-1.5)*2, [ho,hp]=SCOUT_HW[scoutLevel(ti)-1];
   return (p.ovr+z()*ho*.6)*.5+(p.pot+z()*hp*.6)*.5;
 }
+function scoutDisplayValue(p){
+  return scoutRevealed() ? (p.ovr+p.pot)/2 : perceivedBy(p,G.team);
+}
 function ensureDraftClass(year){
   if(W.dcYear===year && (W.draftClass||[]).length) return;
   W.draftClass=genDraftClass(year); W.dcYear=year; W.scoutFocus=[]; refreshScout();
@@ -145,14 +148,19 @@ function vScout(v){
   if(!cls.length){ v.innerHTML=`<h1>球探</h1><div class="card"><p>下一届新秀名单在新赛季开幕时出炉。</p></div>`; return; }
   refreshScout();
   const F=new Set(W.scoutFocus||[]), lim=focusLimit(), L=scoutLevel(G.team), yr=W.dcYear;
-  const list=cls.slice().sort((a,b)=>perceivedBy(b,G.team)-perceivedBy(a,G.team));
+  const reveal=scoutRevealed();
+  const list=cls.slice().sort((a,b)=>scoutDisplayValue(b)-scoutDisplayValue(a));
   const mine=picksOwnedBy(G.team).filter(k=>k.year===yr);
   v.innerHTML=`<h1>球探</h1><div class="sub">${yr} 年选秀 · 球探等级 ${L} · 重点考察 ${F.size} / ${lim} 人</div>
-   <div class="card"><h3>球探的判断：${esc(classTxt())}</h3><p>名单按你的球探看到的价值排，这就是你这边的模拟选秀顺位。总评和潜力是区间，球探等级越高越窄。重点考察过的人区间收窄到 ±1 / ±2，还能看到他的敬业程度和伤病风险。考察名额用掉就收不回来。</p>
+    <div class="card"><h3>球探的判断：${esc(classTxt())}</h3><p>${reveal?'正在显示真实总评、潜力和发展类型。其他球队仍按各自的球探报告选人。':'名单按你的球探看到的价值排序。总评和潜力是区间，球探等级越高越窄。重点考察过的人区间收窄到 ±1 / ±2，还能看到他的敬业程度和伤病风险。考察名额用掉就收不回来。'}</p>
+    ${cheatsEnabled()?`<div class="ctrl"><button id="scout-reveal" ${cheatActionAvailable()?'':'disabled'}>${reveal?'恢复球探估计':'显示真实数据'}</button></div>`:''}
     <p class="hint" style="margin-top:4px">你持有的 ${yr} 年签：${mine.length?mine.map(k=>esc(pickLabel(k))).join('、'):'无'}。别的球队有自己的球探，看法和你不一样。</p></div>
-   <div class="card tw"><table><thead><tr><th class="n">顺位</th><th>新秀</th><th>位置</th><th>原型</th><th class="n">年龄</th><th class="n">身高</th><th class="n">总评</th><th class="n">潜力</th><th>上季数据</th><th>考察</th><th></th></tr></thead><tbody>
-    ${list.map((p,i)=>`<tr style="${F.has(p.id)?'background:#2a1c10':''}"><td class="n">${i+1}</td><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b> <span class="hint">${esc(p.nat)}</span></td><td>${p.pos}</td><td>${esc(p.arch||'')}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td class="n">${rangeTxt(p.scout.o)}</td><td class="n">${rangeTxt(p.scout.p)}</td><td class="hint">${esc(preTxt(p))}</td><td class="hint">${F.has(p.id)?`敬业${profCn(p.prof)} · 伤病风险${durCn(p.dur)}`:''}</td>
-      <td>${F.has(p.id)?'<span class="hint">已考察</span>':F.size<lim?`<button class="sm" data-sf="${p.id}">重点考察</button>`:''}</td></tr>`).join('')}</tbody></table></div>`;
+   <div class="card tw"><table><thead><tr><th class="n">顺位</th><th>新秀</th><th>位置</th><th>原型</th><th class="n">年龄</th><th class="n">身高</th><th class="n">总评</th><th class="n">潜力</th><th>上季数据</th>${reveal?'<th>发展类型</th>':'<th>考察</th><th></th>'}</tr></thead><tbody>
+    ${list.map((p,i)=>`<tr style="${F.has(p.id)?'background:#2a1c10':''}"><td class="n">${i+1}</td><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b> <span class="hint">${esc(p.nat)}</span></td><td>${p.pos}</td><td>${esc(p.arch||'')}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td class="n">${reveal?p.ovr:rangeTxt(p.scout.o)}</td><td class="n">${reveal?p.pot:rangeTxt(p.scout.p)}</td><td class="hint">${esc(preTxt(p))}</td>
+      ${reveal?`<td>${esc(DEV_CN[p.dev]||'未知')}</td>`:`<td class="hint">${F.has(p.id)?`敬业${profCn(p.prof)} · 伤病风险${durCn(p.dur)}`:''}</td>
+      <td>${F.has(p.id)?'<span class="hint">已考察</span>':F.size<lim?`<button class="sm" data-sf="${p.id}">重点考察</button>`:''}</td>`}</tr>`).join('')}</tbody></table></div>`;
+  const revealButton=v.querySelector('#scout-reveal');
+  if(revealButton) bindCheatPreference(revealButton,{reveal:!reveal});
   v.querySelectorAll('[data-sf]').forEach(b=>b.onclick=()=>{ W.scoutFocus=W.scoutFocus||[]; if(W.scoutFocus.length>=lim) return; W.scoutFocus.push(+b.dataset.sf); refreshScout(); save(); vScout(v); });
   v.querySelectorAll('td[data-id]').forEach(el=>el.onclick=()=>showPlayer(PBYID[el.dataset.id]));
 }

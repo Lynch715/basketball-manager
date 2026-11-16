@@ -109,6 +109,17 @@ button.sm{padding:5px 10px;font-size:12.5px}
 td.wrap{white-space:normal;min-width:120px}
 .mshort{display:none}
 .offitem{display:block;margin-bottom:4px}.offitem .hint{display:block}
+.cheat-grid .card{min-width:min(100%,300px);flex-basis:calc(50% - 7px)}
+.cheat-grid select{max-width:100%}
+.cheat-actions{display:grid;gap:8px;margin:12px 0}
+.cheat-actions>div{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.cheat-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:8px}
+.cheat-fields label,.cheat-contract label{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.cheat-fields label{background:var(--bg);padding:5px 7px;border:1px solid var(--line);border-radius:6px}
+.cheat-fields input[type=number]{width:54px}
+.cheat-contract input[type=number],#cheat-budget input[type=number]{width:92px}
+.cheat-check{display:block;margin-top:8px}
+#cheat-trade-title+p,#cheat-trade-title~.tw{margin-top:8px}
 @media(max-width:760px){
   #main{flex-direction:column-reverse}
   #side{width:100%;flex:0 0 auto;display:grid;grid-template-columns:repeat(var(--navcols,9),minmax(0,1fr));border-right:0;border-top:1px solid var(--line);padding:0 var(--sar) var(--sab) var(--sal);overflow:visible}
@@ -1495,11 +1506,14 @@ function payroll(t, year){ year=year||W.year; let s=0;
 // ---------- 联盟存档 ----------
 const WORLD_KEY='bbm_world_v1';
 const PFIELDS=['id','en','cn','pos','pos2','born','jersey','ht','ws','wt','nat','pot','dur','prof','a','contract','ovr','hist','draft','fa','twoWay','rkOpt','rk1','rfa','sheet','mor','treq','tf','gx','sz','frz','arch','dev','vol','pre','rookieYear'];
-function saveWorld(){ try{
+function worldSaveData(){
   const pl=[]; const put=(p,team)=>{ const o={}; PFIELDS.forEach(k=>{ if(p[k]!==undefined) o[k]=p[k]; }); o.team=team; pl.push(o); };
   TEAMS.forEach(t=>t.players.forEach(p=>put(p,t.i))); FREE.forEach(p=>put(p,-1));
   const w=Object.assign({},W,{draftClass:(W.draftClass||[]).map(p=>{ const o={}; PFIELDS.forEach(k=>{ if(p[k]!==undefined) o[k]=p[k]; }); o.scout=p.scout; o.drafted=p.drafted; return o; })});
-  localStorage.setItem(WORLD_KEY, JSON.stringify({W:w, players:pl, PID}));
+  return {W:w, players:pl, PID};
+}
+function saveWorld(){ try{
+  localStorage.setItem(WORLD_KEY, JSON.stringify(worldSaveData()));
 }catch(e){ saveFailure(e); } }
 function loadWorld(){ try{
   const s=JSON.parse(localStorage.getItem(WORLD_KEY)||'null'); if(!s || !s.players) return false;
@@ -1516,7 +1530,13 @@ function loadWorld(){ try{
 const SAVE_KEY='bbm_v1';
 let G = {team:null, rot:null, tac:null, view:'home', season:null, career:[], board:null, autoMine:false};
 function saveFailure(e){ console.error('存档写入失败',e); if(!window._saveWarning){ window._saveWarning=true; toast('自动存档失败，请检查浏览器存储空间并导出存档'); } }
-function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify({team:G.team, rot:G.rot, tac:G.tac, career:G.career, board:G.board, autoMine:G.autoMine})); }catch(e){ saveFailure(e); } saveWorld(); }
+function gameSaveData(){
+  const {team,rot,tac,career,board,autoMine,cheats}=G;
+  return {team,rot,tac,career,board,autoMine,cheats};
+}
+function cheatsEnabled(){ return G.cheats?.enabled===true; }
+function scoutRevealed(){ return cheatsEnabled() && G.cheats.reveal===true; }
+function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(gameSaveData())); }catch(e){ saveFailure(e); } saveWorld(); }
 function load(){ try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); if(s && s.team!=null && TEAMS[s.team]){ loadWorld(); Object.assign(G,s); fixRot(); loadSeason(); if(!G.season) newSeason(W.year); if(!W.off){ ensurePicks(W.year+1); ensurePicks(W.year+2); } applyPlayerState(); } }catch(e){ console.error(e); } }
 function myTeam(){ return TEAMS[G.team]; }
 function fixRot(){ // 存档里的球员 id 对不上时重置
@@ -1566,7 +1586,7 @@ function render(){
     G.view=k; render(); });
   if(G.view==='match' && !LIVE) G.view='home';
   if(G.view==='off' && !W.off) G.view='home';
-  ({home:vHome, roster:vRoster, rot:vRot, tac:vTac, match:vLive, sched:vSched, stand:vStand, stats:vStats, po:vPO, career:vCareer, off:vOff, trade:vTrade, fa:vFA, train:vTrain, scout:vScout, events:vEvents, save:vSave, fin:vFin})[G.view](v);
+  ({home:vHome, roster:vRoster, rot:vRot, tac:vTac, match:vLive, sched:vSched, stand:vStand, stats:vStats, po:vPO, career:vCareer, off:vOff, trade:vTrade, fa:vFA, train:vTrain, scout:vScout, events:vEvents, save:vSave, fin:vFin, cheats:vCheats})[G.view](v);
 }
 function phaseTxt(){ const S=G.season; if(W.off) return '休赛期'; return {reg:'常规赛',playin:'附加赛',po:'季后赛',done:'赛季结束'}[S.phase]; }
 function confirmLeave(){ try{ return window.confirm('这场比赛还没打完，离开就算放弃。确定吗？'); }catch(e){ return true; } }
@@ -1611,13 +1631,14 @@ function vRoster(v){
 function showPlayer(p){
   const m=document.getElementById('modal');
   const pros=(W.draftClass||[]).includes(p) && !p.drafted;
-  if(pros){ refreshScout(); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0], r=srand(p.id*7+3);
+  const reveal=pros && scoutRevealed();
+  if(pros && !reveal){ refreshScout(); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0], r=srand(p.id*7+3);
     p={...p, a:Object.fromEntries(KEYS.map(k=>[k,clamp(Math.round(p.a[k]+(r()*2-1)*hw*1.5),20,99)]))}; }
   m.innerHTML=`<div class="modal"><div class="box">
     <div class="pmhead" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">${pros?'':ovrTag(p.ovr)}<div><h1 style="margin:0">${esc(p.cn)}</h1>
     <div class="hint">${p.en!==p.cn?esc(p.en)+' · ':''}${POS_CN[p.pos]}${p.pos2.length?'（可打 '+p.pos2.map(x=>POS_CN[x]).join('、')+'）':''} · ${ageOf(p,(W.off?W.off.year:W.year))} 岁 · ${esc(p.nat)}</div></div>
-    <div style="margin-left:auto;text-align:right">${pros?`<div>总评 <b>${rangeTxt(p.scout.o)}</b> · 潜力 <b>${rangeTxt(p.scout.p)}</b></div><div class="hint">球探报告，属性也有误差</div>`:`<div>潜力 <b>${p.pot}</b></div><div class="hint">${contractTxt(p.contract)}</div>${G.team!=null&&teamOfId(p.id)>=0?`<div class="hint">士气 ${morTag(p)}</div>`:''}`}</div></div>
-    ${pros?`<div class="card" style="margin-bottom:10px;padding:10px"><div>原型：<b>${esc(p.arch||'')}</b> · ${esc(preTxt(p))}</div>${(W.scoutFocus||[]).includes(p.id)?`<div class="hint" style="margin-top:4px">重点考察：敬业${profCn(p.prof)}，伤病风险${durCn(p.dur)}</div>`:''}</div>`:(p.arch&&p.draft?`<div class="hint" style="margin-bottom:8px">选秀时的原型：${esc(p.arch)}</div>`:'')}
+    <div style="margin-left:auto;text-align:right">${pros?`<div>总评 <b>${reveal?p.ovr:rangeTxt(p.scout.o)}</b> · 潜力 <b>${reveal?p.pot:rangeTxt(p.scout.p)}</b></div><div class="hint">${reveal?'真实数据':'球探报告，属性也有误差'}</div>`:`<div>潜力 <b>${p.pot}</b></div><div class="hint">${contractTxt(p.contract)}</div>${G.team!=null&&teamOfId(p.id)>=0?`<div class="hint">士气 ${morTag(p)}</div>`:''}`}</div></div>
+    ${pros?`<div class="card" style="margin-bottom:10px;padding:10px"><div>原型：<b>${esc(p.arch||'')}</b> · ${esc(preTxt(p))}</div>${reveal?`<div>发展类型 <b>${esc(DEV_CN[p.dev]||'未知')}</b> · 敬业${profCn(p.prof)} · 伤病风险${durCn(p.dur)}</div>`:(W.scoutFocus||[]).includes(p.id)?`<div class="hint" style="margin-top:4px">重点考察：敬业${profCn(p.prof)}，伤病风险${durCn(p.dur)}</div>`:''}</div>`:(p.arch&&p.draft?`<div class="hint" style="margin-bottom:8px">选秀时的原型：${esc(p.arch)}</div>`:'')}
     <div class="row" style="margin-bottom:10px;font-size:12px"><span>身高 <b>${p.ht}</b> cm</span><span>臂展 <b>${p.ws}</b> cm</span><span>体重 <b>${p.wt}</b> kg</span><span>出生 ${p.born}</span></div>
     ${ATTR_GROUPS.map(([g,ks])=>`<h2>${g}</h2><div class="attrs">${ks.map(k=>`<div class="attr"><span>${ATTR_CN[k]}</span><b style="color:${attrCol(p.a[k])}">${p.a[k]}</b></div>`).join('')}</div>`).join('')}
     ${(p.hist&&p.hist.length)?`<h2>生涯数据</h2><div class="tw"><table><thead><tr><th>赛季</th><th>球队</th><th class="n">出场</th><th class="n">时间</th><th class="n">得分</th><th class="n">篮板</th><th class="n">助攻</th><th class="n">抢断</th><th class="n">盖帽</th><th class="n">命中率</th><th class="n">三分%</th></tr></thead><tbody>${p.hist.map(h=>`<tr><td>${h[0]}-${String((h[0]+1)%100).padStart(2,'0')}${h[2]?' 季后赛':''}</td><td>${h[1]>=0&&TEAMS[h[1]]?logo(TEAMS[h[1]],14)+' '+esc(TEAMS[h[1]].nick):''}</td>${h.slice(3).map(x=>`<td class="n">${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:''}${p.draft?`<p class="hint" style="margin-top:8px">${p.draft.year} 年第 ${p.draft.no} 顺位，被${TEAMS[p.draft.team]?TEAMS[p.draft.team].cn:''}选中</p>`:''}
@@ -2937,13 +2958,14 @@ function vOff(v){
     next='开始选秀大会';
   }
   else if(O.step===2){ const D=O.draft, cur=D.order[D.idx], myTurn=cur && cur.owner===G.team && !D.done;
-    refreshScout(); const avail=W.draftClass.filter(p=>!p.drafted).sort((a,b)=>perceivedBy(b,G.team)-perceivedBy(a,G.team));
+    const reveal=scoutRevealed();
+    refreshScout(); const avail=W.draftClass.filter(p=>!p.drafted).sort((a,b)=>scoutDisplayValue(b)-scoutDisplayValue(a));
     body=`<div class="card"><h3>${D.done?'选秀结束':myTurn?`轮到你了：第 ${cur.no} 顺位`:`第 ${cur.no} 顺位：${esc(TEAMS[cur.owner].cn)}`}</h3>
-      <p class="hint">${esc(classTxt())}。${myTurn?'在下面的名单里挑一个人。总评和潜力是球探给的区间，不一定准。':''}</p>
+      <p class="hint">${esc(classTxt())}。${myTurn?(reveal?'在下面的名单里挑一个人。当前显示真实数据。':'在下面的名单里挑一个人。总评和潜力是球探给的区间，不一定准。'):''}</p>
       <div class="ctrl" style="margin-top:4px">${myTurn?'<button id="autopick">让系统替我选</button>':''}${!D.done&&!myTurn?'<button id="tomypick">选到我的下一个签位</button>':''}${!D.done?` <button id="tradepick">交易签位</button>`:''}</div></div>
-     <div class="row"><div class="col card tw" style="min-width:320px;flex:1.6"><h3>新秀 <span class="r">${avail.length} 人可选</span></h3><table><thead><tr><th>新秀</th><th>位置</th><th class="n">年龄</th><th class="n">身高</th><th>原型</th><th class="n">总评</th><th class="n">潜力</th><th class="n">三分</th><th class="n">终结</th><th class="n">外防</th><th class="n">内防</th><th>上季数据</th><th></th></tr></thead><tbody>
-      ${avail.map(p=>`<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b></td><td>${p.pos}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td>${esc(p.arch||'')}</td><td class="n">${rangeTxt(p.scout.o)}</td><td class="n">${rangeTxt(p.scout.p)}</td>
-        ${['three','finish','perD','intD'].map(k=>{ const r=srand(p.id*7+3); KEYS.slice(0,KEYS.indexOf(k)).forEach(()=>r()); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0]; const x=clamp(Math.round(p.a[k]+(r()*2-1)*hw*1.5),20,99); return `<td class="n" style="color:${attrCol(x)}">${x}</td>`; }).join('')}<td class="hint">${esc(preTxt(p))}</td><td>${myTurn?`<button class="sm pri" data-pick="${p.id}">选他</button>`:''}</td></tr>`).join('')}</tbody></table></div>
+     <div class="row"><div class="col card tw" style="min-width:320px;flex:1.6"><h3>新秀 <span class="r">${avail.length} 人可选</span></h3><table><thead><tr><th>新秀</th><th>位置</th><th class="n">年龄</th><th class="n">身高</th><th>原型</th><th class="n">总评</th><th class="n">潜力</th><th class="n">三分</th><th class="n">终结</th><th class="n">外防</th><th class="n">内防</th><th>上季数据</th>${reveal?'<th>发展类型</th>':''}<th></th></tr></thead><tbody>
+      ${avail.map(p=>`<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b></td><td>${p.pos}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td>${esc(p.arch||'')}</td><td class="n">${reveal?p.ovr:rangeTxt(p.scout.o)}</td><td class="n">${reveal?p.pot:rangeTxt(p.scout.p)}</td>
+        ${['three','finish','perD','intD'].map(k=>{ const r=srand(p.id*7+3); KEYS.slice(0,KEYS.indexOf(k)).forEach(()=>r()); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0]; const x=reveal?p.a[k]:clamp(Math.round(p.a[k]+(r()*2-1)*hw*1.5),20,99); return `<td class="n" style="color:${attrCol(x)}">${x}</td>`; }).join('')}<td class="hint">${esc(preTxt(p))}</td>${reveal?`<td>${esc(DEV_CN[p.dev]||'未知')}</td>`:''}<td>${myTurn?`<button class="sm pri" data-pick="${p.id}">选他</button>`:''}</td></tr>`).join('')}</tbody></table></div>
       <div class="col card tw" style="min-width:240px"><h3>已选</h3><table><tbody>${D.log.slice().reverse().map(x=>{ const p=PBYID[x.pid]; return `<tr style="${x.team===G.team?'background:#2a1c10':''}"><td class="n">${x.no}</td><td>${logo(TEAMS[x.team],16)}</td><td class="cl" data-id="${x.pid}">${esc(p?p.cn:'')}</td><td class="hint">${p?p.pos:''}</td></tr>`; }).join('')||'<tr><td class="hint">还没开始</td></tr>'}</tbody></table></div></div>`;
     next = D.done? '进入续约' : '跳过剩下的选秀（系统替我选）';
   }
@@ -3037,20 +3059,25 @@ function pkFromKey(k){ const [y,r,o]=k.split('-').map(Number); return {year:y,ro
 function activeContract(p, yr){ return !!(p && p.contract && p.contract[1]>yr); }
 function tradeSal(ps, yr){ return ps.reduce((s,p)=>s+(p.contract&&p.contract[1]>yr&&p.contract[2]!=='tw'?p.contract[0]:0),0); }
 // A 送出 outA（球员）outAk（选秀权），B 送出 outB、outBk。返回违反规则的说明
-function checkTrade(ai, outA, bi, outB, yr, labels){
-  const C=CFG(yr), iss=[]; labels=labels||[TEAMS[ai].nick, TEAMS[bi].nick];
+function checkTrade(ai, outA, bi, outB, yr, labels, skipSalary=false){
+  const iss=[]; labels=labels||[TEAMS[ai].nick, TEAMS[bi].nick];
   [[ai,outA,outB,labels[0]],[bi,outB,outA,labels[1]]].forEach(([ti,out,inn,lb])=>{
     const t=TEAMS[ti], pay=payroll(t,yr)-tradeSal(out,yr)+tradeSal(inn,yr), sIn=tradeSal(inn,yr), sOut=tradeSal(out,yr);
     const r=matchRule(pay, sOut, out.length, yr);
-    if(r.max!=null && sIn>r.max) iss.push(`${lb}：${matchTxt(r)}，现在是 ${money(sIn)}`);
-    if(r.noAgg && out.filter(p=>p.contract&&p.contract[2]!=='tw').length>=2 && sIn>Math.max(0,...out.map(p=>p.contract?p.contract[0]:0))) iss.push(`${lb}交易后超过第二土豪线，不能合并两人以上的工资换人`);
+    if(!skipSalary){
+      if(r.max!=null && sIn>r.max) iss.push(`${lb}：${matchTxt(r)}，现在是 ${money(sIn)}`);
+      if(r.noAgg && out.filter(p=>p.contract&&p.contract[2]!=='tw').length>=2 && sIn>Math.max(0,...out.map(p=>p.contract?p.contract[0]:0))) iss.push(`${lb}交易后超过第二土豪线，不能合并两人以上的工资换人`);
+    }
     out.forEach(p=>{ if(!t.players.includes(p) || !activeContract(p,yr)) iss.push(`${lb}的交易球员已离队或合同已到期`); if(frozen(p)) iss.push(`${p.cn} 刚签约，要到 ${numDateTxt(p.frz)} 才能交易`); });
     const std=ps=>ps.filter(p=>activeContract(p,yr)&&p.contract[2]!=='tw').length;
+    const twoWay=ps=>ps.filter(p=>activeContract(p,yr)&&p.contract[2]==='tw').length;
     const delta=std(inn)-std(out), n=rosterCount(t,yr)+delta, lo=W.off?8:13, hi=W.off?17:15;
     // 选秀权及人数不变的交易不应被已有的阵容人数问题拦截。
     if(delta!==0){
       if(n>hi) iss.push(`${lb}交易后有 ${n} 人，超过 ${hi} 人上限`); if(n<lo) iss.push(`${lb}交易后只剩 ${n} 人，少于 ${lo} 人`);
     }
+    const addedTwoWay=twoWay(inn)-twoWay(out);
+    if(addedTwoWay>0 && twoWay(t.players)+addedTwoWay>3) iss.push(`${lb}交易后将超过 3 份双向合同`);
   });
   return iss;
 }
@@ -3062,16 +3089,21 @@ function checkTradeAssets(ai, ps, ks, yr){
   return iss;
 }
 function pkgValue(ti, players, picks, yr, mode){ mode=mode||teamMode(ti); return players.reduce((s,p)=>s+playerValue(p,mode,yr),0)+picks.reduce((s,k)=>s+pickValue(k,mode),0); }
-function execTrade(ai, outA, outAk, bi, outB, outBk, protA){
+function execTrade(ai, outA, outAk, bi, outB, outBk, protA, skipSalary=false){
   const A=TEAMS[ai], B=TEAMS[bi], yr=ctxYear();
-  const issues=[...checkTrade(ai,outA,bi,outB,yr), ...checkTradeAssets(ai,outA,outAk,yr), ...checkTradeAssets(bi,outB,outBk,yr)];
+  const issues=[...checkTrade(ai,outA,bi,outB,yr,undefined,skipSalary), ...checkTradeAssets(ai,outA,outAk,yr), ...checkTradeAssets(bi,outB,outBk,yr)];
   if(issues.length) throw new Error(issues[0]);
   outA.forEach(p=>{ A.players=A.players.filter(x=>x!==p); B.players.push(p); });
   outB.forEach(p=>{ B.players=B.players.filter(x=>x!==p); A.players.push(p); });
   [...outA,...outB].forEach(p=>{ setMor(p,mor(p)-8); delete p.treq; }); chemHit(ai,outB.length); chemHit(bi,outA.length);
   outAk.forEach(pk=>{ W.picks[pk.year][pk.round][pk.orig]=bi; const n=protA&&protA[pkKey(pk)]; if(n && pk.orig===ai && pk.round===1){ W.prot=W.prot||{}; W.prot[pkKey(pk)]=n; } });
   outBk.forEach(pk=>{ W.picks[pk.year][pk.round][pk.orig]=ai; });
-  if(W.off && W.off.draft && !W.off.draft.done) W.off.draft.order.slice(W.off.draft.idx).forEach(o=>{ if(W.picks[W.off.draft.year]) o.owner=W.picks[W.off.draft.year][o.round][o.orig]; });
+  if(W.off){
+    const draft=W.off.draft, lottery=W.off.lottery;
+    const order=draft ? draft.order.slice(draft.idx) : lottery?.order;
+    const picks=W.picks[(draft||lottery)?.year];
+    if(picks && order) order.forEach(o=>{ o.owner=picks[o.round][o.orig]; });
+  }
   const desc=(ps,ks)=>[...ps.map(p=>p.cn), ...ks.map(pickLabel)].join('、')||'无';
   const txt=`${A.nick} 得到 ${desc(outB,outBk)}；${B.nick} 得到 ${desc(outA,outAk)}`;
   addNews('交易', txt);
@@ -3089,19 +3121,32 @@ function evalTrade(){
   const best=pt.players.slice().sort((a,b)=>b.ovr-a.ovr)[0];
   const need = lose*(best && TR.theirP.has(best.id)? 1.3 : 1.05) + 20;
   const ratio = need>0? gain/need : (gain>0?9:0);
-  const issues=[...checkTrade(me.i,outP,pt.i,inP,yr,['你方','对方']), ...checkTradeAssets(me.i,outP,outK,yr), ...checkTradeAssets(pt.i,inP,inK,yr)];
-  if(outP.length!==TR.mineP.size || inP.length!==TR.theirP.size) issues.push('交易球员已离队，请重新选择');
-  if(!outP.length && !outK.length && !inP.length && !inK.length) issues.push('还没选任何人');
+  const assetIssues=[...checkTradeAssets(me.i,outP,outK,yr), ...checkTradeAssets(pt.i,inP,inK,yr)];
+  if(outP.length!==TR.mineP.size || inP.length!==TR.theirP.size) assetIssues.push('交易球员已离队，请重新选择');
+  if(!outP.length && !outK.length && !inP.length && !inK.length) assetIssues.push('还没选任何人');
+  const labels=['你方','对方'];
+  const issues=[...checkTrade(me.i,outP,pt.i,inP,yr,labels), ...assetIssues];
+  const blocking=[...checkTrade(me.i,outP,pt.i,inP,yr,labels,true), ...assetIssues];
   const match=matchRule(payroll(me,yr)-tradeSal(outP,yr)+tradeSal(inP,yr), tradeSal(outP,yr), outP.length, yr);
-  return {ratio, issues, match, myPay:payroll(me,yr)-tradeSal(outP,yr)+tradeSal(inP,yr), ptPay:payroll(pt,yr)-tradeSal(inP,yr)+tradeSal(outP,yr), salOut:tradeSal(outP,yr), salIn:tradeSal(inP,yr), mode};
+  const std=ps=>ps.filter(p=>activeContract(p,yr) && p.contract[2]!=='tw').length;
+  const delta=std(inP)-std(outP);
+  return {ratio, issues, blocking, match, myPay:payroll(me,yr)-tradeSal(outP,yr)+tradeSal(inP,yr),
+    ptPay:payroll(pt,yr)-tradeSal(inP,yr)+tradeSal(outP,yr), salOut:tradeSal(outP,yr), salIn:tradeSal(inP,yr),
+    myCount:rosterCount(me,yr)+delta, ptCount:rosterCount(pt,yr)-delta, mode, outP, inP, outK, inK};
 }
-function doTrade(){
-  const ev=evalTrade(), op=tradeOpen(); if(!op.ok || ev.issues.length || ev.ratio<1) throw new Error(op.why || ev.issues[0] || '对方不接受这份交易');
+function doTrade(approval){
+  const special=approval?.force===true;
+  if(special && (!cheatsEnabled() || !cheatBusy)) throw new Error('请从作弊台提交交易特批');
+  const ev=evalTrade(), op=tradeOpen(), skipSalary=special && approval.salary===true;
+  const issues=skipSalary?ev.blocking:ev.issues;
+  if(!op.ok || issues.length || (!special && ev.ratio<1)) throw new Error(op.why || issues[0] || '对方不接受这份交易');
   const me=myTeam(), pt=TEAMS[TR.partner];
-  const txt=execTrade(me.i,[...TR.mineP].map(id=>PBYID[id]),[...TR.mineK].map(pkFromKey), pt.i,[...TR.theirP].map(id=>PBYID[id]),[...TR.theirK].map(pkFromKey), TR.prot);
+  const txt=execTrade(me.i,ev.outP,ev.outK,pt.i,ev.inP,ev.inK,TR.prot,skipSalary);
   if(G.season) G.season.inbox.push({d:G.season.day, t:`和${pt.cn}完成交易`, b:txt});
   TR.mineP.clear(); TR.theirP.clear(); TR.mineK.clear(); TR.theirK.clear(); TR.prot={};
-  save(); return txt;
+  if(special) applyLife();
+  else save();
+  return txt;
 }
 function vTrade(v){
   const op=tradeOpen();
@@ -3120,12 +3165,15 @@ function vTrade(v){
      <p class="hint" style="margin-top:6px">送出薪资 ${money(ev.salOut)} · 换来薪资 ${money(ev.salIn)} · 交易后你的工资 ${money(ev.myPay)}（工资帽 ${money(CFG(yr).cap)}，第一土豪线 ${money(CFG(yr).apron1)}，第二土豪线 ${money(CFG(yr).apron2)}）</p>
      <p class="hint">${esc(matchTxt(ev.match))}</p>
      ${ev.issues.map(s=>`<div class="bad">${esc(s)}</div>`).join('')}`}
-     <div style="margin-top:8px"><button class="pri" id="tgo" ${ev.issues.length||ev.ratio<1?'disabled':''}>提出交易</button> <button id="tclr">清空</button></div></div>
+     <div class="ctrl"><button class="pri" id="tgo" ${ev.issues.length||ev.ratio<1?'disabled':''}>提出交易</button>
+     ${cheatsEnabled()?`<button id="cheat-trade" ${empty||ev.blocking.length||!cheatActionAvailable()?'disabled':''}>特批本笔交易</button>`:''}
+     <button id="tclr">清空</button></div></div>
    <div class="row"><div class="col" style="min-width:320px">${side(me,TR.mineP,TR.mineK,'m')}</div><div class="col" style="min-width:320px">${side(pt,TR.theirP,TR.theirK,'t')}</div></div>`;
   const q=s=>v.querySelector(s);
   q('#tp').onchange=e=>{ TR.partner=+e.target.value; TR.theirP.clear(); TR.theirK.clear(); vTrade(v); };
   q('#tclr').onclick=()=>{ TR.mineP.clear(); TR.theirP.clear(); TR.mineK.clear(); TR.theirK.clear(); vTrade(v); };
   q('#tgo').onclick=()=>{ try{ doTrade(); toast('交易完成'); }catch(e){ toast(e.message); } render(); };
+  if(q('#cheat-trade')) q('#cheat-trade').onclick=showCheatTrade;
   const bind=(sel,set,num)=>v.querySelectorAll(sel).forEach(cb=>cb.onchange=()=>{ const k=num?+cb.getAttribute(sel.slice(1,-1)):cb.getAttribute(sel.slice(1,-1)); if(cb.checked) set.add(k); else set.delete(k); vTrade(v); });
   v.querySelectorAll('[data-prot]').forEach(sl=>sl.onchange=()=>{ const n=+sl.value; if(n) TR.prot[sl.dataset.prot]=n; else delete TR.prot[sl.dataset.prot]; vTrade(v); });
   bind('[data-mp]',TR.mineP,true); bind('[data-tp]',TR.theirP,true); bind('[data-mk]',TR.mineK,false); bind('[data-tk]',TR.theirK,false);
@@ -3363,7 +3411,12 @@ function isRepeater(ti, year){ const h=((W.taxHist||{})[ti])||[]; return h.filte
 function teamTax(ti, year){ year=year||W.year; return taxOf(payroll(TEAMS[ti],year), year, isRepeater(ti,year)); }
 function mktF(ti){ return clamp(Math.sqrt(TEAMS[ti].pop)/Math.sqrt(19),0,1); }
 // 老板能接受的总支出（工资 + 奢侈税）
-function ownerLimit(ti, year){ year=year||W.year; return Math.round(CFG(year).tax + (1500+6000*mktF(ti))*capMul(year)); }
+function baseOwnerLimit(ti, year){ return Math.round(CFG(year).tax + (1500+6000*mktF(ti))*capMul(year)); }
+function ownerLimit(ti, year){
+  year=year||W.year;
+  const limit=G.cheats?.budgets?.[ti]?.[year];
+  return Number.isSafeInteger(limit) && limit>0 ? limit : baseOwnerLimit(ti,year);
+}
 function spendOf(ti, year){ year=year||W.year; const pay=payroll(TEAMS[ti],year); return pay+taxOf(pay,year,isRepeater(ti,year)); }
 function spendAfter(ti, addPay, year){ const pay=payroll(TEAMS[ti],year)+addPay; return pay+taxOf(pay,year,isRepeater(ti,year)); }
 // 不超过上限，或者不比现在花得更多（已经超了的球队可以减支，但不能再加）
@@ -3425,7 +3478,7 @@ function vFin(v){
     <div class="card"><h3>老板的底线 <span class="r">${year}-${String((year+1)%100).padStart(2,'0')} 赛季工资</span></h3>
       <p>工资 <b>${money(pay)}</b> + 奢侈税 <b>${money(tax)}</b> = 总支出 <b class="${sp>lim?'bad':''}">${money(sp)}</b></p>
       <div class="fitbar" style="margin:8px 0">${bar(sp,lim*1.2,sp>lim?'#e5484d':sp>lim*.93?'#f0a020':'#00c276')}<b>${Math.round(sp/lim*100)}%</b></div>
-      <p class="hint">老板能接受 ${money(lim)}，${sp>lim?`已经超出 <b class="bad">${money(sp-lim)}</b>。赛季结束时按超出比例扣信任度，每超 1% 扣 1 点，最多 15 点。接手的第一个赛季不追究，合同是前任签的。`:`还有 ${money(lim-sp)} 的余量。`}大城市的老板更舍得花钱。</p></div>
+      <p class="hint">老板能接受 ${money(lim)}${lim!==baseOwnerLimit(t.i,year)?'（作弊台已调整）':''}，${sp>lim?`已经超出 <b class="bad">${money(sp-lim)}</b>。赛季结束时按超出比例扣信任度，每超 1% 扣 1 点，最多 15 点。接手的第一个赛季不追究，合同是前任签的。`:`还有 ${money(lim-sp)} 的余量。`}</p></div>
    </div>
    <div class="col" style="min-width:280px">
     <div class="card tw"><h3>奢侈税 <span class="r">税线 ${money(C.tax)}</span></h3><table><thead><tr><th>超出税线</th><th class="n">税率</th><th class="n">重复纳税</th></tr></thead><tbody>
@@ -3532,6 +3585,9 @@ function perceivedBy(p, ti){
   const r=srand(p.id*1009+ti*31), z=()=>(r()+r()+r()-1.5)*2, [ho,hp]=SCOUT_HW[scoutLevel(ti)-1];
   return (p.ovr+z()*ho*.6)*.5+(p.pot+z()*hp*.6)*.5;
 }
+function scoutDisplayValue(p){
+  return scoutRevealed() ? (p.ovr+p.pot)/2 : perceivedBy(p,G.team);
+}
 function ensureDraftClass(year){
   if(W.dcYear===year && (W.draftClass||[]).length) return;
   W.draftClass=genDraftClass(year); W.dcYear=year; W.scoutFocus=[]; refreshScout();
@@ -3582,14 +3638,19 @@ function vScout(v){
   if(!cls.length){ v.innerHTML=`<h1>球探</h1><div class="card"><p>下一届新秀名单在新赛季开幕时出炉。</p></div>`; return; }
   refreshScout();
   const F=new Set(W.scoutFocus||[]), lim=focusLimit(), L=scoutLevel(G.team), yr=W.dcYear;
-  const list=cls.slice().sort((a,b)=>perceivedBy(b,G.team)-perceivedBy(a,G.team));
+  const reveal=scoutRevealed();
+  const list=cls.slice().sort((a,b)=>scoutDisplayValue(b)-scoutDisplayValue(a));
   const mine=picksOwnedBy(G.team).filter(k=>k.year===yr);
   v.innerHTML=`<h1>球探</h1><div class="sub">${yr} 年选秀 · 球探等级 ${L} · 重点考察 ${F.size} / ${lim} 人</div>
-   <div class="card"><h3>球探的判断：${esc(classTxt())}</h3><p>名单按你的球探看到的价值排，这就是你这边的模拟选秀顺位。总评和潜力是区间，球探等级越高越窄。重点考察过的人区间收窄到 ±1 / ±2，还能看到他的敬业程度和伤病风险。考察名额用掉就收不回来。</p>
+    <div class="card"><h3>球探的判断：${esc(classTxt())}</h3><p>${reveal?'正在显示真实总评、潜力和发展类型。其他球队仍按各自的球探报告选人。':'名单按你的球探看到的价值排序。总评和潜力是区间，球探等级越高越窄。重点考察过的人区间收窄到 ±1 / ±2，还能看到他的敬业程度和伤病风险。考察名额用掉就收不回来。'}</p>
+    ${cheatsEnabled()?`<div class="ctrl"><button id="scout-reveal" ${cheatActionAvailable()?'':'disabled'}>${reveal?'恢复球探估计':'显示真实数据'}</button></div>`:''}
     <p class="hint" style="margin-top:4px">你持有的 ${yr} 年签：${mine.length?mine.map(k=>esc(pickLabel(k))).join('、'):'无'}。别的球队有自己的球探，看法和你不一样。</p></div>
-   <div class="card tw"><table><thead><tr><th class="n">顺位</th><th>新秀</th><th>位置</th><th>原型</th><th class="n">年龄</th><th class="n">身高</th><th class="n">总评</th><th class="n">潜力</th><th>上季数据</th><th>考察</th><th></th></tr></thead><tbody>
-    ${list.map((p,i)=>`<tr style="${F.has(p.id)?'background:#2a1c10':''}"><td class="n">${i+1}</td><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b> <span class="hint">${esc(p.nat)}</span></td><td>${p.pos}</td><td>${esc(p.arch||'')}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td class="n">${rangeTxt(p.scout.o)}</td><td class="n">${rangeTxt(p.scout.p)}</td><td class="hint">${esc(preTxt(p))}</td><td class="hint">${F.has(p.id)?`敬业${profCn(p.prof)} · 伤病风险${durCn(p.dur)}`:''}</td>
-      <td>${F.has(p.id)?'<span class="hint">已考察</span>':F.size<lim?`<button class="sm" data-sf="${p.id}">重点考察</button>`:''}</td></tr>`).join('')}</tbody></table></div>`;
+   <div class="card tw"><table><thead><tr><th class="n">顺位</th><th>新秀</th><th>位置</th><th>原型</th><th class="n">年龄</th><th class="n">身高</th><th class="n">总评</th><th class="n">潜力</th><th>上季数据</th>${reveal?'<th>发展类型</th>':'<th>考察</th><th></th>'}</tr></thead><tbody>
+    ${list.map((p,i)=>`<tr style="${F.has(p.id)?'background:#2a1c10':''}"><td class="n">${i+1}</td><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b> <span class="hint">${esc(p.nat)}</span></td><td>${p.pos}</td><td>${esc(p.arch||'')}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td class="n">${reveal?p.ovr:rangeTxt(p.scout.o)}</td><td class="n">${reveal?p.pot:rangeTxt(p.scout.p)}</td><td class="hint">${esc(preTxt(p))}</td>
+      ${reveal?`<td>${esc(DEV_CN[p.dev]||'未知')}</td>`:`<td class="hint">${F.has(p.id)?`敬业${profCn(p.prof)} · 伤病风险${durCn(p.dur)}`:''}</td>
+      <td>${F.has(p.id)?'<span class="hint">已考察</span>':F.size<lim?`<button class="sm" data-sf="${p.id}">重点考察</button>`:''}</td>`}</tr>`).join('')}</tbody></table></div>`;
+  const revealButton=v.querySelector('#scout-reveal');
+  if(revealButton) bindCheatPreference(revealButton,{reveal:!reveal});
   v.querySelectorAll('[data-sf]').forEach(b=>b.onclick=()=>{ W.scoutFocus=W.scoutFocus||[]; if(W.scoutFocus.length>=lim) return; W.scoutFocus.push(+b.dataset.sf); refreshScout(); save(); vScout(v); });
   v.querySelectorAll('td[data-id]').forEach(el=>el.onclick=()=>showPlayer(PBYID[el.dataset.id]));
 }
@@ -4026,22 +4087,61 @@ const SLOT_N=3;
 const IDB={db:null};
 function idbOpen(){ return new Promise((res,rej)=>{ if(IDB.db) return res(IDB.db); if(!window.indexedDB) return rej(new Error('no idb'));
   const r=indexedDB.open('bbm_saves',1); r.onupgradeneeded=()=>r.result.createObjectStore('slots'); r.onsuccess=()=>{ IDB.db=r.result; res(IDB.db); }; r.onerror=()=>rej(r.error); }); }
-async function slotPut(k,v){ try{ const db=await idbOpen(); await new Promise((res,rej)=>{ const tx=db.transaction('slots','readwrite'); tx.objectStore('slots').put(v,k); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); }
+async function slotPut(k,v){ try{ const db=await idbOpen(); await new Promise((res,rej)=>{ const tx=db.transaction('slots','readwrite'); tx.objectStore('slots').put(v,k); tx.oncomplete=res; tx.onerror=tx.onabort=()=>rej(tx.error); }); }
   catch(e){ localStorage.setItem('bbm_slot_'+k, JSON.stringify(v)); } }
-async function slotGet(k){ try{ const db=await idbOpen(); return await new Promise((res,rej)=>{ const q=db.transaction('slots').objectStore('slots').get(k); q.onsuccess=()=>res(q.result||null); q.onerror=()=>rej(q.error); }); }
-  catch(e){ try{ return JSON.parse(localStorage.getItem('bbm_slot_'+k)||'null'); }catch(_){ return null; } } }
-async function slotDel(k){ try{ const db=await idbOpen(); await new Promise(res=>{ const tx=db.transaction('slots','readwrite'); tx.objectStore('slots').delete(k); tx.oncomplete=res; tx.onerror=res; }); }catch(e){} try{ localStorage.removeItem('bbm_slot_'+k); }catch(e){} }
+async function slotGet(k){
+  try{
+    const db=await idbOpen();
+    const slot=await new Promise((res,rej)=>{ const q=db.transaction('slots').objectStore('slots').get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); });
+    if(slot) return slot;
+  }catch(e){}
+  try{ return JSON.parse(localStorage.getItem('bbm_slot_'+k)||'null'); }catch(e){ return null; }
+}
+async function slotDel(k){ try{ const db=await idbOpen(); await new Promise(res=>{ const tx=db.transaction('slots','readwrite'); tx.objectStore('slots').delete(k); tx.oncomplete=res; tx.onerror=tx.onabort=res; }); }catch(e){} try{ localStorage.removeItem('bbm_slot_'+k); }catch(e){} }
 
-function snapshot(){
-  save(); saveSeason();
-  const keys={}; SAVE_KEYS.forEach(k=>{ const v=localStorage.getItem(k); if(v!=null) keys[k]=v; });
+function currentSaveKeys(){
+  return {
+    [SAVE_KEY]:JSON.stringify(gameSaveData()),
+    [WORLD_KEY]:JSON.stringify(worldSaveData()),
+    [SEASON_KEY]:JSON.stringify(G.season)
+  };
+}
+function snapshot(keys){
+  if(!keys){
+    save(); saveSeason();
+    keys={};
+    for(const key of SAVE_KEYS){
+      const value=localStorage.getItem(key);
+      if(value!==null) keys[key]=value;
+    }
+  }
   const S=G.season, t=G.team!=null?TEAMS[G.team]:null, r=S&&t? standings()[G.team] : null;
   return {v:1, time:Date.now(), meta:{team:t?t.cn:'', ti:G.team, year:W.off?W.off.year:(S?S.year:W.year), date:W.off?'休赛期 · '+OFF_STEPS[W.off.step]:(S?dateTxt(Math.min(S.day,REG_DAYS+80))+' · '+phaseTxt():''), rec:r?`${r.w}-${r.l}`:''}, keys};
 }
+function replaceSaveKeys(keys){
+  const changes=SAVE_KEYS.map(key=>{
+    const value=keys[key]==null ? null : String(keys[key]);
+    const old=localStorage.getItem(key);
+    return {key,old,value,delta:(value?.length??0)-(old?.length??0)};
+  }).filter(change=>change.value!==change.old);
+  // 先释放空间，再写入增长的部分，兼顾接近配额的旧档。
+  changes.sort((a,b)=>a.delta-b.delta);
+  const changed=[];
+  try{
+    for(const {key,old,value} of changes){
+      if(value===null) localStorage.removeItem(key);
+      else localStorage.setItem(key,value);
+      changed.push([key,old]);
+    }
+  }catch(error){
+    for(const [k] of changed) localStorage.removeItem(k);
+    for(const [k,old] of changed) if(old!==null) localStorage.setItem(k,old);
+    throw error;
+  }
+}
 function restore(snap){
   if(!snap || !snap.keys || !snap.keys[WORLD_KEY]) throw new Error('bad');
-  SAVE_KEYS.forEach(k=>localStorage.removeItem(k));
-  Object.entries(snap.keys).forEach(([k,v])=>{ if(SAVE_KEYS.includes(k)) localStorage.setItem(k,v); });
+  replaceSaveKeys(snap.keys);
   location.reload();
 }
 function metaTxt(s){ if(!s) return '<span class="hint">空</span>'; const m=s.meta||{}, d=new Date(s.time);
@@ -4090,10 +4190,14 @@ function bindSave(v, rerender){
 }
 async function vSave(v){
   const s=G.season, t=myTeam();
-  v.innerHTML=`<h1>存档</h1><div class="sub">每一步操作都会自动保存，关掉再打开会接着玩。想留几个进度来回切，用下面的存档位。</div><div id="savebody"><div class="hint">读取中…</div></div>`;
+  v.innerHTML=`<h1>存档</h1><div class="sub">每一步操作都会自动保存，关掉再打开会接着玩。想留几个进度来回切，用下面的存档位。</div>
+    <div class="card"><h3>作弊台 <span class="r">${cheatsEnabled()?'当前存档已开启':'当前存档已关闭'}</span></h3><button id="opencheats">进入作弊台</button></div>
+    <div id="savebody"><div class="hint">读取中…</div></div>`;
+  const body=v.querySelector('#savebody');
+  v.querySelector('#opencheats').onclick=()=>{ G.view='cheats'; render(); };
   const html=await slotsHTML(true);
-  if(G.view!=='save') return;
-  v.querySelector('#savebody').innerHTML=`${html}
+  if(!body.isConnected) return;
+  body.innerHTML=`${html}
     <div class="card"><h3>新开一局</h3><p class="hint" style="margin-bottom:8px">放弃当前进度，回到 2026-27 赛季季前重新选队。手动存档位里的存档不受影响。</p><button class="sm" id="newgame" style="border-color:var(--bad);color:var(--bad)">新开一局</button></div>
     ${installCardHTML()}${contactHTML()}<p class="hint" style="margin-top:10px;font-size:11px;opacity:.7">${screenDiag()}</p>`;
   bindSave(v, ()=>vSave(v));
@@ -4111,6 +4215,308 @@ ICON.save='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-wid
   ['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,e=>e.preventDefault(),{passive:false}));
   document.addEventListener('touchmove',e=>{ if(e.touches && e.touches.length>1) e.preventDefault(); },{passive:false});
 })();
+
+// ================= 按存档启用的作弊台 =================
+let cheatBusy=false;
+const CHEAT_BUDGET_MAX=1000000;
+
+function cheatActionAvailable(){
+  return G.team!=null && !!G.season && !LIVE && !BUSY && !cheatBusy;
+}
+function setCheatPreference(patch){
+  if(!cheatActionAvailable()) throw new Error('请在比赛或模拟结束后再操作');
+  const cheats={...G.cheats,...patch};
+  localStorage.setItem(SAVE_KEY,JSON.stringify({...gameSaveData(),cheats}));
+  G.cheats=cheats;
+}
+function readCheatBackup(snap){
+  try{
+    const game=JSON.parse(snap.keys[SAVE_KEY]);
+    const world=JSON.parse(snap.keys[WORLD_KEY]);
+    const season=JSON.parse(snap.keys[SEASON_KEY]);
+    if(snap.v===1 && Number.isInteger(game.team) && TEAMS[game.team] &&
+       world.W?.year===season.year && world.W.picks && world.W.dead &&
+       Array.isArray(world.players) && world.players.some(p=>p.team===game.team) &&
+       Array.isArray(season.games) && season.games.length>1000 &&
+       Number.isFinite(season.board?.conf) && season.cond && season.inj) return snap;
+  }catch(error){}
+  return null;
+}
+async function runCheatEdit(edit,validate){
+  if(!cheatsEnabled() || !cheatActionAvailable()) throw new Error('请开启作弊台，并在比赛或模拟结束后再操作');
+  const before=snapshot(currentSaveKeys());
+  const saved=SAVE_KEYS.map(k=>localStorage.getItem(k));
+  const view=G.view;
+  let newSlot=null, editing=false;
+  cheatBusy=true;
+  try{
+    let id=G.cheats.backup;
+    if(!id || !readCheatBackup(await slotGet(id))){
+      id='cheat-'+(globalThis.crypto?.randomUUID?.() || Date.now()+'-'+Math.random().toString(36).slice(2));
+      newSlot=id;
+      await slotPut(id,before);
+      const backup=readCheatBackup(await slotGet(id));
+      if(!backup || SAVE_KEYS.some(key=>backup.keys[key]!==before.keys[key])){
+        throw new Error('无法验证作弊前备份');
+      }
+    }
+    const current=currentSaveKeys();
+    if(G.view!==view || LIVE || BUSY ||
+       SAVE_KEYS.some((key,i)=>current[key]!==before.keys[key] || localStorage.getItem(key)!==saved[i])){
+      throw new Error('进度已经变化，请重新操作');
+    }
+    validate?.();
+    editing=true;
+    edit();
+    G.cheats.backup=id;
+    replaceSaveKeys(currentSaveKeys());
+  }catch(error){
+    if(newSlot) await slotDel(newSlot);
+    if(editing){
+      // 重新读入提交前的自动存档，避免留下只改了一半的内存状态。
+      alert('修改未能保存，正在重新读取原进度。');
+      location.reload();
+    }
+    throw error;
+  }finally{ cheatBusy=false; }
+}
+async function performCheatEdit(button,edit,success,validate){
+  if(button.disabled) return;
+  button.disabled=true;
+  try{
+    await runCheatEdit(edit,validate);
+    closeModal();
+    render();
+    toast(success);
+  }catch(error){
+    toast(error.name==='QuotaExceededError'?'浏览器存储空间不足，本次修改未应用':error.message || '无法保存修改或备份');
+  }
+  finally{ button.disabled=false; }
+}
+function bindCheatPreference(button,patch){
+  button.onclick=()=>{
+    try{ setCheatPreference(patch); render(); }
+    catch(error){ toast(error.message || '无法保存作弊台设置'); }
+  };
+}
+function cheatNumber(input){
+  return input.checkValidity() ? input.valueAsNumber : NaN;
+}
+
+function vCheats(v){
+  const enabled=cheatsEnabled(), available=cheatActionAvailable();
+  const S=G.season, team=myTeam(), year=ctxYear(), limit=ownerLimit(team.i,year);
+  const base=baseOwnerLimit(team.i,year), budgetOpen=W.off || S.phase!=='done';
+  const injured=team.players.filter(p=>S.inj[p.id]).length;
+  const tired=team.players.filter(p=>(S.cond[p.id]??100)<100).length;
+  const average=team.players.length ? Math.round(team.players.reduce((sum,p)=>sum+mor(p),0)/team.players.length) : 0;
+  const chem=Math.round(W.tm?.[team.i]?.chem ?? 50);
+  const trustNeeded=S.fired || S.board.conf<100 || (S.phase==='done' && G.board?.conf<100);
+  const disabled=available?'':' disabled';
+  v.innerHTML=`
+    <h1>作弊台</h1>
+    <div class="sub">${esc(team.cn)} · 仅对当前存档开启</div>
+    <div class="card">
+      <h3>当前存档${enabled?'已开启':'已关闭'}</h3>
+      <p class="hint">${available?'首次修改前会自动备份。关闭后，已完成的修改仍会保留。':'请在比赛或模拟结束后再操作。'}</p>
+      <div class="ctrl"><button id="cheat-toggle" class="${enabled?'':'pri'}"${disabled}>${enabled?'关闭作弊台':'开启作弊台'}</button><button id="cheat-back">返回存档</button></div>
+    </div>
+    ${enabled?`
+      <div class="row cheat-grid">
+        <section class="col card">
+          <h3>交易特批</h3>
+          <p class="hint">在交易页选好筹码后，可让对方接受这笔交易，并单独放宽薪资匹配。</p>
+          <div class="ctrl"><button data-cheat-view="trade">前往交易</button></div>
+        </section>
+        <section class="col card">
+          <h3>球员编辑</h3>
+          <div class="ctrl">
+            <label>本队球员 <select id="cheat-player">${team.players.slice().sort((a,b)=>b.ovr-a.ovr).map(p=>`<option value="${p.id}">${esc(p.cn)} · ${p.ovr}</option>`).join('')}</select></label>
+            <button id="cheat-edit" ${team.players.length?disabled:'disabled'}>编辑球员</button>
+          </div>
+        </section>
+        <section class="col card">
+          <h3>球队救急</h3>
+          <p class="hint">伤停 ${injured} 人 · 体能未满 ${tired} 人</p>
+          <div class="ctrl"><button id="cheat-heal"${injured||tired?disabled:' disabled'}>清除伤病并恢复体能</button></div>
+          <div class="cheat-actions">
+            <div><span>平均士气 <b>${average}</b></span><button id="cheat-morale" class="sm"${team.players.some(p=>mor(p)<100||p.treq)?disabled:' disabled'}>全队士气升至 100</button></div>
+            <div><span>化学反应 <b>${chem}</b></span><button id="cheat-chem" class="sm"${(W.tm?.[team.i]?.chem??50)<100?disabled:' disabled'}>化学反应升至 100</button></div>
+            <div><span>老板信任 <b>${S.board.conf}</b></span><button id="cheat-trust" class="sm"${trustNeeded?disabled:' disabled'}>${S.fired?'恢复职位并提高信任':'老板信任升至 100'}</button></div>
+          </div>
+          ${budgetOpen?`<form id="cheat-budget" class="ctrl">
+            <label>${year}–${String((year+1)%100).padStart(2,'0')} 赛季老板上限 <input name="limit" type="number" inputmode="numeric" min="${base}" max="${CHEAT_BUDGET_MAX}" value="${limit}" required> 万</label>
+            <button type="submit"${disabled}>调整上限</button>
+          </form><p class="hint">默认 ${money(base)}。工资帽、奢侈税和交易薪资规则照常计算。</p>`:'<p class="hint">本季财政已结算。进入休赛期可调整下季上限。</p>'}
+        </section>
+        <section class="col card">
+          <h3>新秀透视</h3>
+          <p class="hint">在球探页和选秀名单显示真实总评、潜力和发展类型。</p>
+          <div class="ctrl"><button id="cheat-reveal"${disabled}>${scoutRevealed()?'关闭新秀透视':'开启新秀透视'}</button><button data-cheat-view="scout">前往球探</button></div>
+        </section>
+      </div>`:''}
+    <section class="card"><h3>修改前备份</h3><div id="cheat-backup" class="hint">${G.cheats?.backup?'读取备份…':'首次修改后可在这里恢复。'}</div></section>`;
+  const q=s=>v.querySelector(s);
+  const go=view=>{ G.view=view; render(); };
+  q('#cheat-back').onclick=()=>go('save');
+  bindCheatPreference(q('#cheat-toggle'),{enabled:!enabled});
+  v.querySelectorAll('[data-cheat-view]').forEach(b=>b.onclick=()=>go(b.dataset.cheatView));
+
+  if(enabled){
+    bindCheatPreference(q('#cheat-reveal'),{reveal:!scoutRevealed()});
+    q('#cheat-edit').onclick=()=>showCheatPlayer(+q('#cheat-player').value);
+    q('#cheat-heal').onclick=e=>performCheatEdit(e.currentTarget,()=>{
+      for(const p of team.players){
+        delete S.inj[p.id];
+        if(S.cond[p.id]!=null) S.cond[p.id]=100;
+      }
+      applyPlayerState();
+      if(G.rot?.starters.length<5) fixRot();
+    },'全队伤病已清除，体能已恢复');
+    q('#cheat-morale').onclick=e=>performCheatEdit(e.currentTarget,()=>{
+      const renewals=W.off?.asks ? new Set(expiringOf(team.i)) : null;
+      for(const p of team.players){
+        setMor(p,100);
+        delete p.treq;
+        if(S.low) delete S.low[p.id];
+        if(renewals?.has(p)) W.off.asks[p.id]=makeAsk(p,team.i);
+      }
+      applyLife();
+    },'全队士气已升至 100');
+    q('#cheat-chem').onclick=e=>performCheatEdit(e.currentTarget,()=>{ tmeta(team.i).chem=100; },'化学反应已升至 100');
+    q('#cheat-trust').onclick=e=>performCheatEdit(e.currentTarget,()=>{
+      S.board.conf=100;
+      if(S.phase==='done') G.board={...G.board,conf:100};
+      if(S.fired){
+        S.fired=false;
+        S.inbox.push({d:S.day,t:'老板恢复了你的职位',b:'你可以继续管理球队。老板信任度已升至 100。'});
+      }
+    },'老板信任已升至 100');
+    const budget=q('#cheat-budget');
+    if(budget) budget.onsubmit=e=>{
+      e.preventDefault();
+      const amount=cheatNumber(budget.elements.limit);
+      if(!Number.isSafeInteger(amount) || amount<base || amount>CHEAT_BUDGET_MAX) return toast('请输入有效的老板上限');
+      if(amount===limit) return toast('老板上限没有变化');
+      performCheatEdit(budget.querySelector('button'),()=>{
+        const budgets=G.cheats.budgets??={};
+        const byYear=budgets[team.i]??={};
+        if(amount===base) delete byYear[year];
+        else byYear[year]=amount;
+      },'老板上限已调整');
+    };
+  }
+  const target=q('#cheat-backup');
+  if(G.cheats?.backup) showCheatBackup(target,G.cheats.backup);
+}
+
+async function showCheatBackup(target,id){
+  const backup=readCheatBackup(await slotGet(id));
+  if(!target.isConnected) return;
+  if(!backup){
+    target.textContent='本设备没有这份备份。下次修改前会重新备份当前进度。';
+    return;
+  }
+  target.innerHTML=`${metaTxt(backup)}<div class="ctrl"><button id="cheat-restore" ${cheatActionAvailable()?'':'disabled'}>恢复修改前的存档</button></div>`;
+  target.querySelector('button').onclick=()=>{
+    if(!cheatActionAvailable() || G.cheats.backup!==id) return;
+    if(!confirmSafe('恢复备份会替换当前进度。确定恢复到首次修改前吗？')) return;
+    try{ restore(backup); }
+    catch(error){ toast('无法恢复备份，请检查浏览器存储空间'); }
+  };
+}
+
+function showCheatPlayer(id){
+  if(!cheatsEnabled() || !cheatActionAvailable()) return;
+  const p=myTeam().players.find(p=>p.id===id);
+  if(!p) return;
+  const year=ctxYear(), C=CFG(year);
+  const contract=activeContract(p,year)?p.contract:null;
+  const minSal=contract?Math.min(contract[0],contract[2]==='tw'?Math.round(C.minSal*.5):C.minSal):0;
+  const maxSal=contract?Math.max(contract[0],C.maxSal):0;
+  const maxYears=contract?Math.max(4,contract[1]-year):0;
+  const modal=document.getElementById('modal');
+  const number=(label,key,value,min,max)=>`<label>${label}<input type="number" name="${key}" min="${min}" max="${max}" value="${value}" inputmode="numeric" required></label>`;
+  modal.innerHTML=`<div class="modal"><div class="box" role="dialog" aria-modal="true" aria-labelledby="cheat-player-title">
+    <h1 id="cheat-player-title">编辑 ${esc(p.cn)}</h1>
+    <p class="hint">${POS_CN[p.pos]} · ${ageOf(p,year)} 岁</p>
+    <form id="cheat-player-form">
+      <div class="ctrl"><b id="cheat-ovr"></b>${number('潜力','pot',p.pot,25,99)}</div>
+      ${ATTR_GROUPS.map(([label,keys])=>`<h2>${label}</h2><div class="cheat-fields">${keys.map(k=>number(ATTR_CN[k],k,p.a[k],Math.min(p.a[k],25),99)).join('')}</div>`).join('')}
+      <h2>合同</h2>
+      ${contract?`<div class="ctrl cheat-contract">${number('年薪（万）','salary',contract[0],minSal,maxSal)}${number('剩余年数','years',contract[1]-year,1,maxYears)}</div>`:'<p class="hint">当前没有生效合同。</p>'}
+      <div class="ctrl"><button class="pri" type="submit">保存修改</button><button type="button" id="cheat-player-cancel">取消</button></div>
+    </form></div></div>`;
+  modal.querySelector('#cheat-player-cancel').onclick=()=>{ if(!cheatBusy) closeModal(); };
+  const form=modal.querySelector('form');
+  const readAttrs=()=>Object.fromEntries(KEYS.map(k=>[k,cheatNumber(form.elements[k])]));
+  function refreshTotal(){
+    const attrs=readAttrs(), pot=cheatNumber(form.elements.pot);
+    if(Object.values(attrs).some(x=>!Number.isInteger(x))) return;
+    const total=calcOvr({...p,a:attrs});
+    form.querySelector('#cheat-ovr').textContent=`总评 ${p.ovr} → ${total}`+
+      (pot<total?` · 潜力将升至 ${total}`:'');
+  }
+  form.oninput=refreshTotal;
+  refreshTotal();
+  form.onsubmit=e=>{
+    e.preventDefault();
+    const attrs=readAttrs();
+    const attrsChanged=KEYS.some(k=>attrs[k]!==p.a[k]);
+    const total=attrsChanged?calcOvr({...p,a:attrs}):p.ovr;
+    const pot=Math.max(cheatNumber(form.elements.pot),total);
+    const salary=contract?cheatNumber(form.elements.salary):null;
+    const expires=contract?year+cheatNumber(form.elements.years):null;
+    const contractChanged=contract && (salary!==contract[0] || expires!==contract[1]);
+    if(!form.checkValidity() || !Number.isInteger(pot)) return;
+    if(!attrsChanged && !contractChanged && pot===p.pot) return toast('球员资料没有变化');
+    performCheatEdit(form.querySelector('[type=submit]'),()=>{
+      if(attrsChanged){
+        p.a=attrs;
+        p.ovr=total;
+        reindex();
+      }
+      p.pot=pot;
+      if(contractChanged) p.contract=[salary,expires,contract[2]];
+      if(W.off?.asks && expiringOf(G.team).includes(p)) W.off.asks[p.id]=makeAsk(p,G.team);
+    },`${p.cn}的资料已更新`);
+  };
+}
+
+function showCheatTrade(){
+  if(!cheatsEnabled() || !cheatActionAvailable() || !tradeOpen().ok) return;
+  const ev=evalTrade();
+  if(ev.blocking.length) return toast(ev.blocking[0]);
+  const partner=TEAMS[TR.partner];
+  const proposalKey=()=>JSON.stringify([TR.partner,[...TR.mineP],[...TR.theirP],[...TR.mineK],[...TR.theirK],TR.prot]);
+  const approved=proposalKey();
+  const modal=document.getElementById('modal');
+  const packageText=(players,picks)=>[...players.map(p=>p.cn),...picks.map(pickLabel)].join('、')||'无';
+  modal.innerHTML=`<div class="modal"><div class="box" role="dialog" aria-modal="true" aria-labelledby="cheat-trade-title">
+    <h1 id="cheat-trade-title">特批本笔交易</h1>
+    <p>${ev.ratio<1?'对方原本拒绝。确认后，对方将接受这份报价。':'对方愿意接受这份报价。'}</p>
+    <div class="tw"><table><thead><tr><th>球队</th><th>得到</th><th class="n">正式合同</th><th class="n">交易后工资</th></tr></thead><tbody>
+      <tr><td>${esc(myTeam().nick)}</td><td class="wrap">${esc(packageText(ev.inP,ev.inK))}</td><td class="n">${ev.myCount} 人</td><td class="n">${money(ev.myPay)}</td></tr>
+      <tr><td>${esc(partner.nick)}</td><td class="wrap">${esc(packageText(ev.outP,ev.outK))}</td><td class="n">${ev.ptCount} 人</td><td class="n">${money(ev.ptPay)}</td></tr>
+    </tbody></table></div>
+    ${ev.issues.length?`<ul class="bad">${ev.issues.map(reason=>`<li>${esc(reason)}</li>`).join('')}</ul>
+    <label class="cheat-check"><input id="cheat-salary" type="checkbox"> 本次跳过双方的薪资匹配限制</label>`:'<p class="hint">双方薪资符合交易规则。</p>'}
+    <div class="ctrl"><button id="cheat-trade-confirm" class="pri" ${ev.issues.length?'disabled':''}>确认成交</button><button id="cheat-trade-cancel">取消</button></div>
+  </div></div>`;
+  const button=modal.querySelector('#cheat-trade-confirm');
+  const salary=modal.querySelector('#cheat-salary');
+  if(salary) salary.onchange=()=>{ if(!cheatBusy) button.disabled=!salary.checked; };
+  modal.querySelector('#cheat-trade-cancel').onclick=()=>{ if(!cheatBusy) closeModal(); };
+  button.onclick=()=>{
+    const skipSalary=salary?.checked===true;
+    performCheatEdit(button,()=>doTrade({force:true,salary:skipSalary}),'特批交易已完成',()=>{
+      if(proposalKey()!==approved){
+        closeModal();
+        throw new Error('交易筹码已变化，请重新确认报价');
+      }
+    });
+  };
+}
 
 // 启动（放在所有模块之后，避免常量还没初始化）
 load(); render();

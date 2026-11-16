@@ -6,22 +6,61 @@ const SLOT_N=3;
 const IDB={db:null};
 function idbOpen(){ return new Promise((res,rej)=>{ if(IDB.db) return res(IDB.db); if(!window.indexedDB) return rej(new Error('no idb'));
   const r=indexedDB.open('bbm_saves',1); r.onupgradeneeded=()=>r.result.createObjectStore('slots'); r.onsuccess=()=>{ IDB.db=r.result; res(IDB.db); }; r.onerror=()=>rej(r.error); }); }
-async function slotPut(k,v){ try{ const db=await idbOpen(); await new Promise((res,rej)=>{ const tx=db.transaction('slots','readwrite'); tx.objectStore('slots').put(v,k); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); }); }
+async function slotPut(k,v){ try{ const db=await idbOpen(); await new Promise((res,rej)=>{ const tx=db.transaction('slots','readwrite'); tx.objectStore('slots').put(v,k); tx.oncomplete=res; tx.onerror=tx.onabort=()=>rej(tx.error); }); }
   catch(e){ localStorage.setItem('bbm_slot_'+k, JSON.stringify(v)); } }
-async function slotGet(k){ try{ const db=await idbOpen(); return await new Promise((res,rej)=>{ const q=db.transaction('slots').objectStore('slots').get(k); q.onsuccess=()=>res(q.result||null); q.onerror=()=>rej(q.error); }); }
-  catch(e){ try{ return JSON.parse(localStorage.getItem('bbm_slot_'+k)||'null'); }catch(_){ return null; } } }
-async function slotDel(k){ try{ const db=await idbOpen(); await new Promise(res=>{ const tx=db.transaction('slots','readwrite'); tx.objectStore('slots').delete(k); tx.oncomplete=res; tx.onerror=res; }); }catch(e){} try{ localStorage.removeItem('bbm_slot_'+k); }catch(e){} }
+async function slotGet(k){
+  try{
+    const db=await idbOpen();
+    const slot=await new Promise((res,rej)=>{ const q=db.transaction('slots').objectStore('slots').get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); });
+    if(slot) return slot;
+  }catch(e){}
+  try{ return JSON.parse(localStorage.getItem('bbm_slot_'+k)||'null'); }catch(e){ return null; }
+}
+async function slotDel(k){ try{ const db=await idbOpen(); await new Promise(res=>{ const tx=db.transaction('slots','readwrite'); tx.objectStore('slots').delete(k); tx.oncomplete=res; tx.onerror=tx.onabort=res; }); }catch(e){} try{ localStorage.removeItem('bbm_slot_'+k); }catch(e){} }
 
-function snapshot(){
-  save(); saveSeason();
-  const keys={}; SAVE_KEYS.forEach(k=>{ const v=localStorage.getItem(k); if(v!=null) keys[k]=v; });
+function currentSaveKeys(){
+  return {
+    [SAVE_KEY]:JSON.stringify(gameSaveData()),
+    [WORLD_KEY]:JSON.stringify(worldSaveData()),
+    [SEASON_KEY]:JSON.stringify(G.season)
+  };
+}
+function snapshot(keys){
+  if(!keys){
+    save(); saveSeason();
+    keys={};
+    for(const key of SAVE_KEYS){
+      const value=localStorage.getItem(key);
+      if(value!==null) keys[key]=value;
+    }
+  }
   const S=G.season, t=G.team!=null?TEAMS[G.team]:null, r=S&&t? standings()[G.team] : null;
   return {v:1, time:Date.now(), meta:{team:t?t.cn:'', ti:G.team, year:W.off?W.off.year:(S?S.year:W.year), date:W.off?'休赛期 · '+OFF_STEPS[W.off.step]:(S?dateTxt(Math.min(S.day,REG_DAYS+80))+' · '+phaseTxt():''), rec:r?`${r.w}-${r.l}`:''}, keys};
 }
+function replaceSaveKeys(keys){
+  const changes=SAVE_KEYS.map(key=>{
+    const value=keys[key]==null ? null : String(keys[key]);
+    const old=localStorage.getItem(key);
+    return {key,old,value,delta:(value?.length??0)-(old?.length??0)};
+  }).filter(change=>change.value!==change.old);
+  // 先释放空间，再写入增长的部分，兼顾接近配额的旧档。
+  changes.sort((a,b)=>a.delta-b.delta);
+  const changed=[];
+  try{
+    for(const {key,old,value} of changes){
+      if(value===null) localStorage.removeItem(key);
+      else localStorage.setItem(key,value);
+      changed.push([key,old]);
+    }
+  }catch(error){
+    for(const [k] of changed) localStorage.removeItem(k);
+    for(const [k,old] of changed) if(old!==null) localStorage.setItem(k,old);
+    throw error;
+  }
+}
 function restore(snap){
   if(!snap || !snap.keys || !snap.keys[WORLD_KEY]) throw new Error('bad');
-  SAVE_KEYS.forEach(k=>localStorage.removeItem(k));
-  Object.entries(snap.keys).forEach(([k,v])=>{ if(SAVE_KEYS.includes(k)) localStorage.setItem(k,v); });
+  replaceSaveKeys(snap.keys);
   location.reload();
 }
 function metaTxt(s){ if(!s) return '<span class="hint">空</span>'; const m=s.meta||{}, d=new Date(s.time);
@@ -70,10 +109,14 @@ function bindSave(v, rerender){
 }
 async function vSave(v){
   const s=G.season, t=myTeam();
-  v.innerHTML=`<h1>存档</h1><div class="sub">每一步操作都会自动保存，关掉再打开会接着玩。想留几个进度来回切，用下面的存档位。</div><div id="savebody"><div class="hint">读取中…</div></div>`;
+  v.innerHTML=`<h1>存档</h1><div class="sub">每一步操作都会自动保存，关掉再打开会接着玩。想留几个进度来回切，用下面的存档位。</div>
+    <div class="card"><h3>作弊台 <span class="r">${cheatsEnabled()?'当前存档已开启':'当前存档已关闭'}</span></h3><button id="opencheats">进入作弊台</button></div>
+    <div id="savebody"><div class="hint">读取中…</div></div>`;
+  const body=v.querySelector('#savebody');
+  v.querySelector('#opencheats').onclick=()=>{ G.view='cheats'; render(); };
   const html=await slotsHTML(true);
-  if(G.view!=='save') return;
-  v.querySelector('#savebody').innerHTML=`${html}
+  if(!body.isConnected) return;
+  body.innerHTML=`${html}
     <div class="card"><h3>新开一局</h3><p class="hint" style="margin-bottom:8px">放弃当前进度，回到 2026-27 赛季季前重新选队。手动存档位里的存档不受影响。</p><button class="sm" id="newgame" style="border-color:var(--bad);color:var(--bad)">新开一局</button></div>
     ${installCardHTML()}${contactHTML()}<p class="hint" style="margin-top:10px;font-size:11px;opacity:.7">${screenDiag()}</p>`;
   bindSave(v, ()=>vSave(v));
