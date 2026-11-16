@@ -44,7 +44,7 @@ function payroll(t, year){ year=year||W.year; let s=0;
 
 // ---------- 联盟存档 ----------
 const WORLD_KEY='bbm_world_v1';
-const PFIELDS=['id','en','cn','pos','pos2','born','jersey','ht','ws','wt','nat','pot','dur','prof','a','contract','ovr','hist','draft','fa','twoWay','rkOpt','rk1','rfa','sheet','mor','treq','tf','gx','sz','frz','arch','dev','vol','pre','rookieYear'];
+const PFIELDS=['id','en','cn','pos','pos2','born','jersey','ht','ws','wt','nat','pot','dur','prof','a','contract','ovr','hist','draft','fa','twoWay','rkOpt','rk1','rfa','sheet','mor','treq','tf','gx','sz','frz','arch','dev','vol','pre','rookieYear','customRookie'];
 function worldSaveData(){
   const pl=[]; const put=(p,team)=>{ const o={}; PFIELDS.forEach(k=>{ if(p[k]!==undefined) o[k]=p[k]; }); o.team=team; pl.push(o); };
   TEAMS.forEach(t=>t.players.forEach(p=>put(p,t.i))); FREE.forEach(p=>put(p,-1));
@@ -58,10 +58,16 @@ function loadWorld(){ try{
   const s=JSON.parse(localStorage.getItem(WORLD_KEY)||'null'); if(!s || !s.players) return false;
   W=s.W; PID=s.PID; if(W.centers) E.setC(W.centers);
   TEAMS.forEach(t=>t.players=[]); FREE.length=0;
-  s.players.forEach(o=>{ const p=Object.assign({},o); delete p.team; p.age=ageOf(p); if(o.team>=0) TEAMS[o.team].players.push(p); else FREE.push(p); });
-  W.draftClass=(W.draftClass||[]).map(o=>{ const p=Object.assign({},o); p.age=ageOf(p); return p; });
+  const rosterYear=W.off?.year??W.year, draftYear=W.dcYear??W.year+1;
+  s.players.forEach(o=>{ const p=Object.assign({},o); delete p.team; p.age=ageOf(p,rosterYear); if(o.team>=0) TEAMS[o.team].players.push(p); else FREE.push(p); });
+  W.draftClass=(W.draftClass||[]).map(o=>{ const p=Object.assign({},o); p.age=ageOf(p,draftYear); return p; });
   const live={}; TEAMS.forEach(t=>t.players.forEach(p=>live[p.id]=p)); FREE.forEach(p=>live[p.id]=p);
-  W.draftClass=W.draftClass.map(p=>live[p.id]||p);
+  W.draftClass=W.draftClass.map(p=>{
+    const drafted=live[p.id];
+    if(!drafted) return p;
+    if(p.drafted || drafted.draft) drafted.drafted=true;
+    return drafted;
+  });
   reindex(); return true;
 }catch(e){ console.error('loadWorld',e); return false; } }
 
@@ -170,12 +176,13 @@ function vRoster(v){
 function showPlayer(p){
   const m=document.getElementById('modal');
   const pros=(W.draftClass||[]).includes(p) && !p.drafted;
+  const profileYear=pros ? (W.dcYear??W.year+1) : (W.off?.year??W.year);
   const reveal=pros && scoutRevealed();
   if(pros && !reveal){ refreshScout(); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0], r=srand(p.id*7+3);
     p={...p, a:Object.fromEntries(KEYS.map(k=>[k,clamp(Math.round(p.a[k]+(r()*2-1)*hw*1.5),20,99)]))}; }
   m.innerHTML=`<div class="modal"><div class="box">
     <div class="pmhead" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">${pros?'':ovrTag(p.ovr)}<div><h1 style="margin:0">${esc(p.cn)}</h1>
-    <div class="hint">${p.en!==p.cn?esc(p.en)+' · ':''}${POS_CN[p.pos]}${p.pos2.length?'（可打 '+p.pos2.map(x=>POS_CN[x]).join('、')+'）':''} · ${ageOf(p,(W.off?W.off.year:W.year))} 岁 · ${esc(p.nat)}</div></div>
+    <div class="hint">${p.en!==p.cn?esc(p.en)+' · ':''}${POS_CN[p.pos]}${p.pos2.length?'（可打 '+p.pos2.map(x=>POS_CN[x]).join('、')+'）':''} · ${ageOf(p,profileYear)} 岁${p.nat?' · '+esc(p.nat):''}</div></div>
     <div style="margin-left:auto;text-align:right">${pros?`<div>总评 <b>${reveal?p.ovr:rangeTxt(p.scout.o)}</b> · 潜力 <b>${reveal?p.pot:rangeTxt(p.scout.p)}</b></div><div class="hint">${reveal?'真实数据':'球探报告，属性也有误差'}</div>`:`<div>潜力 <b>${p.pot}</b></div><div class="hint">${contractTxt(p.contract)}</div>${G.team!=null&&teamOfId(p.id)>=0?`<div class="hint">士气 ${morTag(p)}</div>`:''}`}</div></div>
     ${pros?`<div class="card" style="margin-bottom:10px;padding:10px"><div>原型：<b>${esc(p.arch||'')}</b> · ${esc(preTxt(p))}</div>${reveal?`<div>发展类型 <b>${esc(DEV_CN[p.dev]||'未知')}</b> · 敬业${profCn(p.prof)} · 伤病风险${durCn(p.dur)}</div>`:(W.scoutFocus||[]).includes(p.id)?`<div class="hint" style="margin-top:4px">重点考察：敬业${profCn(p.prof)}，伤病风险${durCn(p.dur)}</div>`:''}</div>`:(p.arch&&p.draft?`<div class="hint" style="margin-bottom:8px">选秀时的原型：${esc(p.arch)}</div>`:'')}
     <div class="row" style="margin-bottom:10px;font-size:12px"><span>身高 <b>${p.ht}</b> cm</span><span>臂展 <b>${p.ws}</b> cm</span><span>体重 <b>${p.wt}</b> kg</span><span>出生 ${p.born}</span></div>

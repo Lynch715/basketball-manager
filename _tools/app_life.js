@@ -100,7 +100,17 @@ function scoutDisplayValue(p){
 }
 function ensureDraftClass(year){
   if(W.dcYear===year && (W.draftClass||[]).length) return;
-  W.draftClass=genDraftClass(year); W.dcYear=year; W.scoutFocus=[]; refreshScout();
+  W.draftClass=genDraftClass(year); W.dcYear=year; W.scoutFocus=[];
+  const pending=W.customDraftQueue?.[year];
+  if(pending){
+    for(const p of pending){
+      W.draftClass.push(p);
+      PBYID[p.id]=p;
+    }
+    delete W.customDraftQueue[year];
+    if(!Object.keys(W.customDraftQueue).length) delete W.customDraftQueue;
+  }
+  refreshScout();
 }
 
 // ---------- 界面：训练 ----------

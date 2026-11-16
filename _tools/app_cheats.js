@@ -84,6 +84,27 @@ function bindCheatPreference(button,patch){
 function cheatNumber(input){
   return input.checkValidity() ? input.valueAsNumber : NaN;
 }
+function cheatNumberField(label,key,value,min,max){
+  return `<label>${label}<input type="number" name="${key}" min="${min}" max="${max}" value="${value}" inputmode="numeric" required></label>`;
+}
+function cheatAttributeFields(attributes,min){
+  return ATTR_GROUPS.map(([label,keys])=>`<h2>${label}</h2><div class="cheat-fields">${keys.map(k=>
+    cheatNumberField(ATTR_CN[k],k,attributes[k],Math.min(attributes[k],min),99)).join('')}</div>`).join('');
+}
+
+function customRookiesPanel(available){
+  const year=customDraftYear(), pending=W.off && year>W.off.year;
+  const list=customRookiesFor(year);
+  return `<section class="card">
+    <h3>自定义新秀 <span class="r">${year} 年选秀</span></h3>
+    <p class="hint">${pending?'本届选秀已开始。新建球员将在下赛季进入球探名单。':'加入本届新秀名单，所有球队都可按正常顺序挑选。'}</p>
+    ${list.length?`<div class="cheat-actions">${list.map(p=>`<div class="cheat-rookie-item">
+      <span><b>${esc(p.cn)}</b> <span class="hint">${p.age} 岁 · ${POS_CN[p.pos]} · 总评 ${p.ovr} · 潜力 ${p.pot}</span></span>
+      <button class="sm" data-custom-rookie="${p.id}" ${available?'':'disabled'}>编辑新秀</button>
+    </div>`).join('')}</div>`:''}
+    <div class="ctrl"><button id="create-custom-rookie" ${available?'':'disabled'}>创建新秀</button></div>
+  </section>`;
+}
 
 function vCheats(v){
   const enabled=cheatsEnabled(), available=cheatActionAvailable();
@@ -136,7 +157,7 @@ function vCheats(v){
           <p class="hint">在球探页和选秀名单显示真实总评、潜力和发展类型。</p>
           <div class="ctrl"><button id="cheat-reveal"${disabled}>${scoutRevealed()?'关闭新秀透视':'开启新秀透视'}</button><button data-cheat-view="scout">前往球探</button></div>
         </section>
-      </div>`:''}
+      </div>${customRookiesPanel(available)}`:''}
     <section class="card"><h3>修改前备份</h3><div id="cheat-backup" class="hint">${G.cheats?.backup?'读取备份…':'首次修改后可在这里恢复。'}</div></section>`;
   const q=s=>v.querySelector(s);
   const go=view=>{ G.view=view; render(); };
@@ -147,6 +168,10 @@ function vCheats(v){
   if(enabled){
     bindCheatPreference(q('#cheat-reveal'),{reveal:!scoutRevealed()});
     q('#cheat-edit').onclick=()=>showCheatPlayer(+q('#cheat-player').value);
+    q('#create-custom-rookie').onclick=()=>showCustomRookie();
+    v.querySelectorAll('[data-custom-rookie]').forEach(b=>{
+      b.onclick=()=>showCustomRookie(+b.dataset.customRookie);
+    });
     q('#cheat-heal').onclick=e=>performCheatEdit(e.currentTarget,()=>{
       for(const p of team.players){
         delete S.inj[p.id];
@@ -218,15 +243,14 @@ function showCheatPlayer(id){
   const maxSal=contract?Math.max(contract[0],C.maxSal):0;
   const maxYears=contract?Math.max(4,contract[1]-year):0;
   const modal=document.getElementById('modal');
-  const number=(label,key,value,min,max)=>`<label>${label}<input type="number" name="${key}" min="${min}" max="${max}" value="${value}" inputmode="numeric" required></label>`;
   modal.innerHTML=`<div class="modal"><div class="box" role="dialog" aria-modal="true" aria-labelledby="cheat-player-title">
     <h1 id="cheat-player-title">编辑 ${esc(p.cn)}</h1>
     <p class="hint">${POS_CN[p.pos]} · ${ageOf(p,year)} 岁</p>
     <form id="cheat-player-form">
-      <div class="ctrl"><b id="cheat-ovr"></b>${number('潜力','pot',p.pot,25,99)}</div>
-      ${ATTR_GROUPS.map(([label,keys])=>`<h2>${label}</h2><div class="cheat-fields">${keys.map(k=>number(ATTR_CN[k],k,p.a[k],Math.min(p.a[k],25),99)).join('')}</div>`).join('')}
+      <div class="ctrl"><b id="cheat-ovr"></b>${cheatNumberField('潜力','pot',p.pot,25,99)}</div>
+      ${cheatAttributeFields(p.a,25)}
       <h2>合同</h2>
-      ${contract?`<div class="ctrl cheat-contract">${number('年薪（万）','salary',contract[0],minSal,maxSal)}${number('剩余年数','years',contract[1]-year,1,maxYears)}</div>`:'<p class="hint">当前没有生效合同。</p>'}
+      ${contract?`<div class="ctrl cheat-contract">${cheatNumberField('年薪（万）','salary',contract[0],minSal,maxSal)}${cheatNumberField('剩余年数','years',contract[1]-year,1,maxYears)}</div>`:'<p class="hint">当前没有生效合同。</p>'}
       <div class="ctrl"><button class="pri" type="submit">保存修改</button><button type="button" id="cheat-player-cancel">取消</button></div>
     </form></div></div>`;
   modal.querySelector('#cheat-player-cancel').onclick=()=>{ if(!cheatBusy) closeModal(); };
@@ -262,6 +286,75 @@ function showCheatPlayer(id){
       if(contractChanged) p.contract=[salary,expires,contract[2]];
       if(W.off?.asks && expiringOf(G.team).includes(p)) W.off.asks[p.id]=makeAsk(p,G.team);
     },`${p.cn}的资料已更新`);
+  };
+}
+
+function showCustomRookie(id){
+  if(!cheatsEnabled() || !cheatActionAvailable()) return;
+  const year=customDraftYear(), p=customRookiesFor(year).find(candidate=>candidate.id===id);
+  if(id!=null && !p) return;
+  const title=p?'编辑自定义新秀':'创建自定义新秀';
+  const attrs=p?.a??Object.fromEntries(KEYS.map(k=>[k,65]));
+  const positions=selected=>POS.map(pos=>`<option value="${pos}" ${pos===selected?' selected':''}>${POS_CN[pos]} (${pos})</option>`).join('');
+  const modal=document.getElementById('modal');
+  modal.innerHTML=`<div class="modal"><div class="box" role="dialog" aria-modal="true" aria-labelledby="custom-rookie-title">
+    <h1 id="custom-rookie-title">${title}</h1>
+    <p class="hint">${year} 年选秀 · 年龄以参加选秀时为准</p>
+    <form id="custom-rookie-form">
+      <div class="cheat-profile">
+        <label>姓名<input name="name" type="text" value="${esc(p?.cn??'')}" maxlength="${CUSTOM_ROOKIE_NAME_MAX}" autocomplete="off" required></label>
+        ${cheatNumberField('选秀年龄','age',p?.age??19,...CUSTOM_ROOKIE_AGES)}
+        <label>主位置<select name="pos">${positions(p?.pos??'SF')}</select></label>
+        <label>副位置（可选）<select name="secondary"><option value="">无</option>${positions(p?.pos2[0])}</select></label>
+      </div>
+      <div class="ctrl">${cheatNumberField('潜力','pot',p?.pot??85,25,99)}<output id="custom-rookie-rating" aria-live="polite"></output></div>
+      ${cheatAttributeFields(attrs,20)}
+      <div class="ctrl"><button class="pri" type="submit">${p?'保存新秀资料':'加入选秀名单'}</button><button type="button" id="custom-rookie-cancel">取消</button></div>
+    </form>
+  </div></div>`;
+  const form=modal.querySelector('form'), fields=form.elements;
+  const readAttrs=()=>Object.fromEntries(KEYS.map(k=>[k,cheatNumber(fields[k])]));
+  const rating=form.querySelector('#custom-rookie-rating');
+  function refreshRating(){
+    const a=readAttrs(), potential=cheatNumber(fields.pot);
+    if(Object.values(a).some(v=>!Number.isInteger(v))){
+      rating.textContent='';
+      return;
+    }
+    const ovr=calcOvr({pos:fields.pos.value,a});
+    rating.textContent=`总评 ${ovr}`+(potential<ovr?` · 潜力将升至 ${ovr}`:'');
+  }
+  function refreshPositions(){
+    for(const option of fields.secondary.options){
+      option.disabled=option.value===fields.pos.value;
+      if(option.disabled && option.selected) fields.secondary.value='';
+    }
+  }
+  form.oninput=refreshRating;
+  fields.pos.onchange=()=>{ refreshPositions(); refreshRating(); };
+  refreshPositions();
+  refreshRating();
+  form.querySelector('#custom-rookie-cancel').onclick=()=>{ if(!cheatBusy) closeModal(); };
+  fields.namedItem('name').focus();
+  form.onsubmit=e=>{
+    e.preventDefault();
+    let profile;
+    try{
+      profile=customRookieProfile(year,{name:fields.namedItem('name').value,age:cheatNumber(fields.age),
+        pos:fields.pos.value,secondary:fields.secondary.value,attributes:readAttrs(),potential:cheatNumber(fields.pot)});
+    }catch(error){ return toast(error.message); }
+    if(p && profile.cn===p.cn && profile.born===p.born && profile.pos===p.pos &&
+       profile.pos2[0]===p.pos2[0] && profile.pot===p.pot && KEYS.every(k=>profile.a[k]===p.a[k])){
+      return toast('新秀资料没有变化');
+    }
+    const validate=()=>{
+      if(year!==customDraftYear() || (p && !customRookiesFor(year).includes(p))){
+        closeModal();
+        throw new Error('选秀进度已变化，请重新打开编辑器');
+      }
+    };
+    performCheatEdit(form.querySelector('[type=submit]'),()=>saveCustomRookie(year,profile,id),
+      p?`${profile.cn}的新秀资料已保存`:`${profile.cn}已加入 ${year} 年选秀`,validate);
   };
 }
 

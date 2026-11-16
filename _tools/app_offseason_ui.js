@@ -9,6 +9,7 @@ function rangeTxt(r){ return `${clamp(r[0],30,99)}–${clamp(r[1],30,99)}`; }
 
 function vOff(v){
   const O=W.off; if(!O){ G.view='home'; return render(); }
+  const shownPick=O.draft?.order[O.draft.idx];
   const steps=OFF_STEPS.map((n,i)=>`<span class="pill" style="background:${i===O.step?'var(--acc)':i<O.step?'#243142':'#1a212b'};color:${i===O.step?'#1a0f00':i<O.step?'var(--txt)':'var(--dim)'};margin-right:4px;padding:3px 9px">${i+1}. ${n}</span>`).join('');
   const C=CFG(O.year), t=myTeam(), pay=payroll(t,O.year);
   let body='', next='下一步';
@@ -80,10 +81,20 @@ function vOff(v){
   const q=s=>v.querySelector(s);
   q('#offnext').onclick=()=>{ offNext(); render(); };
   v.querySelectorAll('[data-id]').forEach(el=>el.onclick=()=>showPlayer(PBYID[el.dataset.id]));
-  if(q('#autopick')) q('#autopick').onclick=()=>{ const D=O.draft, pk=D.order[D.idx]; draftPlayer(pk, aiDraftPick(G.team)); D.idx++; draftAdvance(true); save(); render(); };
+  const selectRookie=id=>{
+    const D=O.draft;
+    const ready=W.off===O && O.step===2 && shownPick && shownPick===D.order[D.idx] && shownPick.owner===G.team;
+    if(!ready || !draftPlayer(shownPick,id==null?aiDraftPick(G.team):PBYID[id])){
+      toast('签位或球员已经变动，请重新选择');
+      render();
+      return;
+    }
+    D.idx++; draftAdvance(true); save(); render();
+  };
+  if(q('#autopick')) q('#autopick').onclick=()=>selectRookie();
   if(q('#tomypick')) q('#tomypick').onclick=()=>{ draftAdvance(true); save(); render(); };
   if(q('#tradepick')) q('#tradepick').onclick=()=>{ const cur=O.draft.order[O.draft.idx]; if(cur && cur.owner!==G.team) TR.partner=cur.owner; G.view='trade'; render(); };
-  v.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{ const D=O.draft, pk=D.order[D.idx]; draftPlayer(pk, PBYID[b.dataset.pick]); D.idx++; draftAdvance(true); save(); render(); });
+  v.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>selectRookie(b.dataset.pick));
   v.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.rs], a=O.asks[p.id]; const r=signDirect(p,G.team,a.amt,a.yrs,O.year); if(!r.ok) toast(r.why); save(); render(); });
   v.querySelectorAll('[data-rsd]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.rsd], a=O.asks[p.id]; const pAccept = a.mood<1? .8 : a.mood<1.12? .5 : .25;
     if(rnd01()<pAccept){ const r=signDirect(p,G.team,Math.max(CFG(O.year).minSal,Math.round(a.amt*.9)),a.yrs,O.year); toast(r.ok?`${p.cn} 同意了：${money(p.contract[0])} × ${a.yrs} 年`:r.why); }

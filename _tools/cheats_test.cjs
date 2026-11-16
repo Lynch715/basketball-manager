@@ -124,5 +124,92 @@ async function main(){
   assert.equal(t.run('W.picks[2027][1][1]'),0);
   assert.equal(t.run('W.off.lottery.order[0].owner'),0);
   console.log('PASS 普通交易规则、薪资放行、冷冻期、截止日、实际转队、抽签后的签位归属');
+
+  await customRookieCases();
+}
+
+async function customRookieCases(){
+  const app=context(legacy()), run=app.run;
+  const legacyKeys=[...app.storage];
+  run('load();');
+  assert.deepEqual([...app.storage],legacyKeys);
+  const numProspects=run('W.draftClass.length');
+  run(`setCheatPreference({enabled:true});
+    function testRookie(year,name,age,potential){
+      return customRookieProfile(year,{name,age,pos:'C',secondary:'PF',
+        attributes:Object.fromEntries(KEYS.map(k=>[k,k==='pass'?98:90])),potential});
+    }`);
+  assert.throws(()=>run("testRookie(2027,'  ',19,99)"),/姓名/);
+  assert.throws(()=>run("testRookie(2027,'江临',17,99)"),/年龄/);
+  const before=clone(run('currentSaveKeys()'));
+  await run("runCheatEdit(()=>saveCustomRookie(2027,testRookie(2027,'江临',19,99)))");
+  const id=run('customRookiesFor(2027)[0].id');
+  const slot=run('G.cheats.backup');
+  assert.deepEqual(JSON.parse(app.storage.get('bbm_slot_'+slot)).keys,before);
+  assert.equal(run('W.draftClass.length'),numProspects+1);
+  assert.equal(run(`teamOfId(${id})`),-1);
+
+  const reload=context(app.storage);
+  reload.run('load();');
+  assert.deepEqual(clone(reload.run(`(()=>{
+    const p=PBYID[${id}];
+    return [p.cn,p.age,p.pos,p.pos2[0],p.pot,p.a.pass,p.contract];
+  })()`)),['江临',19,'C','PF',99,98,null]);
+  const sameId=await reload.run(`runCheatEdit(()=>{
+    const p=PBYID[${id}];
+    const profile=customRookieProfile(2027,{name:'江临远',age:20,pos:p.pos,secondary:'PF',attributes:p.a,potential:25});
+    const edited=saveCustomRookie(2027,profile,p.id);
+    if(edited.ovr!==edited.pot) throw Error('潜力不能低于总评');
+  }).then(()=>customRookiesFor(2027)[0].id)`);
+  assert.equal(sameId,id);
+  assert.equal(reload.run('G.cheats.backup'),slot);
+  assert.equal(reload.run('W.draftClass.length'),numProspects+1);
+  console.log('PASS 旧档创建与重载、年龄、能力、同一 ID 继续编辑和首次作弊备份');
+
+  reload.run(`
+    const first={no:1,round:1,orig:G.team,owner:G.team};
+    const second={no:2,round:1,orig:1,owner:1};
+    W.off={step:2,year:2027,draft:{year:2027,idx:0,order:[first,second],log:[]}};
+    draftPlayer(first,PBYID[${id}]); W.off.draft.idx++;
+    save();
+  `);
+  const oldDraftStorage=new Map(app.storage);
+  const oldWorld=JSON.parse(oldDraftStorage.get('bbm_world_v1'));
+  delete oldWorld.W.draftClass.find(p=>p.id===id).drafted;
+  oldDraftStorage.set('bbm_world_v1',JSON.stringify(oldWorld));
+  const drafting=context(oldDraftStorage);
+  drafting.run('load();');
+  assert.deepEqual(clone(drafting.run(`(()=>{
+    const p=PBYID[${id}];
+    return [p.age,p.drafted,p.draft.no,p.draft.team,p.contract[2],W.off.draft.idx];
+  })()`)),[20,true,1,0,'rk',1]);
+  assert.ok(!drafting.run(`W.draftClass.filter(p=>!p.drafted).some(p=>p.id===${id})`));
+  assert.deepEqual(clone(drafting.run(`(()=>{
+    const d=W.off.draft, current=d.order[d.idx];
+    const stalePick=draftPlayer(d.order[0],W.draftClass.find(p=>!p.drafted));
+    const duplicate=draftPlayer(current,PBYID[${id}]);
+    return [stalePick,duplicate,d.idx,d.log.length];
+  })()`)),[false,false,1,1]);
+  assert.equal(drafting.run('customDraftYear()'),2028);
+  console.log('PASS 首轮正常签约，旧档补回已选标记，拦截过期签位和重复选择');
+
+  await drafting.run(`runCheatEdit(()=>{
+    const profile=customRookieProfile(2028,{name:'许知行',age:21,pos:'PG',secondary:'',
+      attributes:Object.fromEntries(KEYS.map(k=>[k,99])),potential:99});
+    saveCustomRookie(2028,profile);
+  })`);
+  const queuedId=drafting.run('customRookiesFor(2028)[0].id');
+  assert.ok(!drafting.run(`W.draftClass.some(p=>p.id===${queuedId})`));
+  const next=context(oldDraftStorage);
+  next.run('load();');
+  assert.equal(next.run('customRookiesFor(2028)[0].id'),queuedId);
+  next.run('draftAdvance(false); startNewSeason();');
+  assert.equal(next.run('W.dcYear'),2028);
+  assert.equal(next.run('W.customDraftQueue'),undefined);
+  assert.equal(next.run(`W.draftClass.filter(p=>p.id===${queuedId}).length`),1);
+  assert.equal(next.run(`PBYID[${queuedId}].age`),21);
+  assert.equal(next.run('aiDraftPick(1).id'),queuedId);
+  assert.equal(next.run(`teamOfId(${id})`),0);
+  console.log('PASS 当届开选后排到下一届、队列存读档、生成时合并、AI 正常参选');
 }
 main().catch(error=>{ console.error(error); process.exitCode=1; });

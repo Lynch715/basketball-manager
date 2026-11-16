@@ -118,6 +118,11 @@ td.wrap{white-space:normal;min-width:120px}
 .cheat-fields label{background:var(--bg);padding:5px 7px;border:1px solid var(--line);border-radius:6px}
 .cheat-fields input[type=number]{width:54px}
 .cheat-contract input[type=number],#cheat-budget input[type=number]{width:92px}
+.cheat-profile{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin-top:12px}
+.cheat-profile label{min-width:0;display:grid;gap:4px}
+.cheat-profile label>input,.cheat-profile label>select{width:100%;text-align:left}
+.cheat-profile input[type=text]{font:inherit;background:var(--bg);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:5px 7px}
+.cheat-rookie-item{padding-bottom:8px;border-bottom:1px solid var(--line)}
 .cheat-check{display:block;margin-top:8px}
 #cheat-trade-title+p,#cheat-trade-title~.tw{margin-top:8px}
 @media(max-width:760px){
@@ -132,6 +137,7 @@ td.wrap{white-space:normal;min-width:120px}
   button{min-height:40px;padding:8px 14px}
   button.sm{min-height:34px;padding:6px 11px;font-size:13px}
   select,input[type=number]{font-size:16px;min-height:38px;padding:6px 8px}
+  .cheat-profile input[type=text]{font-size:16px;min-height:38px;padding:6px 8px}
   input[type=number]{width:72px}
   input[type=checkbox]{width:20px;height:20px;vertical-align:middle}
   .mfull{display:none}.mshort{display:inline}
@@ -1505,7 +1511,7 @@ function payroll(t, year){ year=year||W.year; let s=0;
 
 // ---------- 联盟存档 ----------
 const WORLD_KEY='bbm_world_v1';
-const PFIELDS=['id','en','cn','pos','pos2','born','jersey','ht','ws','wt','nat','pot','dur','prof','a','contract','ovr','hist','draft','fa','twoWay','rkOpt','rk1','rfa','sheet','mor','treq','tf','gx','sz','frz','arch','dev','vol','pre','rookieYear'];
+const PFIELDS=['id','en','cn','pos','pos2','born','jersey','ht','ws','wt','nat','pot','dur','prof','a','contract','ovr','hist','draft','fa','twoWay','rkOpt','rk1','rfa','sheet','mor','treq','tf','gx','sz','frz','arch','dev','vol','pre','rookieYear','customRookie'];
 function worldSaveData(){
   const pl=[]; const put=(p,team)=>{ const o={}; PFIELDS.forEach(k=>{ if(p[k]!==undefined) o[k]=p[k]; }); o.team=team; pl.push(o); };
   TEAMS.forEach(t=>t.players.forEach(p=>put(p,t.i))); FREE.forEach(p=>put(p,-1));
@@ -1519,10 +1525,16 @@ function loadWorld(){ try{
   const s=JSON.parse(localStorage.getItem(WORLD_KEY)||'null'); if(!s || !s.players) return false;
   W=s.W; PID=s.PID; if(W.centers) E.setC(W.centers);
   TEAMS.forEach(t=>t.players=[]); FREE.length=0;
-  s.players.forEach(o=>{ const p=Object.assign({},o); delete p.team; p.age=ageOf(p); if(o.team>=0) TEAMS[o.team].players.push(p); else FREE.push(p); });
-  W.draftClass=(W.draftClass||[]).map(o=>{ const p=Object.assign({},o); p.age=ageOf(p); return p; });
+  const rosterYear=W.off?.year??W.year, draftYear=W.dcYear??W.year+1;
+  s.players.forEach(o=>{ const p=Object.assign({},o); delete p.team; p.age=ageOf(p,rosterYear); if(o.team>=0) TEAMS[o.team].players.push(p); else FREE.push(p); });
+  W.draftClass=(W.draftClass||[]).map(o=>{ const p=Object.assign({},o); p.age=ageOf(p,draftYear); return p; });
   const live={}; TEAMS.forEach(t=>t.players.forEach(p=>live[p.id]=p)); FREE.forEach(p=>live[p.id]=p);
-  W.draftClass=W.draftClass.map(p=>live[p.id]||p);
+  W.draftClass=W.draftClass.map(p=>{
+    const drafted=live[p.id];
+    if(!drafted) return p;
+    if(p.drafted || drafted.draft) drafted.drafted=true;
+    return drafted;
+  });
   reindex(); return true;
 }catch(e){ console.error('loadWorld',e); return false; } }
 
@@ -1631,12 +1643,13 @@ function vRoster(v){
 function showPlayer(p){
   const m=document.getElementById('modal');
   const pros=(W.draftClass||[]).includes(p) && !p.drafted;
+  const profileYear=pros ? (W.dcYear??W.year+1) : (W.off?.year??W.year);
   const reveal=pros && scoutRevealed();
   if(pros && !reveal){ refreshScout(); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0], r=srand(p.id*7+3);
     p={...p, a:Object.fromEntries(KEYS.map(k=>[k,clamp(Math.round(p.a[k]+(r()*2-1)*hw*1.5),20,99)]))}; }
   m.innerHTML=`<div class="modal"><div class="box">
     <div class="pmhead" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">${pros?'':ovrTag(p.ovr)}<div><h1 style="margin:0">${esc(p.cn)}</h1>
-    <div class="hint">${p.en!==p.cn?esc(p.en)+' · ':''}${POS_CN[p.pos]}${p.pos2.length?'（可打 '+p.pos2.map(x=>POS_CN[x]).join('、')+'）':''} · ${ageOf(p,(W.off?W.off.year:W.year))} 岁 · ${esc(p.nat)}</div></div>
+    <div class="hint">${p.en!==p.cn?esc(p.en)+' · ':''}${POS_CN[p.pos]}${p.pos2.length?'（可打 '+p.pos2.map(x=>POS_CN[x]).join('、')+'）':''} · ${ageOf(p,profileYear)} 岁${p.nat?' · '+esc(p.nat):''}</div></div>
     <div style="margin-left:auto;text-align:right">${pros?`<div>总评 <b>${reveal?p.ovr:rangeTxt(p.scout.o)}</b> · 潜力 <b>${reveal?p.pot:rangeTxt(p.scout.p)}</b></div><div class="hint">${reveal?'真实数据':'球探报告，属性也有误差'}</div>`:`<div>潜力 <b>${p.pot}</b></div><div class="hint">${contractTxt(p.contract)}</div>${G.team!=null&&teamOfId(p.id)>=0?`<div class="hint">士气 ${morTag(p)}</div>`:''}`}</div></div>
     ${pros?`<div class="card" style="margin-bottom:10px;padding:10px"><div>原型：<b>${esc(p.arch||'')}</b> · ${esc(preTxt(p))}</div>${reveal?`<div>发展类型 <b>${esc(DEV_CN[p.dev]||'未知')}</b> · 敬业${profCn(p.prof)} · 伤病风险${durCn(p.dur)}</div>`:(W.scoutFocus||[]).includes(p.id)?`<div class="hint" style="margin-top:4px">重点考察：敬业${profCn(p.prof)}，伤病风险${durCn(p.dur)}</div>`:''}</div>`:(p.arch&&p.draft?`<div class="hint" style="margin-bottom:8px">选秀时的原型：${esc(p.arch)}</div>`:'')}
     <div class="row" style="margin-bottom:10px;font-size:12px"><span>身高 <b>${p.ht}</b> cm</span><span>臂展 <b>${p.ws}</b> cm</span><span>体重 <b>${p.wt}</b> kg</span><span>出生 ${p.born}</span></div>
@@ -2669,6 +2682,64 @@ function genDraftClass(year){
 }
 function classTxt(){ const c=W.dcStr; if(!c) return ''; return (c.s>=.7?'大年，前几顺位的成色明显好过往年' : c.s<=-.7?'小年，前几顺位没有往年扎实' : '普通年份')+(c.gen?'。另外，今年有一个被看作世代级的天才':''); }
 
+const CUSTOM_ROOKIE_AGES=[18,40];
+const CUSTOM_ROOKIE_NAME_MAX=32;
+// 按主位置给出身高、臂展和体重的默认值。
+const CUSTOM_ROOKIE_SIZE={PG:[188,196,84],SG:[194,202,91],SF:[201,209,100],PF:[207,219,108],C:[213,226,115]};
+
+function customDraftYear(){
+  if(!W.off) return W.year+1;
+  return W.off.year+(W.off.step>=2 || W.off.draft ? 1 : 0);
+}
+function customRookiesFor(year){
+  const pool=W.dcYear===year ? W.draftClass : W.customDraftQueue?.[year];
+  return (pool||[]).filter(p=>p.customRookie && !p.drafted);
+}
+function customRookieProfile(year,{name,age,pos,secondary,attributes,potential}){
+  const cn=name.trim();
+  if(!cn || cn.length>CUSTOM_ROOKIE_NAME_MAX || /[\u0000-\u001f\u007f]/.test(cn)){
+    throw new Error('请输入有效的球员姓名');
+  }
+  if(!Number.isInteger(age) || age<CUSTOM_ROOKIE_AGES[0] || age>CUSTOM_ROOKIE_AGES[1]){
+    throw new Error('请输入有效的选秀年龄');
+  }
+  if(!POS.includes(pos) || (secondary && (!POS.includes(secondary) || secondary===pos))){
+    throw new Error('请选择有效且不同的主、副位置');
+  }
+  const a=Object.fromEntries(KEYS.map(k=>[k,attributes[k]]));
+  if(Object.values(a).some(v=>!Number.isInteger(v) || v<20 || v>99)){
+    throw new Error('各项能力须为 20–99 的整数');
+  }
+  if(!Number.isInteger(potential) || potential<25 || potential>99){
+    throw new Error('潜力须为 25–99 的整数');
+  }
+  const ovr=calcOvr({pos,a}), [ht,ws,wt]=CUSTOM_ROOKIE_SIZE[pos];
+  // 游戏按赛季开始时的年龄计算，年初生日可精确对应输入的选秀年龄。
+  return {cn,en:cn,age,pos,pos2:secondary?[secondary]:[],born:(year-age)+'-01',
+    a,ovr,pot:Math.max(potential,ovr),ht,ws,wt};
+}
+function saveCustomRookie(year,profile,id){
+  if(year!==customDraftYear()) throw new Error('目标选秀届次已变动，请重新打开编辑器');
+  let p=id==null ? null : customRookiesFor(year).find(candidate=>candidate.id===id);
+  if(id!=null && !p) throw new Error('这名新秀已无法编辑');
+
+  const pending=!!W.off && year>W.off.year;
+  if(!pending) ensureDraftClass(year);
+  if(!p){
+    p={id:PID++,customRookie:true,jersey:'',nat:'',dur:80,prof:60,dev:'normal',vol:1,arch:'自定义',contract:null,hist:[]};
+    if(pending){
+      W.customDraftQueue??={};
+      (W.customDraftQueue[year]??=[]).push(p);
+    }else{
+      W.draftClass.push(p);
+      PBYID[p.id]=p;
+    }
+  }
+  Object.assign(p,profile);
+  if(!pending) refreshScout();
+  return p;
+}
+
 // ---------- 选秀权 ----------
 function ensurePicks(year){ W.picks[year]=W.picks[year]||{1:{},2:{}}; [1,2].forEach(r=>{ for(let i=0;i<30;i++) if(W.picks[year][r][i]==null) W.picks[year][r][i]=i; }); }
 function picksOwnedBy(ti){ const out=[]; Object.keys(W.picks).forEach(y=>[1,2].forEach(r=>Object.entries(W.picks[y][r]).forEach(([orig,own])=>{ if(own===ti && +y>=(W.off?W.off.year:W.year+1) && !pickUsed({year:+y,round:r,orig:+orig})) out.push({year:+y,round:r,orig:+orig}); }))); return out.sort((a,b)=>a.year-b.year||a.round-b.round); }
@@ -2702,21 +2773,25 @@ function aiDraftPick(ti){
   return best;
 }
 function draftPlayer(pk, p){
-  const D=W.off.draft, yr=W.off.year;
+  const D=W.off?.draft;
+  if(!D || D.done || !pk || D.order[D.idx]!==pk || !TEAMS[pk.owner]) return false;
+  if(!p || p.drafted || !W.draftClass.includes(p)) return false;
+  const yr=W.off.year;
   p.drafted=true; p.rookieYear=yr; p.draft={year:D.year,round:pk.round,no:pk.no,team:pk.owner};
   const t=TEAMS[pk.owner];
   if(pk.round===1){ p.contract=[rookieScale(pk.no), yr+2, 'rk']; p.rkOpt=2; p.rk1=true; }
   else if(t.players.filter(x=>x.contract&&x.contract[2]==='tw').length<3){ p.contract=[Math.round(CFG(yr).minSal*.5), yr+2, 'tw']; p.rkOpt=0; p.rk1=false; }
   else { p.contract=[CFG(yr).minSal, yr+2, 'rk']; p.rkOpt=0; p.rk1=false; }
   t.players.push(p); PBYID[p.id]=p; chemHit(pk.owner,.25); D.log.push({no:pk.no, round:pk.round, team:pk.owner, pid:p.id});
+  return true;
 }
 function draftAdvance(untilUser){ // 一直选到轮到玩家（或者选完）
   const D=W.off.draft;
   while(D.idx<D.order.length){
     const pk=D.order[D.idx];
     if(pk.owner===G.team && untilUser){ maybeDraftOffer(pk); return; }
-    const p=aiDraftPick(pk.owner); if(!p) break;
-    draftPlayer(pk,p); D.idx++;
+    if(!draftPlayer(pk,aiDraftPick(pk.owner))) break;
+    D.idx++;
   }
   if(D.idx>=D.order.length) finishDraft();
 }
@@ -2939,6 +3014,7 @@ function rangeTxt(r){ return `${clamp(r[0],30,99)}–${clamp(r[1],30,99)}`; }
 
 function vOff(v){
   const O=W.off; if(!O){ G.view='home'; return render(); }
+  const shownPick=O.draft?.order[O.draft.idx];
   const steps=OFF_STEPS.map((n,i)=>`<span class="pill" style="background:${i===O.step?'var(--acc)':i<O.step?'#243142':'#1a212b'};color:${i===O.step?'#1a0f00':i<O.step?'var(--txt)':'var(--dim)'};margin-right:4px;padding:3px 9px">${i+1}. ${n}</span>`).join('');
   const C=CFG(O.year), t=myTeam(), pay=payroll(t,O.year);
   let body='', next='下一步';
@@ -3010,10 +3086,20 @@ function vOff(v){
   const q=s=>v.querySelector(s);
   q('#offnext').onclick=()=>{ offNext(); render(); };
   v.querySelectorAll('[data-id]').forEach(el=>el.onclick=()=>showPlayer(PBYID[el.dataset.id]));
-  if(q('#autopick')) q('#autopick').onclick=()=>{ const D=O.draft, pk=D.order[D.idx]; draftPlayer(pk, aiDraftPick(G.team)); D.idx++; draftAdvance(true); save(); render(); };
+  const selectRookie=id=>{
+    const D=O.draft;
+    const ready=W.off===O && O.step===2 && shownPick && shownPick===D.order[D.idx] && shownPick.owner===G.team;
+    if(!ready || !draftPlayer(shownPick,id==null?aiDraftPick(G.team):PBYID[id])){
+      toast('签位或球员已经变动，请重新选择');
+      render();
+      return;
+    }
+    D.idx++; draftAdvance(true); save(); render();
+  };
+  if(q('#autopick')) q('#autopick').onclick=()=>selectRookie();
   if(q('#tomypick')) q('#tomypick').onclick=()=>{ draftAdvance(true); save(); render(); };
   if(q('#tradepick')) q('#tradepick').onclick=()=>{ const cur=O.draft.order[O.draft.idx]; if(cur && cur.owner!==G.team) TR.partner=cur.owner; G.view='trade'; render(); };
-  v.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{ const D=O.draft, pk=D.order[D.idx]; draftPlayer(pk, PBYID[b.dataset.pick]); D.idx++; draftAdvance(true); save(); render(); });
+  v.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>selectRookie(b.dataset.pick));
   v.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.rs], a=O.asks[p.id]; const r=signDirect(p,G.team,a.amt,a.yrs,O.year); if(!r.ok) toast(r.why); save(); render(); });
   v.querySelectorAll('[data-rsd]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.rsd], a=O.asks[p.id]; const pAccept = a.mood<1? .8 : a.mood<1.12? .5 : .25;
     if(rnd01()<pAccept){ const r=signDirect(p,G.team,Math.max(CFG(O.year).minSal,Math.round(a.amt*.9)),a.yrs,O.year); toast(r.ok?`${p.cn} 同意了：${money(p.contract[0])} × ${a.yrs} 年`:r.why); }
@@ -3590,7 +3676,17 @@ function scoutDisplayValue(p){
 }
 function ensureDraftClass(year){
   if(W.dcYear===year && (W.draftClass||[]).length) return;
-  W.draftClass=genDraftClass(year); W.dcYear=year; W.scoutFocus=[]; refreshScout();
+  W.draftClass=genDraftClass(year); W.dcYear=year; W.scoutFocus=[];
+  const pending=W.customDraftQueue?.[year];
+  if(pending){
+    for(const p of pending){
+      W.draftClass.push(p);
+      PBYID[p.id]=p;
+    }
+    delete W.customDraftQueue[year];
+    if(!Object.keys(W.customDraftQueue).length) delete W.customDraftQueue;
+  }
+  refreshScout();
 }
 
 // ---------- 界面：训练 ----------
@@ -4302,6 +4398,27 @@ function bindCheatPreference(button,patch){
 function cheatNumber(input){
   return input.checkValidity() ? input.valueAsNumber : NaN;
 }
+function cheatNumberField(label,key,value,min,max){
+  return `<label>${label}<input type="number" name="${key}" min="${min}" max="${max}" value="${value}" inputmode="numeric" required></label>`;
+}
+function cheatAttributeFields(attributes,min){
+  return ATTR_GROUPS.map(([label,keys])=>`<h2>${label}</h2><div class="cheat-fields">${keys.map(k=>
+    cheatNumberField(ATTR_CN[k],k,attributes[k],Math.min(attributes[k],min),99)).join('')}</div>`).join('');
+}
+
+function customRookiesPanel(available){
+  const year=customDraftYear(), pending=W.off && year>W.off.year;
+  const list=customRookiesFor(year);
+  return `<section class="card">
+    <h3>自定义新秀 <span class="r">${year} 年选秀</span></h3>
+    <p class="hint">${pending?'本届选秀已开始。新建球员将在下赛季进入球探名单。':'加入本届新秀名单，所有球队都可按正常顺序挑选。'}</p>
+    ${list.length?`<div class="cheat-actions">${list.map(p=>`<div class="cheat-rookie-item">
+      <span><b>${esc(p.cn)}</b> <span class="hint">${p.age} 岁 · ${POS_CN[p.pos]} · 总评 ${p.ovr} · 潜力 ${p.pot}</span></span>
+      <button class="sm" data-custom-rookie="${p.id}" ${available?'':'disabled'}>编辑新秀</button>
+    </div>`).join('')}</div>`:''}
+    <div class="ctrl"><button id="create-custom-rookie" ${available?'':'disabled'}>创建新秀</button></div>
+  </section>`;
+}
 
 function vCheats(v){
   const enabled=cheatsEnabled(), available=cheatActionAvailable();
@@ -4354,7 +4471,7 @@ function vCheats(v){
           <p class="hint">在球探页和选秀名单显示真实总评、潜力和发展类型。</p>
           <div class="ctrl"><button id="cheat-reveal"${disabled}>${scoutRevealed()?'关闭新秀透视':'开启新秀透视'}</button><button data-cheat-view="scout">前往球探</button></div>
         </section>
-      </div>`:''}
+      </div>${customRookiesPanel(available)}`:''}
     <section class="card"><h3>修改前备份</h3><div id="cheat-backup" class="hint">${G.cheats?.backup?'读取备份…':'首次修改后可在这里恢复。'}</div></section>`;
   const q=s=>v.querySelector(s);
   const go=view=>{ G.view=view; render(); };
@@ -4365,6 +4482,10 @@ function vCheats(v){
   if(enabled){
     bindCheatPreference(q('#cheat-reveal'),{reveal:!scoutRevealed()});
     q('#cheat-edit').onclick=()=>showCheatPlayer(+q('#cheat-player').value);
+    q('#create-custom-rookie').onclick=()=>showCustomRookie();
+    v.querySelectorAll('[data-custom-rookie]').forEach(b=>{
+      b.onclick=()=>showCustomRookie(+b.dataset.customRookie);
+    });
     q('#cheat-heal').onclick=e=>performCheatEdit(e.currentTarget,()=>{
       for(const p of team.players){
         delete S.inj[p.id];
@@ -4436,15 +4557,14 @@ function showCheatPlayer(id){
   const maxSal=contract?Math.max(contract[0],C.maxSal):0;
   const maxYears=contract?Math.max(4,contract[1]-year):0;
   const modal=document.getElementById('modal');
-  const number=(label,key,value,min,max)=>`<label>${label}<input type="number" name="${key}" min="${min}" max="${max}" value="${value}" inputmode="numeric" required></label>`;
   modal.innerHTML=`<div class="modal"><div class="box" role="dialog" aria-modal="true" aria-labelledby="cheat-player-title">
     <h1 id="cheat-player-title">编辑 ${esc(p.cn)}</h1>
     <p class="hint">${POS_CN[p.pos]} · ${ageOf(p,year)} 岁</p>
     <form id="cheat-player-form">
-      <div class="ctrl"><b id="cheat-ovr"></b>${number('潜力','pot',p.pot,25,99)}</div>
-      ${ATTR_GROUPS.map(([label,keys])=>`<h2>${label}</h2><div class="cheat-fields">${keys.map(k=>number(ATTR_CN[k],k,p.a[k],Math.min(p.a[k],25),99)).join('')}</div>`).join('')}
+      <div class="ctrl"><b id="cheat-ovr"></b>${cheatNumberField('潜力','pot',p.pot,25,99)}</div>
+      ${cheatAttributeFields(p.a,25)}
       <h2>合同</h2>
-      ${contract?`<div class="ctrl cheat-contract">${number('年薪（万）','salary',contract[0],minSal,maxSal)}${number('剩余年数','years',contract[1]-year,1,maxYears)}</div>`:'<p class="hint">当前没有生效合同。</p>'}
+      ${contract?`<div class="ctrl cheat-contract">${cheatNumberField('年薪（万）','salary',contract[0],minSal,maxSal)}${cheatNumberField('剩余年数','years',contract[1]-year,1,maxYears)}</div>`:'<p class="hint">当前没有生效合同。</p>'}
       <div class="ctrl"><button class="pri" type="submit">保存修改</button><button type="button" id="cheat-player-cancel">取消</button></div>
     </form></div></div>`;
   modal.querySelector('#cheat-player-cancel').onclick=()=>{ if(!cheatBusy) closeModal(); };
@@ -4480,6 +4600,75 @@ function showCheatPlayer(id){
       if(contractChanged) p.contract=[salary,expires,contract[2]];
       if(W.off?.asks && expiringOf(G.team).includes(p)) W.off.asks[p.id]=makeAsk(p,G.team);
     },`${p.cn}的资料已更新`);
+  };
+}
+
+function showCustomRookie(id){
+  if(!cheatsEnabled() || !cheatActionAvailable()) return;
+  const year=customDraftYear(), p=customRookiesFor(year).find(candidate=>candidate.id===id);
+  if(id!=null && !p) return;
+  const title=p?'编辑自定义新秀':'创建自定义新秀';
+  const attrs=p?.a??Object.fromEntries(KEYS.map(k=>[k,65]));
+  const positions=selected=>POS.map(pos=>`<option value="${pos}" ${pos===selected?' selected':''}>${POS_CN[pos]} (${pos})</option>`).join('');
+  const modal=document.getElementById('modal');
+  modal.innerHTML=`<div class="modal"><div class="box" role="dialog" aria-modal="true" aria-labelledby="custom-rookie-title">
+    <h1 id="custom-rookie-title">${title}</h1>
+    <p class="hint">${year} 年选秀 · 年龄以参加选秀时为准</p>
+    <form id="custom-rookie-form">
+      <div class="cheat-profile">
+        <label>姓名<input name="name" type="text" value="${esc(p?.cn??'')}" maxlength="${CUSTOM_ROOKIE_NAME_MAX}" autocomplete="off" required></label>
+        ${cheatNumberField('选秀年龄','age',p?.age??19,...CUSTOM_ROOKIE_AGES)}
+        <label>主位置<select name="pos">${positions(p?.pos??'SF')}</select></label>
+        <label>副位置（可选）<select name="secondary"><option value="">无</option>${positions(p?.pos2[0])}</select></label>
+      </div>
+      <div class="ctrl">${cheatNumberField('潜力','pot',p?.pot??85,25,99)}<output id="custom-rookie-rating" aria-live="polite"></output></div>
+      ${cheatAttributeFields(attrs,20)}
+      <div class="ctrl"><button class="pri" type="submit">${p?'保存新秀资料':'加入选秀名单'}</button><button type="button" id="custom-rookie-cancel">取消</button></div>
+    </form>
+  </div></div>`;
+  const form=modal.querySelector('form'), fields=form.elements;
+  const readAttrs=()=>Object.fromEntries(KEYS.map(k=>[k,cheatNumber(fields[k])]));
+  const rating=form.querySelector('#custom-rookie-rating');
+  function refreshRating(){
+    const a=readAttrs(), potential=cheatNumber(fields.pot);
+    if(Object.values(a).some(v=>!Number.isInteger(v))){
+      rating.textContent='';
+      return;
+    }
+    const ovr=calcOvr({pos:fields.pos.value,a});
+    rating.textContent=`总评 ${ovr}`+(potential<ovr?` · 潜力将升至 ${ovr}`:'');
+  }
+  function refreshPositions(){
+    for(const option of fields.secondary.options){
+      option.disabled=option.value===fields.pos.value;
+      if(option.disabled && option.selected) fields.secondary.value='';
+    }
+  }
+  form.oninput=refreshRating;
+  fields.pos.onchange=()=>{ refreshPositions(); refreshRating(); };
+  refreshPositions();
+  refreshRating();
+  form.querySelector('#custom-rookie-cancel').onclick=()=>{ if(!cheatBusy) closeModal(); };
+  fields.namedItem('name').focus();
+  form.onsubmit=e=>{
+    e.preventDefault();
+    let profile;
+    try{
+      profile=customRookieProfile(year,{name:fields.namedItem('name').value,age:cheatNumber(fields.age),
+        pos:fields.pos.value,secondary:fields.secondary.value,attributes:readAttrs(),potential:cheatNumber(fields.pot)});
+    }catch(error){ return toast(error.message); }
+    if(p && profile.cn===p.cn && profile.born===p.born && profile.pos===p.pos &&
+       profile.pos2[0]===p.pos2[0] && profile.pot===p.pot && KEYS.every(k=>profile.a[k]===p.a[k])){
+      return toast('新秀资料没有变化');
+    }
+    const validate=()=>{
+      if(year!==customDraftYear() || (p && !customRookiesFor(year).includes(p))){
+        closeModal();
+        throw new Error('选秀进度已变化，请重新打开编辑器');
+      }
+    };
+    performCheatEdit(form.querySelector('[type=submit]'),()=>saveCustomRookie(year,profile,id),
+      p?`${profile.cn}的新秀资料已保存`:`${profile.cn}已加入 ${year} 年选秀`,validate);
   };
 }
 

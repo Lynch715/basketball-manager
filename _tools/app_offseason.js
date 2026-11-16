@@ -152,6 +152,64 @@ function genDraftClass(year){
 }
 function classTxt(){ const c=W.dcStr; if(!c) return ''; return (c.s>=.7?'大年，前几顺位的成色明显好过往年' : c.s<=-.7?'小年，前几顺位没有往年扎实' : '普通年份')+(c.gen?'。另外，今年有一个被看作世代级的天才':''); }
 
+const CUSTOM_ROOKIE_AGES=[18,40];
+const CUSTOM_ROOKIE_NAME_MAX=32;
+// 按主位置给出身高、臂展和体重的默认值。
+const CUSTOM_ROOKIE_SIZE={PG:[188,196,84],SG:[194,202,91],SF:[201,209,100],PF:[207,219,108],C:[213,226,115]};
+
+function customDraftYear(){
+  if(!W.off) return W.year+1;
+  return W.off.year+(W.off.step>=2 || W.off.draft ? 1 : 0);
+}
+function customRookiesFor(year){
+  const pool=W.dcYear===year ? W.draftClass : W.customDraftQueue?.[year];
+  return (pool||[]).filter(p=>p.customRookie && !p.drafted);
+}
+function customRookieProfile(year,{name,age,pos,secondary,attributes,potential}){
+  const cn=name.trim();
+  if(!cn || cn.length>CUSTOM_ROOKIE_NAME_MAX || /[\u0000-\u001f\u007f]/.test(cn)){
+    throw new Error('请输入有效的球员姓名');
+  }
+  if(!Number.isInteger(age) || age<CUSTOM_ROOKIE_AGES[0] || age>CUSTOM_ROOKIE_AGES[1]){
+    throw new Error('请输入有效的选秀年龄');
+  }
+  if(!POS.includes(pos) || (secondary && (!POS.includes(secondary) || secondary===pos))){
+    throw new Error('请选择有效且不同的主、副位置');
+  }
+  const a=Object.fromEntries(KEYS.map(k=>[k,attributes[k]]));
+  if(Object.values(a).some(v=>!Number.isInteger(v) || v<20 || v>99)){
+    throw new Error('各项能力须为 20–99 的整数');
+  }
+  if(!Number.isInteger(potential) || potential<25 || potential>99){
+    throw new Error('潜力须为 25–99 的整数');
+  }
+  const ovr=calcOvr({pos,a}), [ht,ws,wt]=CUSTOM_ROOKIE_SIZE[pos];
+  // 游戏按赛季开始时的年龄计算，年初生日可精确对应输入的选秀年龄。
+  return {cn,en:cn,age,pos,pos2:secondary?[secondary]:[],born:(year-age)+'-01',
+    a,ovr,pot:Math.max(potential,ovr),ht,ws,wt};
+}
+function saveCustomRookie(year,profile,id){
+  if(year!==customDraftYear()) throw new Error('目标选秀届次已变动，请重新打开编辑器');
+  let p=id==null ? null : customRookiesFor(year).find(candidate=>candidate.id===id);
+  if(id!=null && !p) throw new Error('这名新秀已无法编辑');
+
+  const pending=!!W.off && year>W.off.year;
+  if(!pending) ensureDraftClass(year);
+  if(!p){
+    p={id:PID++,customRookie:true,jersey:'',nat:'',dur:80,prof:60,dev:'normal',vol:1,arch:'自定义',contract:null,hist:[]};
+    if(pending){
+      W.customDraftQueue??={};
+      (W.customDraftQueue[year]??=[]).push(p);
+    }else{
+      W.draftClass.push(p);
+      PBYID[p.id]=p;
+    }
+  }
+  Object.assign(p,profile);
+  if(!pending) refreshScout();
+  return p;
+}
+
 // ---------- 选秀权 ----------
 function ensurePicks(year){ W.picks[year]=W.picks[year]||{1:{},2:{}}; [1,2].forEach(r=>{ for(let i=0;i<30;i++) if(W.picks[year][r][i]==null) W.picks[year][r][i]=i; }); }
 function picksOwnedBy(ti){ const out=[]; Object.keys(W.picks).forEach(y=>[1,2].forEach(r=>Object.entries(W.picks[y][r]).forEach(([orig,own])=>{ if(own===ti && +y>=(W.off?W.off.year:W.year+1) && !pickUsed({year:+y,round:r,orig:+orig})) out.push({year:+y,round:r,orig:+orig}); }))); return out.sort((a,b)=>a.year-b.year||a.round-b.round); }
@@ -185,21 +243,25 @@ function aiDraftPick(ti){
   return best;
 }
 function draftPlayer(pk, p){
-  const D=W.off.draft, yr=W.off.year;
+  const D=W.off?.draft;
+  if(!D || D.done || !pk || D.order[D.idx]!==pk || !TEAMS[pk.owner]) return false;
+  if(!p || p.drafted || !W.draftClass.includes(p)) return false;
+  const yr=W.off.year;
   p.drafted=true; p.rookieYear=yr; p.draft={year:D.year,round:pk.round,no:pk.no,team:pk.owner};
   const t=TEAMS[pk.owner];
   if(pk.round===1){ p.contract=[rookieScale(pk.no), yr+2, 'rk']; p.rkOpt=2; p.rk1=true; }
   else if(t.players.filter(x=>x.contract&&x.contract[2]==='tw').length<3){ p.contract=[Math.round(CFG(yr).minSal*.5), yr+2, 'tw']; p.rkOpt=0; p.rk1=false; }
   else { p.contract=[CFG(yr).minSal, yr+2, 'rk']; p.rkOpt=0; p.rk1=false; }
   t.players.push(p); PBYID[p.id]=p; chemHit(pk.owner,.25); D.log.push({no:pk.no, round:pk.round, team:pk.owner, pid:p.id});
+  return true;
 }
 function draftAdvance(untilUser){ // 一直选到轮到玩家（或者选完）
   const D=W.off.draft;
   while(D.idx<D.order.length){
     const pk=D.order[D.idx];
     if(pk.owner===G.team && untilUser){ maybeDraftOffer(pk); return; }
-    const p=aiDraftPick(pk.owner); if(!p) break;
-    draftPlayer(pk,p); D.idx++;
+    if(!draftPlayer(pk,aiDraftPick(pk.owner))) break;
+    D.idx++;
   }
   if(D.idx>=D.order.length) finishDraft();
 }
