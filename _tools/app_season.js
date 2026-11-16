@@ -27,7 +27,10 @@ function genSchedule(seed, cupPairs){
     const divs=[...new Set(TEAMS.filter(t=>t.conf===cf).map(t=>t.div))];
     for(let x=0;x<3;x++) for(let y=x+1;y<3;y++){
       const A=TEAMS.filter(t=>t.div===divs[x]).map(t=>t.i), B=TEAMS.filter(t=>t.div===divs[y]).map(t=>t.i);
-      A.forEach((a,i)=>B.forEach((b,j)=>{ const four=((j-i+5)%5)<3; add(a,b,four?4:3, four?2:((i+j)%2?2:1)); }));
+      A.forEach((a,i)=>B.forEach((b,j)=>{
+        const offset=(j-i+5)%5, four=offset<3;
+        add(a,b,four?4:3, four||offset===3?2:1);
+      }));
     }
   });
   // 排日期：逐日贪心，优先排剩余场次多、剩余天数少的队
@@ -75,7 +78,7 @@ function newSeason(year){
   const tier = rank<=3?0 : rank<=8?1 : rank<=16?2 : rank<=22?3 : 4;
   S.board={ rank, tier, conf: G.board? clamp(G.board.conf,30,80) : 60 };
   S.inbox.push({d:0, t:'老板的赛季目标', b:`季前实力排名第 ${rank}。老板的要求：${GOALS[tier].txt}。信任度现在是 ${S.board.conf}。`});
-  G.season=S; resetPlayers(); saveSeason();
+  G.season=S; resetPlayers();
 }
 const GOALS=[
   {name:'争冠', txt:'打进总决赛', exp:.68},
@@ -88,10 +91,10 @@ function resetPlayers(){ TEAMS.forEach(t=>t.players.forEach(p=>{ p.injury=0; p.e
 
 // ---------- 存档 ----------
 const SEASON_KEY='bbm_season_v1';
-function saveSeason(){ try{ localStorage.setItem(SEASON_KEY, JSON.stringify(G.season)); }catch(e){ saveFailure(e); } }
-function loadSeason(){ try{ const s=JSON.parse(localStorage.getItem(SEASON_KEY)||'null'); if(s && s.games && s.games.length>1000){ G.season=s; setSeasonYear(s.year); } }catch(e){} }
+const SAVE_KEYS=[SAVE_KEY,WORLD_KEY,SEASON_KEY];
+function loadSeason(){ try{ const s=JSON.parse(localStorage.getItem(SEASON_KEY)||'null'); if(s && s.games && s.games.length>1000){ s.inj??={}; s.cond??={}; G.season=s; setSeasonYear(s.year); } }catch(e){} }
 function applyPlayerState(){ const S=G.season; if(!S) return;
-  TEAMS.forEach(t=>t.players.forEach(p=>{ p.injury = S.inj[p.id]? S.inj[p.id].days : 0; const c=S.cond[p.id]; p.energy = clamp((c==null?100:c)/100,.2,1); })); applyLife(); }
+  TEAMS.forEach(t=>t.players.forEach(p=>{ p.injury = W.off?0:(S.inj[p.id]?.days??0); const c=W.off?100:(S.cond[p.id]??100); p.energy = clamp(c/100,.2,1); })); applyLife(); }
 
 // ---------- 伤病 ----------
 const INJ_TABLE=[ [.55,1,3,['脚踝扭伤','手指挫伤','背部痉挛','膝盖挫伤','臀部挫伤']], [.25,7,14,['腘绳肌拉伤','小腿拉伤','脚踝扭伤','腹股沟拉伤']],
@@ -128,8 +131,16 @@ function effectiveRotation(t, rot){
 }
 function aiSide(t){ const key=t.players.filter(p=>p.injury>0).map(p=>p.id).join(',');
   if(t._rkey!==key || !t._rot){ t._rkey=key; t._rot=E.autoRotation(t); t._tac=E.autoTactics(t,t._rot); } return {players:t.players, rotation:t._rot, tactics:Object.assign({},t._tac,{matchups:{}})}; }
-function userSide(){ const t=myTeam(); return {players:t.players, rotation:effectiveRotation(t,G.rot), tactics:Object.assign(JSON.parse(JSON.stringify(G.tac)),{matchups:{}})}; }
-function sideFor(ti){ return Object.assign(ti===G.team? userSide() : aiSide(TEAMS[ti]), lifeSide(ti)); }
+function userSide(gameKey){
+  const t=myTeam(), prep=prepFor(gameKey);
+  const tactics={...JSON.parse(JSON.stringify(G.tac)),matchups:{...prep?.mu},double:prep?.dbl??null};
+  return {players:t.players,rotation:effectiveRotation(t,G.rot),tactics};
+}
+function sideFor(ti,gameKey){ return Object.assign(ti===G.team? userSide(gameKey) : aiSide(TEAMS[ti]), lifeSide(ti)); }
+function createSeasonMatch(h,a,gameRef,record=false){
+  const seed=((G.season.seed*31+gameRef.n*977)>>>0)||1;
+  return E.createMatch(sideFor(h,gameRef.key),sideFor(a,gameRef.key),{seed,record});
+}
 
 // ---------- 一场比赛的结果落地 ----------
 const PS_KEYS=['min','pts','fgm','fga','tpm','tpa','ftm','fta','oreb','dreb','ast','stl','blk','tov','pf','pm'];
@@ -156,8 +167,7 @@ function recordGame(M, hIdx, aIdx, gameRef, playoff){
   if(hIdx===G.team || aIdx===G.team) S.boxes[gameRef.key]={h:hIdx,a:aIdx,score:M.score.slice(),q:M.qScore,ot:M.ot,box:bs.map(t=>({pts:t.pts,st:t.st,system:t.system,fit:t.fit,players:t.players.map(p=>{ const o={id:p.id}; PS_KEYS.forEach(k=>o[k]=k==='min'?Math.round(p.min*10)/10:p[k]); o.starter=p.starter; o.inj=p.inj; o.gs=p.gs; return o; })}))};
 }
 function simGame(hIdx, aIdx, gameRef, playoff){
-  const S=G.season;
-  const M=E.createMatch(sideFor(hIdx), sideFor(aIdx), {seed:(S.seed*31+gameRef.n*977)>>>0});
+  const M=createSeasonMatch(hIdx,aIdx,gameRef);
   E.run(M); recordGame(M,hIdx,aIdx,gameRef,playoff); return M;
 }
 
@@ -217,26 +227,42 @@ function endDay(){
   else if(S.phase==='playin' && S.playin.every(x=>x.w!=null) && S.playin.length===6) startPlayoffs();
   else if(S.phase==='playin') advancePlayin();
   else if(S.phase==='po') advancePlayoffs();
-  applyPlayerState(); save(); saveSeason();
+  applyPlayerState(); save();
 }
 function teamOfPlayer(p){ return TEAMS.findIndex(t=>t.players.includes(p)); }
 
 // ---------- 战绩 ----------
 function standings(){
-  const S=G.season, R=TEAMS.map(t=>({i:t.i,w:0,l:0,hw:0,hl:0,aw:0,al:0,cw:0,cl:0,pf:0,pa:0,last:[],h2h:{}}));
+  const S=G.season, R=TEAMS.map(t=>({i:t.i,w:0,l:0,hw:0,hl:0,aw:0,al:0,cw:0,cl:0,pf:0,pa:0,last:[],h2h:{},headGames:{}}));
   S.games.forEach(g=>{ if(g[3]==null) return; const [d,h,a,hs,as]=g; const hW=hs>as;
     const H=R[h],A=R[a]; H.pf+=hs;H.pa+=as;A.pf+=as;A.pa+=hs;
     if(hW){H.w++;H.hw++;A.l++;A.al++;} else {A.w++;A.aw++;H.l++;H.hl++;}
     if(TEAMS[h].conf===TEAMS[a].conf){ if(hW){H.cw++;A.cl++;} else {A.cw++;H.cl++;} }
     H.last.push(hW?'W':'L'); A.last.push(hW?'L':'W');
-    H.h2h[a]=(H.h2h[a]||0)+(hW?1:-1); A.h2h[h]=(A.h2h[h]||0)+(hW?-1:1); });
+    H.h2h[a]=(H.h2h[a]||0)+(hW?1:-1); A.h2h[h]=(A.h2h[h]||0)+(hW?-1:1);
+    H.headGames[a]=(H.headGames[a]||0)+1; A.headGames[h]=(A.headGames[h]||0)+1;
+  });
   R.forEach(r=>{ r.g=r.w+r.l; r.pct=r.g?r.w/r.g:0; let s=0; for(let k=r.last.length-1;k>=0;k--){ if(r.last[k]===r.last[r.last.length-1]) s++; else break; }
     r.streak=r.last.length?(r.last[r.last.length-1]==='W'?'连胜 ':'连败 ')+s:'-'; r.l10=r.last.slice(-10); });
   return R;
 }
 function confRank(R, cf){
-  const arr=R.filter(r=>TEAMS[r.i].conf===cf);
-  arr.sort((x,y)=> y.pct-x.pct || (y.h2h[x.i]||0)-(x.h2h[y.i]||0) || (y.cw-y.cl)-(x.cw-x.cl) || (y.pf-y.pa)-(x.pf-x.pa));
+  const groups=new Map();
+  for(const r of R){
+    if(TEAMS[r.i].conf!==cf) continue;
+    if(!groups.has(r.pct)) groups.set(r.pct,[]);
+    groups.get(r.pct).push(r);
+  }
+  const arr=[...groups].sort(([a],[b])=>b-a).flatMap(([,tied])=>{
+    const headWinRate=new Map(tied.map(r=>{
+      const games=tied.reduce((n,o)=>n+(r.headGames[o.i]||0),0);
+      const margin=tied.reduce((n,o)=>n+(r.h2h[o.i]||0),0);
+      return [r.i,games?(games+margin)/(2*games):.5];
+    }));
+    const confWinRate=r=>r.cw+r.cl?r.cw/(r.cw+r.cl):.5;
+    return tied.sort((x,y)=>headWinRate.get(y.i)-headWinRate.get(x.i) || confWinRate(y)-confWinRate(x) ||
+      (y.pf-y.pa)-(x.pf-x.pa) || x.i-y.i);
+  });
   const top=arr[0]; arr.forEach(r=>r.gb=((top.w-r.w)+(r.l-top.l))/2);
   return arr;
 }
@@ -258,7 +284,8 @@ function endRegular(){
   S.final=R.map(r=>({i:r.i,w:r.w,l:r.l}));
   S.seeds={东:confRank(R,'东').map(r=>r.i), 西:confRank(R,'西').map(r=>r.i)};
   S.awards=calcAwards(R); S.awardNames={}; Object.values(S.awards).filter(Boolean).forEach(id=>S.awardNames[id]=awardName(id,S));
-  S.inbox.push({d:S.day,t:'常规赛结束',b:`常规赛 MVP：${PBYID[S.awards.mvp].cn}。最佳防守球员：${PBYID[S.awards.dpoy].cn}。最佳新秀：${S.awards.roy?PBYID[S.awards.roy].cn:'无'}。最佳第六人：${S.awards.smoy?PBYID[S.awards.smoy].cn:'无'}。`});
+  const award=id=>id==null?'无符合条件球员':awardName(id,S);
+  S.inbox.push({d:S.day,t:'常规赛结束',b:`常规赛最有价值球员：${award(S.awards.mvp)}。最佳防守球员：${award(S.awards.dpoy)}。最佳新秀：${award(S.awards.roy)}。最佳第六人：${award(S.awards.smoy)}。`});
   S.phase='playin'; S.playin=[]; S.day+=2; S.poDay=S.day;
   ['东','西'].forEach(cf=>{ const s=S.seeds[cf];
     S.playin.push({cf, tag:'7v8', h:s[6], a:s[7], day:S.day, w:null});
@@ -320,7 +347,7 @@ function seriesSeedRank(sr){ // 主场优势：战绩更好的一方
 function poGamesToday(){
   const S=G.season, out=[];
   if(S.phase==='playin'){
-    S.playin.forEach((x,k)=>{ if(x.w==null && x.day===S.day) out.push({h:x.h,a:x.a,n:5000+k,key:'pi'+k,label:`附加赛 ${x.cf}部 ${x.tag==='7v8'?'7 号 vs 8 号':x.tag==='9v10'?'9 号 vs 10 号':'争夺 8 号种子'}`,done:(hs,as)=>{ x.w=hs>as?x.h:x.a; x.score=[hs,as]; }}); });
+    S.playin.forEach((x,k)=>{ if(x.w==null && x.day===S.day) out.push({h:x.h,a:x.a,n:5000+k,key:'pi'+k,label:`附加赛 ${x.cf}部 ${x.tag==='7v8'?'第 7 对第 8':x.tag==='9v10'?'第 9 对第 10':'争夺 8 号种子'}`,done:(hs,as)=>{ x.w=hs>as?x.h:x.a; x.score=[hs,as]; }}); });
     return out;
   }
   if(S.phase!=='po' || S.day<S.poDay) return out;
@@ -369,7 +396,7 @@ function finishSeason(){
     case 1: met = roundWon>=2; break;
     case 2: met = inPO; break;
     case 3: met = seed<=10; break;
-    default: { const young=Object.entries(S.ps).some(([id,q])=>q.team===G.team && PBYID[id].age<=23 && q.g>=40 && q.min/q.g>=20); met = r.w>=25 && young; }
+    default: { const young=Object.entries(S.ps).some(([id,q])=>q.team===G.team && PBYID[id]?.age<=23 && q.g>=40 && q.min/q.g>=20); met = r.w>=25 && young; }
   }
   const exceed = met && (roundWon>=({0:5,1:3,2:2,3:1,4:1})[S.board.tier]);
   // 差一点完成：只差一轮（或者差一档）
@@ -384,5 +411,5 @@ function finishSeason(){
   G.career=G.career||[];
   G.career.push({year:S.year, team:G.team, w:r.w, l:r.l, res, champ:S.champion===G.team, cup:!!(S.cup&&S.cup.champ===G.team), goal:GOALS[S.board.tier].name, met, fmvp:S.fmvp, fmvpName:S.fmvpName, mvp:S.awards&&S.awards.mvp, fin:{revT:ff.revT, pay:ff.pay, tax:ff.tax, profit:ff.profit}});
   G.board={conf:S.board.conf};
-  checkFired(); save();
+  checkFired();
 }

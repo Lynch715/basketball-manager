@@ -45,7 +45,11 @@ function settleTax(){
   const S=G.season, year=S.year; S.fin={}; W.taxHist=W.taxHist||{}; let pool=0; const payers=[];
   TEAMS.forEach(t=>{ const pay=payroll(t,year), rep=isRepeater(t.i,year), tax=taxOf(pay,year,rep); S.fin[t.i]={pay,tax,rep,share:0};
     if(tax>0){ pool+=tax; payers.push(t.i); (W.taxHist[t.i]=W.taxHist[t.i]||[]).push(year); } });
-  const non=TEAMS.filter(t=>!payers.includes(t.i)); non.forEach(t=>S.fin[t.i].share=Math.round(pool/Math.max(1,non.length)));
+  const non=TEAMS.filter(t=>!payers.includes(t.i));
+  if(non.length){
+    const share=Math.floor(pool/non.length), remainder=pool%non.length;
+    non.forEach((t,i)=>{ S.fin[t.i].share=share+(i<remainder?1:0); });
+  }
   if(payers.length) addNews('奢侈税',`${year}-${String((year+1)%100).padStart(2,'0')} 赛季 ${payers.length} 队交了奢侈税，共 ${money(pool)}：${payers.map(i=>TEAMS[i].nick+' '+money(S.fin[i].tax)).join('，')}`);
   const me=S.fin[G.team]; S.inbox.push({d:S.day, t:'奢侈税结算', b: me.tax? `按常规赛最后一天的工资 ${money(me.pay)}，你交了 ${money(me.tax)} 奢侈税${me.rep?'（重复纳税，税率更高）':''}。` : `你没交奢侈税，分到其他球队交的奢侈税 ${money(me.share)}。`});
 }

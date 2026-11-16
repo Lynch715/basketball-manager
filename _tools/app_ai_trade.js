@@ -87,6 +87,7 @@ function maybeUserOffer(prob){
 function offerExpired(o){ if([...o.give.k,...o.get.k].some(k=>pickUsed(pkFromKey(k)))) return true; if(o.exp.off) return !W.off || W.off.step>o.exp.step; return W.off || !G.season || G.season.day>o.exp.day || G.season.phase!=='reg'; }
 function offerItems(o){ return {give:o.give.p.map(id=>PBYID[id]).filter(Boolean), giveK:o.give.k.map(pkFromKey), get:o.get.p.map(id=>PBYID[id]).filter(Boolean), getK:o.get.k.map(pkFromKey)}; }
 function acceptOffer(id){
+  if(rosterChangesPaused()){ toast('请在比赛或模拟结束后再交易'); return; }
   const o=(W.offers||[]).find(x=>x.id===id); if(!o) return;
   if(offerExpired(o) || !tradeOpen().ok){ rejectOffer(id); toast('交易报价已过期'); return; }
   const it=offerItems(o), yr=ctxYear();

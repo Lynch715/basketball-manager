@@ -8,22 +8,10 @@ function cheatActionAvailable(){
 function setCheatPreference(patch){
   if(!cheatActionAvailable()) throw new Error('请在比赛或模拟结束后再操作');
   const cheats={...G.cheats,...patch};
-  localStorage.setItem(SAVE_KEY,JSON.stringify({...gameSaveData(),cheats}));
+  replaceSaveKeys({...currentSaveKeys(),[SAVE_KEY]:JSON.stringify({...gameSaveData(),cheats})});
   G.cheats=cheats;
 }
-function readCheatBackup(snap){
-  try{
-    const game=JSON.parse(snap.keys[SAVE_KEY]);
-    const world=JSON.parse(snap.keys[WORLD_KEY]);
-    const season=JSON.parse(snap.keys[SEASON_KEY]);
-    if(snap.v===1 && Number.isInteger(game.team) && TEAMS[game.team] &&
-       world.W?.year===season.year && world.W.picks && world.W.dead &&
-       Array.isArray(world.players) && world.players.some(p=>p.team===game.team) &&
-       Array.isArray(season.games) && season.games.length>1000 &&
-       Number.isFinite(season.board?.conf) && season.cond && season.inj) return snap;
-  }catch(error){}
-  return null;
-}
+function readCheatBackup(snap){ return validSaveSnapshot(snap)?snap:null; }
 async function runCheatEdit(edit,validate){
   if(!cheatsEnabled() || !cheatActionAvailable()) throw new Error('请开启作弊台，并在比赛或模拟结束后再操作');
   const before=snapshot(currentSaveKeys());
@@ -110,8 +98,8 @@ function vCheats(v){
   const enabled=cheatsEnabled(), available=cheatActionAvailable();
   const S=G.season, team=myTeam(), year=ctxYear(), limit=ownerLimit(team.i,year);
   const base=baseOwnerLimit(team.i,year), budgetOpen=W.off || S.phase!=='done';
-  const injured=team.players.filter(p=>S.inj[p.id]).length;
-  const tired=team.players.filter(p=>(S.cond[p.id]??100)<100).length;
+  const injured=team.players.filter(p=>p.injury>0).length;
+  const tired=team.players.filter(p=>p.energy<1).length;
   const average=team.players.length ? Math.round(team.players.reduce((sum,p)=>sum+mor(p),0)/team.players.length) : 0;
   const chem=Math.round(W.tm?.[team.i]?.chem ?? 50);
   const trustNeeded=S.fired || S.board.conf<100 || (S.phase==='done' && G.board?.conf<100);

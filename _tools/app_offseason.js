@@ -295,7 +295,11 @@ function signDirect(p, ti, amt, yrs, yr){ // 工资帽豁免仍遵守人数与�
   if(!already && !FREE.includes(p)) return {ok:false,why:'球员已不在自由市场'};
   const i=FREE.indexOf(p); if(i>=0) FREE.splice(i,1);
   p.contract=[amt, yr+yrs, 'std']; delete p.fa; delete p.rfa; delete p.sheet; if(!TEAMS[ti].players.includes(p)){ TEAMS[ti].players.push(p); chemHit(ti,1); } PBYID[p.id]=p; TEAMS[ti]._rot=null; if(!already || (old && amt>old[0]*1.2)) freezeOnSign(p); return {ok:true}; }
-function makeAsk(p, ti){ const yr=W.off.year, age=ageOf(p,yr); return {amt:Math.round(marketSalary(p.ovr,age,yr)*moodOf(p,ti)), yrs:contractYears(age), mood:moodOf(p,ti), refuse:mor(p)<25||!!p.treq}; }
+function makeAsk(p, ti){
+  const yr=W.off.year, age=ageOf(p,yr), mood=moodOf(p,ti);
+  const amt=Math.max(CFG(yr).minSal,Math.round(marketSalary(p.ovr,age,yr)*mood));
+  return {amt,yrs:contractYears(age),mood,refuse:mor(p)<25||!!p.treq};
+}
 function playerValue(p, mode, year){ // 交易和续约通用的价值
   year=year||W.year; const age=ageOf(p,year);
   let eff=p.ovr; if(mode==='rebuild' && age<=24) eff=p.ovr+(p.pot-p.ovr)*.6; else if(age<=22) eff=p.ovr+(p.pot-p.ovr)*.25;
@@ -351,7 +355,7 @@ function teamWinPct(ti){ const S=G.season; const f=S&&S.final&&S.final.find(x=>x
 function roleOn(p, ti){ const better=TEAMS[ti].players.filter(x=>x.ovr>p.ovr).length; return better<5?1: better<8?.5:0; }
 function faRound(){
   resolveSheets();
-  const O=W.off, yr=O.year, rnd=O.faRound; const floor=[1,.93,.86,.8,.74][Math.min(4,rnd-1)];
+  const O=W.off, yr=O.year;
   const offers={};           // pid -> [{ti, amt, yrs}]
   const add=(pid,o)=>{ (offers[pid]=offers[pid]||[]).push(o); };
   // 玩家的报价
@@ -364,7 +368,7 @@ function faRound(){
     for(const p of pool){
       if(n>=3 || cnt+n>=15) break;
       if(p.ovr<=bar && cnt>=13) continue;
-      const a=faAsk(p); const want=Math.round(a.ask*floor);
+      const a=faAsk(p); const want=a.ask;
       let amt=null;
       if(pay+want<=C.cap) amt=want;
       else if(!(W.mle[yr]||{})[t.i] && pay<C.apron1 && want<=C.mleNT) amt=want;
@@ -379,8 +383,8 @@ function faRound(){
   const signed=[];
   Object.entries(offers).forEach(([pid,list])=>{
     const p=PBYID[pid]; if(!p || !FREE.includes(p) || p.sheet) return;
-    const a=faAsk(p); const minOk=Math.round(a.ask*floor*.97);
-    const ok=list.filter(o=>o.amt>=minOk || o.amt>=CFG(yr).minSal && a.ask*floor<=CFG(yr).minSal*1.05);
+    const a=faAsk(p); const minOk=Math.round(a.ask*.97);
+    const ok=list.filter(o=>o.amt>=minOk || o.amt>=CFG(yr).minSal && a.ask<=CFG(yr).minSal*1.05);
     if(!ok.length) return;
     ok.sort((x,y)=>y.amt*(1+.15*teamWinPct(y.ti)+.1*roleOn(p,y.ti)) - x.amt*(1+.15*teamWinPct(x.ti)+.1*roleOn(p,x.ti)));
     for(const o of ok){
@@ -442,6 +446,7 @@ function startOffseason(){
   const S=G.season;
   W.off={step:0, year:S.year+1, report:null, lottery:null, draft:null, faRound:0, faLog:[], userOffers:{}, asks:{}};
   W.off.report=offSummary();
+  S.inj={}; S.cond={};
   ensurePicks(S.year+1); ensurePicks(S.year+2);
   ensureDraftClass(S.year+1);
   save();

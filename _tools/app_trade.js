@@ -9,6 +9,7 @@ function tradeOpen(){
   if(S.day>dl) return {ok:false, why:`已经过了交易截止日（${S.year+1} 年 2 月 5 日）`};
   return {ok:true, deadline:dl};
 }
+function rosterChangesPaused(){ return BUSY || !!(LIVE && !LIVE.finished); }
 function pickValue(pk, mode, prot){
   const slot=projSlot(pk);
   const eff = pk.round===1? 80-(slot-1)*.45 : 63-(slot-1)*.08;
@@ -100,6 +101,7 @@ function evalTrade(){
     myCount:rosterCount(me,yr)+delta, ptCount:rosterCount(pt,yr)-delta, mode, outP, inP, outK, inK};
 }
 function doTrade(approval){
+  if(rosterChangesPaused()) throw new Error('请在比赛或模拟结束后再交易');
   const special=approval?.force===true;
   if(special && (!cheatsEnabled() || !cheatBusy)) throw new Error('请从作弊台提交交易特批');
   const ev=evalTrade(), op=tradeOpen(), skipSalary=special && approval.salary===true;
@@ -114,6 +116,7 @@ function doTrade(approval){
   return txt;
 }
 function vTrade(v){
+  if(rosterChangesPaused()){ v.innerHTML='<h1>交易</h1><div class="card">比赛或模拟结束后可以交易。</div>'; return; }
   const op=tradeOpen();
   if(!op.ok){ v.innerHTML=`<h1>交易</h1><div class="card"><p>${esc(op.why)}</p></div>`; return; }
   if(TR.partner==null || TR.partner===G.team) TR.partner=(G.team+1)%30;
@@ -148,6 +151,7 @@ function vTrade(v){
 // ---------- 自由球员（赛季中、休赛期自由市场以外） ----------
 function inSeasonAsk(p){ const yr=ctxYear(); return Math.max(CFG(yr).minSal, Math.round(marketSalary(p.ovr,ageOf(p,yr),yr)*(W.off?1:.6))); }
 function vFA(v){
+  if(rosterChangesPaused()){ v.innerHTML='<h1>自由球员</h1><div class="card">比赛或模拟结束后可以签约或调整阵容。</div>'; return; }
   const yr=ctxYear(), C=CFG(yr), t=myTeam(), pay=payroll(t,yr);
   if(W.off && W.off.step===4){ v.innerHTML=`<h1>自由球员</h1><div class="card"><p>自由市场正在进行，请在「休赛期」页报价。</p></div>`; return; }
   const fas=FREE.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,80);
@@ -155,9 +159,9 @@ function vFA(v){
   const minRoster = W.off? 0 : 13;
   v.innerHTML=`<h1>自由球员</h1><div class="sub">${W.off?'休赛期':'赛季中'}签约：${W.off?'按要价':'要价打六折'}，合同 1 年。工资 ${money(pay)} · 工资帽剩 ${money(Math.max(0,C.cap-pay))} · 中产 ${(W.mle[yr]||{})[G.team]?'已用':pay<C.apron1?money(C.mleNT):pay<C.apron2?money(C.mleTP):'不可用'} · 正式合同 ${rosterCount(t,yr)} / 15</div>
    <div class="card tw"><h3>市场上的球员</h3><table><thead><tr><th>球员</th><th>位置</th><th class="n">年龄</th><th class="n">总评</th><th class="n">潜力</th><th class="n">要价</th><th></th></tr></thead><tbody>
-    ${fas.map(p=>{ const a=inSeasonAsk(p), r=p.sheet?{ok:false,why:'报价单处理中，请到休赛期处理'}:p.rfa?{ok:false,why:'受限球员，请到休赛期报价'}:offerRule(G.team,a,yr); return `<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b></td><td>${p.pos}</td><td class="n">${ageOf(p,yr)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${money(a)}</td>
+    ${fas.map(p=>{ const a=inSeasonAsk(p), r=p.sheet?{ok:false,why:'报价单处理中，请到休赛期处理'}:p.rfa?{ok:false,why:'受限球员，请到休赛期报价'}:offerRule(G.team,a,yr); return `<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b></td><td>${POS_CN[p.pos]}</td><td class="n">${ageOf(p,yr)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${money(a)}</td>
       <td>${r.ok?`<button class="sm pri" data-sign="${p.id}">签下（${r.kind}）</button>`:`<span class="hint">${esc(r.why)}</span>`}</td></tr>`; }).join('')}</tbody></table></div>
-   ${(()=>{ const tw=t.players.filter(p=>p.contract&&p.contract[2]==='tw'); return tw.length?`<div class="card tw"><h3>双向合同 <span class="r">${tw.length} / 3，不占 15 人名额，不算工资</span></h3><table><tbody>${tw.map(p=>`<tr><td>${esc(p.cn)} <span class="hint">${p.pos} · ${ageOf(p,yr)} 岁</span></td><td class="n">${ovrTag(p.ovr)}</td><td class="n">潜力 ${p.pot}</td><td class="n">至 ${p.contract[1]}</td><td>${rosterCount(t,yr)<15?`<button class="sm" data-tw="${p.id}">转正式合同（底薪 × 2 年）</button>`:'<span class="hint">正式合同已满 15 人</span>'}</td></tr>`).join('')}</tbody></table></div>`:''; })()}
+   ${(()=>{ const tw=t.players.filter(p=>p.contract&&p.contract[2]==='tw'); return tw.length?`<div class="card tw"><h3>双向合同 <span class="r">${tw.length} / 3，不占 15 人名额，不算工资</span></h3><table><tbody>${tw.map(p=>`<tr><td>${esc(p.cn)} <span class="hint">${POS_CN[p.pos]} · ${ageOf(p,yr)} 岁</span></td><td class="n">${ovrTag(p.ovr)}</td><td class="n">潜力 ${p.pot}</td><td class="n">至 ${p.contract[1]}</td><td>${rosterCount(t,yr)<15?`<button class="sm" data-tw="${p.id}">转正式合同（底薪 × 2 年）</button>`:'<span class="hint">正式合同已满 15 人</span>'}</td></tr>`).join('')}</tbody></table></div>`:''; })()}
    <div class="card tw"><h3>裁人 <span class="r">剩余合同照付，算进工资（死钱）</span></h3><table><tbody>
     ${mineStd.sort((a,b)=>a.ovr-b.ovr).map(p=>`<tr><td>${esc(p.cn)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.contract?money(p.contract[0])+' 至 '+p.contract[1]:''}</td><td>${mineStd.length>minRoster?`<button class="sm" data-waive="${p.id}">裁掉</button>`:''}</td></tr>`).join('')}</tbody></table>
     ${(W.dead[G.team]||[]).filter(d=>d.exp>yr).length?`<p class="hint" style="margin-top:6px">死钱：${W.dead[G.team].filter(d=>d.exp>yr).map(d=>`${esc(d.cn)} ${money(d.amt)} 至 ${d.exp}`).join('；')}</p>`:''}</div>`;

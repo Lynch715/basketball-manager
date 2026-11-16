@@ -1,7 +1,6 @@
 // ================= 存档、读档、新开一局、联系方式 =================
 // 当前进度自动存在 localStorage（bbm_v1 / bbm_world_v1 / bbm_season_v1）；
 // 手动存档位放 IndexedDB（一个存档接近 1 MB，localStorage 放不下几个），IndexedDB 不可用时退回 localStorage。
-const SAVE_KEYS=[SAVE_KEY, WORLD_KEY, SEASON_KEY];
 const SLOT_N=3;
 const IDB={db:null};
 function idbOpen(){ return new Promise((res,rej)=>{ if(IDB.db) return res(IDB.db); if(!window.indexedDB) return rej(new Error('no idb'));
@@ -18,48 +17,30 @@ async function slotGet(k){
 }
 async function slotDel(k){ try{ const db=await idbOpen(); await new Promise(res=>{ const tx=db.transaction('slots','readwrite'); tx.objectStore('slots').delete(k); tx.oncomplete=res; tx.onerror=tx.onabort=res; }); }catch(e){} try{ localStorage.removeItem('bbm_slot_'+k); }catch(e){} }
 
-function currentSaveKeys(){
-  return {
-    [SAVE_KEY]:JSON.stringify(gameSaveData()),
-    [WORLD_KEY]:JSON.stringify(worldSaveData()),
-    [SEASON_KEY]:JSON.stringify(G.season)
-  };
-}
-function snapshot(keys){
-  if(!keys){
-    save(); saveSeason();
-    keys={};
-    for(const key of SAVE_KEYS){
-      const value=localStorage.getItem(key);
-      if(value!==null) keys[key]=value;
-    }
-  }
+function snapshot(keys=currentSaveKeys()){
   const S=G.season, t=G.team!=null?TEAMS[G.team]:null, r=S&&t? standings()[G.team] : null;
   return {v:1, time:Date.now(), meta:{team:t?t.cn:'', ti:G.team, year:W.off?W.off.year:(S?S.year:W.year), date:W.off?'休赛期 · '+OFF_STEPS[W.off.step]:(S?dateTxt(Math.min(S.day,REG_DAYS+80))+' · '+phaseTxt():''), rec:r?`${r.w}-${r.l}`:''}, keys};
 }
-function replaceSaveKeys(keys){
-  const changes=SAVE_KEYS.map(key=>{
-    const value=keys[key]==null ? null : String(keys[key]);
-    const old=localStorage.getItem(key);
-    return {key,old,value,delta:(value?.length??0)-(old?.length??0)};
-  }).filter(change=>change.value!==change.old);
-  // 先释放空间，再写入增长的部分，兼顾接近配额的旧档。
-  changes.sort((a,b)=>a.delta-b.delta);
-  const changed=[];
+function validSaveSnapshot(snap){
+  if(!snap?.keys || (snap.v!=null && snap.v!==1) || SAVE_KEYS.some(k=>typeof snap.keys[k]!=='string')) return false;
   try{
-    for(const {key,old,value} of changes){
-      if(value===null) localStorage.removeItem(key);
-      else localStorage.setItem(key,value);
-      changed.push([key,old]);
-    }
-  }catch(error){
-    for(const [k] of changed) localStorage.removeItem(k);
-    for(const [k,old] of changed) if(old!==null) localStorage.setItem(k,old);
-    throw error;
-  }
+    const game=JSON.parse(snap.keys[SAVE_KEY]), world=JSON.parse(snap.keys[WORLD_KEY]);
+    const season=JSON.parse(snap.keys[SEASON_KEY]);
+    if(!Number.isInteger(game?.team) || !TEAMS[game.team] || !Number.isInteger(season?.year) ||
+       world?.W?.year!==season.year || !['reg','playin','po','done'].includes(season.phase) ||
+       !Number.isFinite(season.board?.conf) || !Number.isInteger(season.day) ||
+       !Array.isArray(season.inbox) || !season.boxes || !season.ps || !season.pps ||
+       !Array.isArray(season.games) || season.games.length<=1000 ||
+       !Array.isArray(world.players) || !world.players.length ||
+       !world.W.picks || !world.W.dead) return false;
+    return season.games.every(g=>Array.isArray(g) && Number.isInteger(g[0]) && TEAMS[g[1]] && TEAMS[g[2]]) &&
+      world.players.every(p=>p && Number.isSafeInteger(p.id) && typeof p.cn==='string' &&
+        typeof p.born==='string' && POS.includes(p.pos) && Array.isArray(p.pos2) && p.a &&
+        (p.team===-1 || !!TEAMS[p.team]));
+  }catch(error){ return false; }
 }
 function restore(snap){
-  if(!snap || !snap.keys || !snap.keys[WORLD_KEY]) throw new Error('bad');
+  if(!validSaveSnapshot(snap)) throw new Error('存档缺少球队、联盟或赛季数据');
   replaceSaveKeys(snap.keys);
   location.reload();
 }
@@ -72,7 +53,19 @@ function exportSave(){
   toast('存档文件已导出');
 }
 function importSave(file){
-  const r=new FileReader(); r.onload=()=>{ try{ const s=JSON.parse(r.result); if(!confirmSafe('导入会替换当前进度，确定吗？')) return; restore(s); }catch(e){ toast('这个文件读不出来，不是篮球经理的存档'); } }; r.readAsText(file);
+  const r=new FileReader();
+  r.onload=()=>{
+    let snapshot;
+    try{
+      snapshot=JSON.parse(r.result);
+      if(!validSaveSnapshot(snapshot)) throw new Error('bad save');
+    }catch(error){ toast('存档文件格式不对或内容不完整'); return; }
+    if(!confirmSafe('导入会替换当前进度，确定吗？')) return;
+    try{ restore(snapshot); }
+    catch(error){ toast('导入失败，请检查浏览器存储空间'); }
+  };
+  r.onerror=()=>toast('存档文件读取失败');
+  r.readAsText(file);
 }
 function confirmSafe(msg){ try{ return window.confirm(msg); }catch(e){ return true; } }
 function newGame(){ if(!confirmSafe('新开一局会丢掉当前进度（手动存档位不受影响）。确定吗？')) return; SAVE_KEYS.forEach(k=>localStorage.removeItem(k)); location.reload(); }
@@ -95,7 +88,10 @@ async function slotsHTML(canSave){
 }
 function bindSave(v, rerender){
   v.querySelectorAll('[data-ss]').forEach(b=>b.onclick=async()=>{ const k='s'+b.dataset.ss, old=await slotGet(k);
-    if(old && !confirmSafe(`存档位 ${b.dataset.ss} 已经有存档，覆盖吗？`)) return; await slotPut(k, snapshot()); toast(`已存到存档位 ${b.dataset.ss}`); rerender(); });
+    if(old && !confirmSafe(`存档位 ${b.dataset.ss} 已经有存档，覆盖吗？`)) return;
+    try{ await slotPut(k, snapshot()); toast(`已存到存档位 ${b.dataset.ss}`); rerender(); }
+    catch(error){ toast('无法写入存档位，请检查浏览器存储空间'); }
+  });
   v.querySelectorAll('[data-sl]').forEach(b=>b.onclick=async()=>{ const s=await slotGet('s'+b.dataset.sl); if(!s) return;
     if(G.team!=null && !confirmSafe('读档会替换当前进度，没存的部分会丢。确定吗？')) return; try{ restore(s); }catch(e){ toast('这个存档读不出来'); } });
   v.querySelectorAll('[data-sd]').forEach(b=>b.onclick=async()=>{ if(!confirmSafe(`删除存档位 ${b.dataset.sd}？`)) return; await slotDel('s'+b.dataset.sd); rerender(); });
@@ -108,7 +104,6 @@ function bindSave(v, rerender){
   bindInstallCard(v);
 }
 async function vSave(v){
-  const s=G.season, t=myTeam();
   v.innerHTML=`<h1>存档</h1><div class="sub">每一步操作都会自动保存，关掉再打开会接着玩。想留几个进度来回切，用下面的存档位。</div>
     <div class="card"><h3>作弊台 <span class="r">${cheatsEnabled()?'当前存档已开启':'当前存档已关闭'}</span></h3><button id="opencheats">进入作弊台</button></div>
     <div id="savebody"><div class="hint">读取中…</div></div>`;
@@ -118,7 +113,7 @@ async function vSave(v){
   if(!body.isConnected) return;
   body.innerHTML=`${html}
     <div class="card"><h3>新开一局</h3><p class="hint" style="margin-bottom:8px">放弃当前进度，回到 2026-27 赛季季前重新选队。手动存档位里的存档不受影响。</p><button class="sm" id="newgame" style="border-color:var(--bad);color:var(--bad)">新开一局</button></div>
-    ${installCardHTML()}${contactHTML()}<p class="hint" style="margin-top:10px;font-size:11px;opacity:.7">${screenDiag()}</p>`;
+    ${installCardHTML()}${contactHTML()}`;
   bindSave(v, ()=>vSave(v));
 }
 // 选队页：读档、导入、联系方式

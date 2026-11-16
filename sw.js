@@ -1,8 +1,8 @@
 // 篮球经理 service worker：代码网络优先，图片缓存优先 + 后台更新
-const VER='bbm-v10-custom-rookies';
-const SHELL=['./','./index.html','./site.webmanifest','./favicon.ico','./logos.png','./icon/icon-192.png','./icon/icon-512.png','./icon/icon-180.png','./icon/icon-32.png'];
+const VER='bbm-v11-audit';
+const SHELL=['./','./index.html','./篮球经理.html','./site.webmanifest','./favicon.ico','./logos.png','./icon/icon-192.png','./icon/icon-512.png','./icon/icon-180.png','./icon/icon-32.png'];
 self.addEventListener('install',e=>{ e.waitUntil(caches.open(VER).then(c=>c.addAll(SHELL))); });
-self.addEventListener('activate',e=>{ e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==VER).map(k=>caches.delete(k)))).then(()=>self.clients.claim())); });
+self.addEventListener('activate',e=>{ e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('bbm-') && k!==VER).map(k=>caches.delete(k)))).then(()=>self.clients.claim())); });
 self.addEventListener('message',e=>{ if(e.data==='skipWaiting') self.skipWaiting(); });
 self.addEventListener('fetch',e=>{
   const req=e.request; if(req.method!=='GET') return;

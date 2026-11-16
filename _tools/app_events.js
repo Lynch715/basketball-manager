@@ -76,7 +76,9 @@ function runAllStar(){
   const bs=E.boxScore(M), win=M.score[0]>M.score[1]?0:1;
   const best=bs[win].players.slice().sort((a,b)=>b.gs-a.gs)[0];
   const top=bs.flatMap(t=>t.players).sort((a,b)=>b.pts-a.pts).slice(0,6).map(x=>({id:x.id, pts:x.pts, reb:x.oreb+x.dreb, ast:x.ast}));
-  AS.game={score:M.score.slice(), mvp:best.id, top};
+  const mvp=best?.id??null;
+  AS.game={score:M.score.slice(),mvp,top};
+  if(M.forfeit!=null) AS.game.forfeit=M.forfeit;
   // 三分大赛
   const shooters=pool.filter(x=>x.q.tpa/x.q.g>=4).sort((a,b)=>(b.p.a.three*.7+b.q.tpm/b.q.tpa*30)-(a.p.a.three*.7+a.q.tpm/a.q.tpa*30)).slice(0,8).map(x=>x.p);
   const shoot=p=>{ const pr=clamp(.25+(p.a.three-60)*.011,.25,.62); let s=0; for(let r=0;r<5;r++) for(let b=0;b<5;b++) if(rnd01()<pr) s+=b===4?2:1; return s; };
@@ -95,14 +97,16 @@ function runAllStar(){
   const all=[...AS['东'].starters,...AS['东'].reserves,...AS['西'].starters,...AS['西'].reserves];
   all.forEach(id=>setMor(PBYID[id],mor(PBYID[id])+5));
   [AS.three.w, AS.dunk.w, AS.game.mvp].forEach(id=>{ if(id) setMor(PBYID[id],mor(PBYID[id])+3); });
-  addNews('全明星',`全明星赛 东部 ${M.score[0]}-${M.score[1]} 西部，MVP ${PBYID[best.id].cn}。三分大赛冠军 ${AS.three.w?PBYID[AS.three.w].cn:'-'}，扣篮大赛冠军 ${AS.dunk.w?PBYID[AS.dunk.w].cn:'-'}`);
+  const result=AS.game.forfeit!=null?'全明星正赛因参赛球员不足未能进行':`全明星赛 东部 ${M.score[0]}-${M.score[1]} 西部${mvp?'，最有价值球员 '+awardName(mvp,S):''}`;
+  addNews('全明星',`${result}。三分大赛冠军 ${AS.three.w?PBYID[AS.three.w].cn:'-'}，扣篮大赛冠军 ${AS.dunk.w?PBYID[AS.dunk.w].cn:'-'}`);
   const mine=all.filter(id=>teamOfPlayer(PBYID[id])===G.team).map(id=>PBYID[id].cn);
-  S.inbox.push({d:S.day, t:'全明星周末', b:`${mine.length?'你的球队入选：'+mine.join('、')+'。':'你的球队今年没人入选。'}全明星赛 MVP 是 ${PBYID[best.id].cn}。详情在「赛事」页。`});
+  S.inbox.push({d:S.day, t:'全明星周末', b:`${mine.length?'你的球队入选：'+mine.join('、')+'。':'你的球队今年没人入选。'}${result}。详情在「赛事」页。`});
 }
 
 // ---------- 界面：赛事 ----------
 function vEvents(v){
-  const S=G.season, tn=i=>i==null?'<span class="hint">待定</span>':`${logo(TEAMS[i],16)} ${esc(TEAMS[i].nick)}`, pn=id=>{ const p=PBYID[id]; return p?`<span class="cl" data-id="${id}">${esc(p.cn)}</span>`:'?'; };
+  const S=G.season, tn=i=>i==null?'<span class="hint">待定</span>':TEAMS[i]?`${logo(TEAMS[i],16)} ${esc(TEAMS[i].nick)}`:'<span class="hint">当前无球队</span>';
+  const pn=id=>{ const p=PBYID[id]; return p?`<span class="cl" data-id="${id}">${esc(p.cn)}</span>`:'无'; };
   const html0=`<h1>赛事</h1><div class="sub">NBA 杯 · 全明星周末</div>`; let cupHtml='';
   if(S.cup){ let html=''; const C=S.cup;
     html+=`<div class="card"><h3>NBA 杯 ${C.champ!=null?`<span class="r">冠军 ${tn(C.champ)}</span>`:''}</h3><p class="hint">小组赛是 11 月里指定的常规赛，同时算常规赛战绩。每个分区 3 个小组第一加 1 个成绩最好的小组第二进八强。淘汰赛是额外比赛，不计入常规赛战绩和数据。</p></div>`;
@@ -114,7 +118,7 @@ function vEvents(v){
   const AS=S.allStar;
   if(!AS) html+=`<div class="card"><h3>全明星周末</h3><p class="hint">${dateTxt(ASB[0])} 举行。出场 20 场以上的球员按数据、总评和球队战绩评选，东西部各 12 人。</p></div>`;
   else {
-    html+=`<div class="card"><h3>全明星赛 <span class="r">东部 ${AS.game.score[0]} - ${AS.game.score[1]} 西部</span></h3><p>MVP：<b>${pn(AS.game.mvp)}</b></p>
+    html+=`<div class="card"><h3>全明星赛 <span class="r">${AS.game.forfeit!=null?'参赛球员不足':`东部 ${AS.game.score[0]} - ${AS.game.score[1]} 西部`}</span></h3><p>最有价值球员：<b>${pn(AS.game.mvp)}</b></p>
       <div class="hint" style="margin-top:4px">${AS.game.top.map(x=>`${pn(x.id)} ${x.pts} 分 ${x.reb} 板 ${x.ast} 助`).join(' · ')}</div></div>
      <div class="row">${['东','西'].map(cf=>`<div class="col card" style="min-width:240px"><h3>${cf}部全明星</h3><div class="hint">首发</div>${AS[cf].starters.map(id=>`<div>${pn(id)} <span class="hint">${PBYID[id]?PBYID[id].pos:''} · ${tn(teamOfPlayer(PBYID[id]))}</span></div>`).join('')}<div class="hint" style="margin-top:6px">替补</div>${AS[cf].reserves.map(id=>`<div>${pn(id)} <span class="hint">${PBYID[id]?PBYID[id].pos:''} · ${tn(teamOfPlayer(PBYID[id]))}</span></div>`).join('')}</div>`).join('')}
       <div class="col card" style="min-width:240px"><h3>三分大赛 <span class="r">冠军 ${AS.three.w?pn(AS.three.w):'-'}</span></h3><div class="hint">决赛</div>${AS.three.fin.map(([id,s])=>`<div>${pn(id)} <b>${s}</b></div>`).join('')}<div class="hint" style="margin-top:6px">首轮</div>${AS.three.r1.map(([id,s])=>`<div>${pn(id)} ${s}</div>`).join('')}

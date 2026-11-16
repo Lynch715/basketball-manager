@@ -42,19 +42,29 @@ function bindInstallCard(v){ const b=v.querySelector('#installbtn'); if(b) b.onc
 // service worker：只在 http(s) 下注册；有新版时提示刷新
 if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   addEventListener('load', ()=>{
+    let reloadRequested=false;
     navigator.serviceWorker.register('sw.js').then(reg=>{
       const offer=w=>{ const el=document.createElement('div');
+        if(document.getElementById('update-notice')) return;
+        el.id='update-notice';
         el.style.cssText='position:fixed;left:50%;top:calc(58px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--bg3);border:1px solid var(--acc);border-radius:10px;padding:9px 14px;z-index:95;display:flex;gap:12px;align-items:center';
-        el.innerHTML='<span>有新版本</span><button class="sm pri">刷新</button>'; el.querySelector('button').onclick=()=>w.postMessage('skipWaiting'); document.body.appendChild(el); };
+        el.innerHTML='<span>有新版本</span><button class="sm pri">刷新</button>';
+        el.querySelector('button').onclick=()=>{
+          if(BUSY || cheatBusy || (LIVE && !LIVE.finished)){ toast('请在当前比赛或操作结束后刷新'); return; }
+          if(w.state==='activated'){ location.reload(); return; }
+          reloadRequested=true;
+          w.postMessage('skipWaiting');
+        };
+        document.body.appendChild(el);
+      };
       if(reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
       reg.addEventListener('updatefound', ()=>{ const w=reg.installing; if(!w) return;
         w.addEventListener('statechange', ()=>{ if(w.state==='installed' && navigator.serviceWorker.controller) offer(w); }); });
     }).catch(()=>{});
-    let reloading=false;
-    navigator.serviceWorker.addEventListener('controllerchange', ()=>{ if(reloading) return; reloading=true; location.reload(); });
+    navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+      if(!reloadRequested) return;
+      reloadRequested=false;
+      if(!BUSY && !cheatBusy && !(LIVE && !LIVE.finished)) location.reload();
+    });
   });
 }
-
-function measureInset(side){ const d=document.createElement('div'); d.style.cssText='position:fixed;left:0;top:0;visibility:hidden;padding-'+side+':env(safe-area-inset-'+side+',0px)'; document.body.appendChild(d); const v=parseFloat(getComputedStyle(d)['padding'+side[0].toUpperCase()+side.slice(1)])||0; d.remove(); return v; }
-function screenDiag(){ const a=document.getElementById('app'), sd=document.getElementById('side'); const r=a?a.getBoundingClientRect():{top:0,bottom:0}, q=sd?sd.getBoundingClientRect():{top:0,bottom:0};
-  return `屏幕 ${screen.width}×${screen.height} · 视口 ${innerWidth}×${innerHeight} · 安全区 上${measureInset('top')} 下${measureInset('bottom')} · 界面 ${Math.round(r.top)}–${Math.round(r.bottom)} · 底栏 ${Math.round(q.top)}–${Math.round(q.bottom)} · ${isStandalone()?'桌面图标':'浏览器'}`; }

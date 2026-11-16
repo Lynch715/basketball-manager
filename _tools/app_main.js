@@ -3,6 +3,7 @@ const E = BBEngine;
 const KEYS = ATTR_DEF.map(x=>x[0]), ATTR_CN = Object.fromEntries(ATTR_DEF);
 const ATTR_GROUPS = [['进攻',['finish','dunk','mid','three','ft','handle','pass','post']],['防守',['perD','intD','stl','blk','oreb','dreb']],['身体',['spd','jmp','str','sta']],['意识',['oiq','diq','hustle']]];
 const POS = E.POS, POS_CN = {PG:'控卫',SG:'分卫',SF:'小前',PF:'大前',C:'中锋'};
+const playerPositions=p=>[p.pos,...p.pos2].map(pos=>POS_CN[pos]).join(' / ');
 const SYS_DESC = {bal:'不偏重任何打法', pnr:'持球人和大个子挡拆，顺下或者分球', iso:'球交给最强的人一对一', post:'内线要位单打，外线等分球', motion:'无球跑动、空切、手递手', spread:'五人拉开，突破分球投三分'};
 const esc = s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const clamp=(x,a,b)=>x<a?a:x>b?b:x;
@@ -51,9 +52,6 @@ function worldSaveData(){
   const w=Object.assign({},W,{draftClass:(W.draftClass||[]).map(p=>{ const o={}; PFIELDS.forEach(k=>{ if(p[k]!==undefined) o[k]=p[k]; }); o.scout=p.scout; o.drafted=p.drafted; return o; })});
   return {W:w, players:pl, PID};
 }
-function saveWorld(){ try{
-  localStorage.setItem(WORLD_KEY, JSON.stringify(worldSaveData()));
-}catch(e){ saveFailure(e); } }
 function loadWorld(){ try{
   const s=JSON.parse(localStorage.getItem(WORLD_KEY)||'null'); if(!s || !s.players) return false;
   W=s.W; PID=s.PID; if(W.centers) E.setC(W.centers);
@@ -76,13 +74,43 @@ const SAVE_KEY='bbm_v1';
 let G = {team:null, rot:null, tac:null, view:'home', season:null, career:[], board:null, autoMine:false};
 function saveFailure(e){ console.error('存档写入失败',e); if(!window._saveWarning){ window._saveWarning=true; toast('自动存档失败，请检查浏览器存储空间并导出存档'); } }
 function gameSaveData(){
-  const {team,rot,tac,career,board,autoMine,cheats}=G;
-  return {team,rot,tac,career,board,autoMine,cheats};
+  const {team,rot,tac,career,board,autoMine,cheats,prep}=G;
+  return {team,rot,tac,career,board,autoMine,cheats,prep};
 }
 function cheatsEnabled(){ return G.cheats?.enabled===true; }
 function scoutRevealed(){ return cheatsEnabled() && G.cheats.reveal===true; }
-function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(gameSaveData())); }catch(e){ saveFailure(e); } saveWorld(); }
-function load(){ try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); if(s && s.team!=null && TEAMS[s.team]){ loadWorld(); Object.assign(G,s); fixRot(); loadSeason(); if(!G.season) newSeason(W.year); if(!W.off){ ensurePicks(W.year+1); ensurePicks(W.year+2); } applyPlayerState(); } }catch(e){ console.error(e); } }
+function currentSaveKeys(){
+  return {
+    [SAVE_KEY]:JSON.stringify(gameSaveData()),
+    [WORLD_KEY]:JSON.stringify(worldSaveData()),
+    [SEASON_KEY]:JSON.stringify(G.season)
+  };
+}
+function replaceSaveKeys(keys){
+  const changes=SAVE_KEYS.map(key=>{
+    const value=keys[key]??null, old=localStorage.getItem(key);
+    return {key,old,value,delta:(value?.length??0)-(old?.length??0)};
+  }).filter(change=>change.value!==change.old);
+  // 先释放空间，再写入增长的部分。写入失败时恢复已写入的部分。
+  changes.sort((a,b)=>a.delta-b.delta);
+  const changed=[];
+  try{
+    for(const {key,old,value} of changes){
+      if(value===null) localStorage.removeItem(key);
+      else localStorage.setItem(key,value);
+      changed.push([key,old]);
+    }
+  }catch(error){
+    for(const [key] of changed) localStorage.removeItem(key);
+    for(const [key,old] of changed) if(old!==null) localStorage.setItem(key,old);
+    throw error;
+  }
+}
+function save(){
+  try{ replaceSaveKeys(currentSaveKeys()); return true; }
+  catch(error){ saveFailure(error); return false; }
+}
+function load(){ try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); if(s && s.team!=null && TEAMS[s.team]){ loadWorld(); Object.assign(G,s); fixRot(); loadSeason(); if(!G.season){ newSeason(W.year); save(); } if(!W.off){ ensurePicks(W.year+1); ensurePicks(W.year+2); } applyPlayerState(); } }catch(e){ console.error(e); } }
 function myTeam(){ return TEAMS[G.team]; }
 function fixRot(){ // 存档里的球员 id 对不上时重置
   const t=myTeam(), ids=new Set(t.players.map(p=>p.id));
@@ -125,10 +153,16 @@ function render(){
   if(W.off){ navs[0]=['off','休赛期']; if(G.view==='home') G.view='off'; }
   if(LIVE) navs[0]=['match','直播'];
   side.style.setProperty('--navcols', Math.ceil(navs.length/2));
-  side.innerHTML=navs.map(([k,n])=>`<div class="nav ${G.view===k?'on':''}" data-v="${k}">${ICON[k]||ICON.match}<span>${n}</span></div>`).join('');
+  side.innerHTML=navs.map(([k,n])=>`<button type="button" class="nav ${G.view===k?'on':''}" data-v="${k}"${G.view===k?' aria-current="page"':''}>${ICON[k]||ICON.match}<span>${n}</span></button>`).join('');
   side.querySelectorAll('.nav').forEach(el=>el.onclick=()=>{ const k=el.dataset.v;
+    if(BUSY){ toast('正在模拟比赛，请稍候'); return; }
+    if(LIVE?.finished && k!=='match') LIVE=null;
     if(LIVE && !LIVE.M.done && k!=='match') pauseLive();
-    G.view=k; render(); });
+    const keyboard=el.matches(':focus-visible'), changing=G.view!==k;
+    G.view=k; render();
+    if(changing) v.scrollTop=0;
+    if(keyboard) side.querySelector(`[data-v="${k}"]`)?.focus();
+  });
   if(G.view==='match' && !LIVE) G.view='home';
   if(G.view==='off' && !W.off) G.view='home';
   ({home:vHome, roster:vRoster, rot:vRot, tac:vTac, match:vLive, sched:vSched, stand:vStand, stats:vStats, po:vPO, career:vCareer, off:vOff, trade:vTrade, fa:vFA, train:vTrain, scout:vScout, events:vEvents, save:vSave, fin:vFin, cheats:vCheats})[G.view](v);
@@ -140,7 +174,8 @@ function confirmLeave(){ try{ return window.confirm('这场比赛还没打完，
 function vPick(v){
   const east=TEAMS.filter(t=>t.conf==='东'), west=TEAMS.filter(t=>t.conf==='西');
   const card=t=>{ const best=t.players.slice().sort((a,b)=>b.ovr-a.ovr)[0];
-    return `<div class="tcard" data-i="${t.i}">${logo(t,44)}<div><b>${esc(t.cn)}</b><span>前 8 人均值 ${t.top8.toFixed(1)} · ${esc(sn(best))} ${best.ovr}</span></div></div>`; };
+    const summary=best?`前 8 人均值 ${t.top8.toFixed(1)} · ${esc(sn(best))} ${best.ovr}`:'暂无球员';
+    return `<div class="tcard" data-i="${t.i}">${logo(t,44)}<div><b>${esc(t.cn)}</b><span>${summary}</span></div></div>`; };
   v.innerHTML=`<h1>选择球队</h1>
     <h2>东部</h2><div class="tgrid">${east.map(card).join('')}</div><h2>西部</h2><div class="tgrid">${west.map(card).join('')}</div><div id="pickextra" style="margin-top:18px"></div>`; pickExtras(v);
   v.querySelectorAll('.tcard').forEach(el=>el.onclick=()=>{ G.team=+el.dataset.i; G.rot=null; G.tac=null; fixRot();
@@ -159,12 +194,12 @@ function vRoster(v){
   const t=myTeam();
   const cols=[['cn','球员'],['pos','位置'],['age','年龄'],['ovr','总评'],['pot','潜力'],['cond','状态'],['mor','士气'],['gp','出场'],['ppg','得分'],['rpg','篮板'],['apg','助攻'],['three','三分'],['finish','终结'],['pass','传球'],['perD','外防'],['intD','内防'],['sal','年薪'],['exp','到期']];
   const S=G.season, st=p=>S.ps[p.id];
-  const val=(p,k)=>k==='sal'?(p.contract?p.contract[0]:0):k==='exp'?(p.contract?p.contract[1]:0):k==='cond'?(S.cond[p.id]==null?100:S.cond[p.id]):k==='mor'?mor(p):k==='gp'?(st(p)?st(p).g:0):k==='ppg'?(st(p)&&st(p).g?st(p).pts/st(p).g:0):k==='rpg'?(st(p)&&st(p).g?(st(p).oreb+st(p).dreb)/st(p).g:0):k==='apg'?(st(p)&&st(p).g?st(p).ast/st(p).g:0):k in p.a?p.a[k]:p[k];
+  const val=(p,k)=>k==='sal'?(p.contract?p.contract[0]:0):k==='exp'?(p.contract?p.contract[1]:0):k==='cond'?((p.energy??1)*100):k==='mor'?mor(p):k==='gp'?(st(p)?st(p).g:0):k==='ppg'?(st(p)&&st(p).g?st(p).pts/st(p).g:0):k==='rpg'?(st(p)&&st(p).g?(st(p).oreb+st(p).dreb)/st(p).g:0):k==='apg'?(st(p)&&st(p).g?st(p).ast/st(p).g:0):k in p.a?p.a[k]:p[k];
   const ps=t.players.slice().sort((a,b)=>{const x=val(a,SORT.k),y=val(b,SORT.k); return (x>y?1:x<y?-1:0)*SORT.d;});
-  const pay=payroll(t);
-  v.innerHTML=`<h1>阵容</h1><div class="sub">${t.players.length} 人 · 工资总额 ${money(pay)}（工资帽 ${money(CFG().cap)}，奢侈税线 ${money(CFG().tax)}，第二土豪线 ${money(CFG().apron2)}）· 点表头排序，点球员看详情</div>
+  const year=ctxYear(), C=CFG(year), pay=payroll(t,year);
+  v.innerHTML=`<h1>阵容</h1><div class="sub">${t.players.length} 人 · ${W.off?'下季':'本季'}工资 ${money(pay)}（工资帽 ${money(C.cap)}，奢侈税线 ${money(C.tax)}，第二土豪线 ${money(C.apron2)}）· 点表头排序，点球员看详情</div>
    <div class="card tw"><table><thead><tr>${cols.map(([k,n])=>`<th class="${k==='cn'||k==='pos'?'':'n'}" data-k="${k}" style="cursor:pointer">${n}${SORT.k===k?(SORT.d<0?' ↓':' ↑'):''}</th>`).join('')}</tr></thead><tbody>
-   ${ps.map(p=>`<tr class="cl" data-id="${p.id}"><td><b>${esc(p.cn)}</b>${injTag(p)}</td><td>${p.pos}${p.pos2.length?'/'+p.pos2.join('/'):''}</td><td class="n">${p.age}</td>
+   ${ps.map(p=>`<tr class="cl" data-id="${p.id}"><td><b>${esc(p.cn)}</b>${injTag(p)}</td><td>${playerPositions(p)}</td><td class="n">${p.age}</td>
      <td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${Math.round(val(p,'cond'))}</td><td class="n">${morTag(p)}</td><td class="n">${val(p,'gp')}</td><td class="n">${val(p,'ppg').toFixed(1)}</td><td class="n">${val(p,'rpg').toFixed(1)}</td><td class="n">${val(p,'apg').toFixed(1)}</td>
      ${['three','finish','pass','perD','intD'].map(k=>`<td class="n" style="color:${attrCol(p.a[k])}">${p.a[k]}</td>`).join('')}
      <td class="n">${p.contract?money(p.contract[0]):'-'}</td><td class="n">${p.contract?p.contract[1]+(p.contract[2]==='tw'?' 双向':p.contract[2]==='rk'?' 新秀':''):'-'}</td></tr>`).join('')}
@@ -199,7 +234,7 @@ function vRot(v){
   const total=Object.values(R.minutes).reduce((a,b)=>a+(+b||0),0);
   const bench=R.order.filter(id=>!R.starters.includes(id));
   const optList=(cur,slot)=>t.players.slice().sort((a,b)=>b.ovr-a.ovr).map(p=>{ const f=E.posFit(p,slot);
-      return `<option value="${p.id}" ${p.id===cur?'selected':''}>${esc(p.cn)}  ${p.pos} ${p.ovr}${f<1?'（适配 '+Math.round(f*100)+'%）':''}${p.injury>0?' 【伤】':''}</option>`; }).join('');
+      return `<option value="${p.id}" ${p.id===cur?'selected':''}>${esc(p.cn)}  ${POS_CN[p.pos]} ${p.ovr}${f<1?'（适配 '+Math.round(f*100)+'%）':''}${p.injury>0?' 【伤】':''}</option>`; }).join('');
   const minInput=id=>`<input type="number" min="0" max="48" value="${R.minutes[id]||0}" data-min="${id}">`;
   R.tend=R.tend||{};
   const tendSel=id=>`<select data-tend="${id}">${[['1.35','多投'],['1','正常'],['0.65','少投']].map(([v,n])=>`<option value="${v}" ${String(R.tend[id]||1)===v?'selected':''}>${n}</option>`).join('')}</select>`;
@@ -216,7 +251,7 @@ function vRot(v){
      <td class="n ${f<1?(f<.8?'bad':'warn'):''}">${Math.round(f*100)}%</td><td class="n">${minInput(id)}</td><td>${tendSel(id)}</td></tr>`; }).join('')}
    </tbody></table></div>
    <div class="card tw"><h3>替补（按上场顺序）</h3><table><thead><tr><th>#</th><th>球员</th><th>位置</th><th class="n">总评</th><th class="n">目标分钟</th><th>出手</th><th></th></tr></thead><tbody>
-   ${bench.map((id,i)=>{ const p=P(id); return `<tr><td>${i+6}</td><td class="cl" data-id="${id}"><b>${esc(p.cn)}</b>${injTag(p)}</td><td>${p.pos}${p.pos2.length?'/'+p.pos2.join('/'):''}</td>
+   ${bench.map((id,i)=>{ const p=P(id); return `<tr><td>${i+6}</td><td class="cl" data-id="${id}"><b>${esc(p.cn)}</b>${injTag(p)}</td><td>${playerPositions(p)}</td>
      <td class="n">${ovrTag(p.ovr)}</td><td class="n">${minInput(id)}</td><td>${tendSel(id)}</td>
      <td><button class="sm" data-up="${i}" ${i===0?'disabled':''}>上移</button> <button class="sm" data-dn="${i}" ${i===bench.length-1?'disabled':''}>下移</button></td></tr>`; }).join('')}
    </tbody></table></div>
@@ -271,34 +306,37 @@ function vTac(v){
     <div class="card"><h3>核心球员 <span class="r">最多 2 人，出手机会增加</span></h3><div class="row">
     ${rotIds.map(id=>{ const p=PBYID[id]; return `<button class="sm ${tac.stars.includes(id)?'on':''}" data-star="${id}">${esc(p.cn)} ${p.ovr}</button>`; }).join('')}</div></div>`;
   const ug=nextUserGame();
-  if(ug){ const o=TEAMS[ug.opp]; v.insertAdjacentHTML('beforeend',`<div class="card tw"><h3>重点盯防：下一场对手 ${logo(o,18)} ${esc(o.cn)} <span class="r">只对下一场有效，不设就按位置对位</span></h3><table><tbody>
-    ${G.rot.starters.map((id,i)=>{ const p=PBYID[id]; return `<tr><td>${POS_CN[POS[i]]} <b>${esc(p.cn)}</b></td><td><select data-mu="${id}"><option value="">按位置</option>${o.players.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,10).map(q=>`<option value="${q.id}" ${PREP.mu[id]==q.id?'selected':''}>${esc(q.cn)} ${q.pos} ${q.ovr}</option>`).join('')}</select></td></tr>`; }).join('')}</tbody></table></div>`);
-    v.insertAdjacentHTML('beforeend',`<div class="card"><h3>重点包夹 <span class="r">只对下一场有效。对方这名球员持球时有一半机会被夹击</span></h3><select id="dbl"><option value="">不包夹</option>${o.players.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,8).map(q=>`<option value="${q.id}" ${PREP.dbl==q.id&&PREP.muFor===ug.key?'selected':''}>${esc(q.cn)} ${q.pos} ${q.ovr}</option>`).join('')}</select></div>`);
-    if(PREP.muFor!==ug.key){ PREP.mu={}; PREP.dbl=null; PREP.muFor=ug.key; }
-    v.querySelector('#dbl').onchange=e=>{ PREP.dbl=e.target.value?+e.target.value:null; };
-    v.querySelectorAll('[data-mu]').forEach(s=>s.onchange=()=>{ if(s.value) PREP.mu[s.dataset.mu]=+s.value; else delete PREP.mu[s.dataset.mu]; }); }
+  if(ug){
+    const o=TEAMS[ug.opp], prep=prepFor(ug.key)??{key:prepKey(ug.key),mu:{},dbl:null};
+    v.insertAdjacentHTML('beforeend',`<div class="card tw"><h3>重点盯防：下一场对手 ${logo(o,18)} ${esc(o.cn)} <span class="r">只对下一场有效，不设就按位置对位</span></h3><table><tbody>
+    ${G.rot.starters.map((id,i)=>{ const p=PBYID[id]; return `<tr><td>${POS_CN[POS[i]]} <b>${esc(p.cn)}</b></td><td><select data-mu="${id}" aria-label="${esc(p.cn)}的重点盯防对象"><option value="">按位置</option>${o.players.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,10).map(q=>`<option value="${q.id}" ${prep.mu[id]===q.id?'selected':''}>${esc(q.cn)} ${POS_CN[q.pos]} ${q.ovr}</option>`).join('')}</select></td></tr>`; }).join('')}</tbody></table></div>`);
+    v.insertAdjacentHTML('beforeend',`<div class="card"><h3>重点包夹 <span class="r">只对下一场有效。对方这名球员持球时有一半机会被夹击</span></h3><select id="dbl" aria-label="重点包夹对象"><option value="">不包夹</option>${o.players.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,8).map(q=>`<option value="${q.id}" ${prep.dbl===q.id?'selected':''}>${esc(q.cn)} ${POS_CN[q.pos]} ${q.ovr}</option>`).join('')}</select></div>`);
+    const savePrep=()=>{ G.prep=prep; save(); };
+    v.querySelector('#dbl').onchange=e=>{ prep.dbl=e.target.value?+e.target.value:null; savePrep(); };
+    v.querySelectorAll('[data-mu]').forEach(s=>s.onchange=()=>{ if(s.value) prep.mu[s.dataset.mu]=+s.value; else delete prep.mu[s.dataset.mu]; savePrep(); });
+  }
   bindTactics(v, tac, ()=>{ save(); vTac(v); });
   v.querySelectorAll('[data-star]').forEach(b=>b.onclick=()=>{ const id=+b.dataset.star; const i=tac.stars.indexOf(id);
     if(i>=0) tac.stars.splice(i,1); else { tac.stars.push(id); if(tac.stars.length>2) tac.stars.shift(); } save(); vTac(v); });
 }
 
 // ---------- 比赛 ----------
-let LIVE=null, PREP={mu:{}, muFor:null};
+let LIVE=null;
+function prepKey(key){ return `${G.season.year}:${G.team}:${key}`; }
+function prepFor(key){ return key && G.prep?.key===prepKey(key)?G.prep:null; }
 function startLive(){
-  const S=G.season, ug=userGameToday(); if(!ug || LIVE) return;
+  const ug=userGameToday(); if(!ug || LIVE || BUSY) return;
   const h=ug.g?ug.g[1]:ug.h, a=ug.g?ug.g[2]:ug.a;
   applyPlayerState();
-  const hs=sideFor(h), as=sideFor(a);
-  const mine = h===G.team? hs : as; mine.tactics.matchups = PREP.muFor===ugKey(ug)? Object.assign({},PREP.mu) : {}; mine.tactics.double = PREP.muFor===ugKey(ug)? PREP.dbl : null;
-  const M=E.createMatch(hs, as, {record:true});
-  if(M.done){ playDay(M); afterDay(); toast('可上场球员不足五人，本场已判负'); return; }
+  const M=createSeasonMatch(h,a,{n:ug.n,key:ugKey(ug)},true);
+  if(M.done){ playDay(M); afterDay(); toast(M.forfeit===(h===G.team?0:1)?'本队可上场球员不足五人，本场判负':'对手可上场球员不足五人，本场获胜'); return; }
   M.userSide = h===G.team?0:1;
   LIVE={M, H:TEAMS[h], A:TEAMS[a], shown:0, playing:false, speed:1, acc:0, last:0, raf:0, tab:'pbp', dots:[], finished:false, label:ug.label||'常规赛', showNames:true};
   LIVE.frame=tipFrame(M); LIVE.pos=Object.assign({},LIVE.frame.pos); LIVE.ball=LIVE.frame.ball.slice(); LIVE.holder=null;
-  G.view='match'; render(); setTimeout(()=>playLive(true),300);
+  G.view='match'; render(); setTimeout(()=>{ if(LIVE?.M===M && G.view==='match') playLive(true); },300);
 }
 function ugKey(ug){ return ug.g? 'r'+ug.n : ug.key; }
-function quickUserGame(){ if(LIVE) return; playDay(null); afterDay(); }
+function quickUserGame(){ if(LIVE || BUSY) return; playDay(null); afterDay(); }
 function stopLive(){ if(LIVE){ cancelAnimationFrame(LIVE.raf); LIVE.playing=false; } }
 function pauseLive(){ if(LIVE){ if(LIVE.playing && LIVE.scene) LIVE.pausedAt=performance.now()-LIVE.sceneStart; LIVE.playing=false; cancelAnimationFrame(LIVE.raf); updCtrl(); } }
 function playLive(on){
@@ -406,7 +444,7 @@ function updLive(full){
     if((e.type==='made'||e.type==='miss'||e.type==='blk') && e.x!=null) L.dots.push({t:e.t,x:e.x,y:e.y,made:e.type==='made',q:e.q});
     const txt=pbpText(e); if(!txt) continue;
     const scoring=e.type==='made'||(e.type==='ft'&&e.made>0);
-    L.pbpHTML.unshift(`<div class="${scoring?'sc':''}"><span class="t">${e.q<=4?e.q+'节':'OT'} ${Math.floor(e.clock/60)}:${String(Math.floor(e.clock%60)).padStart(2,'0')}</span><span>${logo(teamOf(e.type==='stl'?1-e.t:e.t),16)} ${esc(txt)}${scoring?` <b style="color:var(--dim)">${e.score[0]}-${e.score[1]}</b>`:''}</span></div>`);
+    L.pbpHTML.unshift(`<div class="${scoring?'sc':''}"><span class="t">${e.q<=4?e.q+'节':'加时'+(e.q-4)} ${Math.floor(e.clock/60)}:${String(Math.floor(e.clock%60)).padStart(2,'0')}</span><span>${logo(teamOf(e.type==='stl'?1-e.t:e.t),16)} ${esc(txt)}${scoring?` <b style="color:var(--dim)">${e.score[0]}-${e.score[1]}</b>`:''}</span></div>`);
   }
   if(L.pbpHTML.length>400) L.pbpHTML.length=400;
   L.shown=upto;
@@ -417,7 +455,7 @@ function updLive(full){
 function renderQ(){
   const el=document.getElementById('qtable'); if(!el) return; const M=LIVE.M;
   const n=Math.max(4,M.q), cur=(s,i)=>{ const done=M.qScore[s][i]; if(done!=null) return done; if(i===M.q-1 && !M.done) return M.score[s]-M.qScore[s].reduce((a,b)=>a+b,0); return '-'; };
-  el.innerHTML=`<table><thead><tr><th></th>${Array.from({length:n},(_,i)=>`<th class="n">${i<4?i+1:'OT'+(i-3)}</th>`).join('')}<th class="n">总分</th></tr></thead><tbody>
+  el.innerHTML=`<table><thead><tr><th></th>${Array.from({length:n},(_,i)=>`<th class="n">${i<4?i+1:'加时'+(i-3)}</th>`).join('')}<th class="n">总分</th></tr></thead><tbody>
    ${[0,1].map(s=>`<tr><td>${logo(teamOf(s),16)} ${esc(teamOf(s).nick)}</td>${Array.from({length:n},(_,i)=>`<td class="n">${cur(s,i)}</td>`).join('')}<td class="n"><b>${M.score[s]}</b></td></tr>`).join('')}</tbody></table>`;
 }
 function renderTab(full){
@@ -461,7 +499,7 @@ function subsModal(){
   const M=LIVE.M, us=M.userSide, T=M.teams[us]; let out=null;
   const draw=()=>{
     const m=document.getElementById('modal');
-    const row=(x,sel)=>`<tr class="selrow ${sel?'sel':''}" data-id="${x.id}"><td>${x.slot?'<b>'+x.slot+'</b>':''}</td><td><b>${esc(x.p.cn)}</b> <span class="hint">${x.p.pos} ${x.p.ovr}</span></td>
+    const row=(x,sel)=>`<tr class="selrow ${sel?'sel':''}" data-id="${x.id}"><td>${x.slot?'<b>'+x.slot+'</b>':''}</td><td><b>${esc(x.p.cn)}</b> <span class="hint">${POS_CN[x.p.pos]} ${x.p.ovr}</span></td>
       <td style="width:28%">${bar(x.energy,1,x.energy>.8?'#00c276':x.energy>.6?'#f0a020':'#e5484d')}</td><td class="n">${Math.round(x.secs/60)}′/${Math.round(x.target/60)}′</td><td class="n">${x.pts} 分</td><td class="n ${x.pf>=4?'bad':''}">${x.pf} 犯</td></tr>`;
     const bench=T.men.filter(x=>!T.on.includes(x)&&!x.out);
     m.innerHTML=`<div class="modal"><div class="box"><h1>换人</h1><div class="sub">${out?'再点一个替补换上':'先点要换下的场上球员'}</div>
@@ -480,7 +518,7 @@ function tacModal(){
     const m=document.getElementById('modal');
     const OT=M.teams[1-us];
     m.innerHTML=`<div class="modal"><div class="box"><h1>战术</h1><div class="sub">改动立刻生效，契合度按场上五人计算</div>${tacticsHTML(tac, T.on.map(x=>x.id), !!(T.rot&&T.rot.small))}
-      <div class="card"><h3>重点包夹</h3><select id="dbl2"><option value="">不包夹</option>${OT.men.slice().sort((a,b)=>b.p.ovr-a.p.ovr).slice(0,8).map(x=>`<option value="${x.id}" ${tac.double===x.id?'selected':''}>${esc(x.p.cn)} ${x.p.pos} ${x.p.ovr}</option>`).join('')}</select></div>
+      <div class="card"><h3>重点包夹</h3><select id="dbl2"><option value="">不包夹</option>${OT.men.slice().sort((a,b)=>b.p.ovr-a.p.ovr).slice(0,8).map(x=>`<option value="${x.id}" ${tac.double===x.id?'selected':''}>${esc(x.p.cn)} ${POS_CN[x.p.pos]} ${x.p.ovr}</option>`).join('')}</select></div>
       <div style="text-align:right"><button class="pri" id="tdone">完成</button></div></div></div>`;
     bindTactics(m, tac, ()=>{ T.dirty=true; draw(); });
     m.querySelector('#dbl2').onchange=e=>{ tac.double=e.target.value?+e.target.value:null; };

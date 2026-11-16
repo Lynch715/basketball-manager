@@ -115,11 +115,14 @@ function vSched(v){
   let w=0,l=0;
   const rows=mine.map(({g,n},k)=>{ const home=g[1]===G.team, o=TEAMS[home?g[2]:g[1]]; let res='';
     if(g[3]!=null){ const my=home?g[3]:g[4], op=home?g[4]:g[3]; if(my>op) w++; else l++; res=`<span class="pill" style="background:${my>op?'#0a5c3a':'#5c1a1d'}">${my>op?'胜':'负'}</span> ${my}-${op}${g[5]?' <span class="hint">加时</span>':''}`; }
-    return `<tr class="${g[3]!=null?'cl':''}" data-box="r${n}"><td class="n">${k+1}</td><td>${dateTxt(g[0],true)}</td><td>${home?'主':'客'}</td><td>${logo(o,18)} ${esc(o.cn)}</td><td>${res}</td><td class="n hint">${g[3]!=null?w+'-'+l:''}</td></tr>`; });
-  const po=Object.keys(S.boxes).filter(k=>!k.startsWith('r'));
-  v.innerHTML=`<h1>赛程</h1><div class="sub">常规赛 82 场。背靠背 ${countB2B(mine)} 次。点已经打完的比赛看技术统计。</div>
-   ${po.length?`<div class="card tw"><h3>季后赛和附加赛</h3><table><tbody>${po.map(k=>{ const B=S.boxes[k], home=B.h===G.team, o=TEAMS[home?B.a:B.h], my=home?B.score[0]:B.score[1], op=home?B.score[1]:B.score[0];
-      return `<tr class="cl" data-box="${k}"><td>${home?'主':'客'}</td><td>${logo(o,18)} ${esc(o.cn)}</td><td><span class="pill" style="background:${my>op?'#0a5c3a':'#5c1a1d'}">${my>op?'胜':'负'}</span> ${my}-${op}</td></tr>`; }).join('')}</tbody></table></div>`:''}
+    return `<tr class="${S.boxes['r'+n]?'cl':''}" data-box="r${n}"><td class="n">${k+1}</td><td>${dateTxt(g[0],true)}</td><td>${home?'主':'客'}</td><td>${logo(o,18)} ${esc(o.cn)}</td><td>${res}</td><td class="n hint">${g[3]!=null?w+'-'+l:''}</td></tr>`; });
+  const extra=Object.entries(S.boxes).filter(([k,B])=>!k.startsWith('r') && (B.h===G.team||B.a===G.team));
+  const extraBox=(title,games)=>games.length?`<div class="card tw"><h3>${title}</h3><table><tbody>${games.map(([k,B])=>{ const home=B.h===G.team, o=TEAMS[home?B.a:B.h], my=home?B.score[0]:B.score[1], op=home?B.score[1]:B.score[0];
+    return `<tr class="cl" data-box="${k}"><td>${home?'主':'客'}</td><td>${logo(o,18)} ${esc(o.cn)}</td><td><span class="pill" style="background:${my>op?'#0a5c3a':'#5c1a1d'}">${my>op?'胜':'负'}</span> ${my}-${op}</td></tr>`;
+  }).join('')}</tbody></table></div>`:'';
+  v.innerHTML=`<h1>赛程</h1><div class="sub">常规赛 ${mine.length} 场。背靠背 ${countB2B(mine)} 次。点可查看的比分行打开技术统计。</div>
+   ${extraBox('NBA 杯淘汰赛',extra.filter(([k])=>k.startsWith('cup')))}
+   ${extraBox('季后赛和附加赛',extra.filter(([k])=>!k.startsWith('cup')))}
    <div class="card tw"><table><thead><tr><th class="n">#</th><th>日期</th><th>主客</th><th>对手</th><th>结果</th><th class="n">战绩</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
   v.querySelectorAll('tr.cl[data-box]').forEach(tr=>tr.onclick=()=>showBox(tr.dataset.box));
 }
@@ -162,7 +165,7 @@ function vPO(v){
   const tn=i=>i==null?'<span class="hint">待定</span>':`${logo(TEAMS[i],16)} ${esc(TEAMS[i].nick)}`;
   const sr=x=>`<div class="card" style="padding:9px;margin-bottom:8px;${(x.h===G.team||x.a===G.team)?'border-color:var(--acc)':''}"><div style="display:flex;justify-content:space-between"><span>${tn(x.h)}</span><b>${x.hw}</b></div><div style="display:flex;justify-content:space-between"><span>${tn(x.a)}</span><b>${x.aw}</b></div></div>`;
   let html=`<h1>季后赛</h1><div class="sub">${phaseTxt()}${S.champion!=null?' · 总冠军 '+TEAMS[S.champion].cn:''}</div>`;
-  if(S.playin) html+=`<div class="card tw"><h3>附加赛</h3><table><tbody>${S.playin.map(x=>`<tr><td>${x.cf}部 ${x.tag==='7v8'?'7 vs 8':x.tag==='9v10'?'9 vs 10':'争 8 号'}</td><td>${tn(x.h)}</td><td class="n">${x.score?x.score[0]+'-'+x.score[1]:''}</td><td>${tn(x.a)}</td><td>${x.w!=null?'胜者 '+tn(x.w):''}</td></tr>`).join('')}</tbody></table></div>`;
+  if(S.playin) html+=`<div class="card tw"><h3>附加赛</h3><table><tbody>${S.playin.map(x=>`<tr><td>${x.cf}部 ${x.tag==='7v8'?'第 7 对第 8':x.tag==='9v10'?'第 9 对第 10':'争 8 号'}</td><td>${tn(x.h)}</td><td class="n">${x.score?x.score[0]+'-'+x.score[1]:''}</td><td>${tn(x.a)}</td><td>${x.w!=null?'胜者 '+tn(x.w):''}</td></tr>`).join('')}</tbody></table></div>`;
   if(S.po){ const col=(cf,r)=>S.po.series.filter(x=>x.cf===cf&&x.round===r).sort((a,b)=>a.slot-b.slot).map(sr).join('');
     html+=`<div style="display:grid;grid-template-columns:repeat(7,minmax(120px,1fr));gap:8px;overflow-x:auto;align-items:center">
       <div>${col('东',1)}</div><div>${col('东',2)}</div><div>${col('东',3)}</div><div><div class="hint" style="text-align:center;margin-bottom:6px">总决赛</div>${S.po.series.filter(x=>x.round===4).map(sr).join('')}</div><div>${col('西',3)}</div><div>${col('西',2)}</div><div>${col('西',1)}</div></div>`; }
