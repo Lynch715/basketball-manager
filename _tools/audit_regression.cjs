@@ -122,13 +122,13 @@ async function cacheScope(){
   const events={}, deleted=[], claimed=[];
   vm.runInNewContext(fs.readFileSync(path.join(root,'../sw.js'),'utf8'),{
     self:{addEventListener:(name,fn)=>{ events[name]=fn; },clients:{claim:()=>claimed.push(true)}},
-    caches:{keys:async()=>['bbm-v11-audit','bbm-v12-legend-drafts','other-game-v3'],
+    caches:{keys:async()=>['bbm-v11-audit','bbm-v12-legend-drafts','bbm-v13-2003-draft','bbm-v14-theme','other-game-v3'],
       delete:async key=>deleted.push(key)}
   });
   let complete;
   events.activate({waitUntil:p=>{ complete=p; }});
   await complete;
-  assert.deepEqual(deleted,['bbm-v11-audit']);
+  assert.deepEqual(deleted,['bbm-v11-audit','bbm-v12-legend-drafts','bbm-v13-2003-draft']);
   assert.equal(claimed.length,1);
   console.log('PASS 篮球经理更新只清理自己的旧缓存');
 }

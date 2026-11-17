@@ -1,6 +1,24 @@
 // 启动（放在所有模块之后，避免常量还没初始化）
 load(); render();
 
+const themeButtons=document.querySelectorAll('#theme-choice button');
+function syncThemeButtons(){
+  for(const button of themeButtons){
+    button.setAttribute('aria-pressed',String(button.dataset.theme===document.documentElement.dataset.theme));
+  }
+}
+for(const button of themeButtons){
+  button.addEventListener('click',()=>{
+    const theme=button.dataset.theme;
+    if(theme===document.documentElement.dataset.theme) return;
+    applyTheme(theme);
+    syncThemeButtons();
+    try{ localStorage.setItem(THEME_KEY,theme); }catch(e){}
+    drawCourt();
+  });
+}
+syncThemeButtons();
+
 const modalRoot=document.getElementById('modal'), appRoot=document.getElementById('app');
 let modalTrigger=null;
 new MutationObserver(()=>{

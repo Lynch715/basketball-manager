@@ -7,7 +7,7 @@ Object.assign(ICON,{
   po:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4.5 2h7v3.5a3.5 3.5 0 0 1-7 0z"/><path d="M4.5 3.5H2v1a2.5 2.5 0 0 0 2.6 2.5M11.5 3.5H14v1a2.5 2.5 0 0 1-2.6 2.5"/><path d="M8 9v3M5 14h6"/></svg>',
   career:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="6" r="4"/><path d="M5.5 9.5 4.5 15 8 13l3.5 2-1-5.5"/></svg>',
 });
-function injTag(p){ return p.injury>0? ` <span class="pill" style="background:#3a1517;color:#ff8a8a">伤 ${p.injury>=300?'赛季':p.injury+'天'}</span>`:''; }
+function injTag(p){ return p.injury>0? ` <span class="pill" style="background:var(--injury-bg);color:var(--injury-text)">伤 ${p.injury>=300?'赛季':p.injury+'天'}</span>`:''; }
 function nextUserGame(){
   const S=G.season; if(!S) return null;
   if(S.phase==='reg'){ const n=S.games.findIndex(g=>g[3]==null && (g[1]===G.team||g[2]===G.team)); const g=n>=0?S.games[n]:null;
@@ -70,16 +70,16 @@ function vHome(v){
   const recent=S.games.filter(g=>g[3]!=null && (g[1]===G.team||g[2]===G.team)).slice(-5).reverse();
   v.innerHTML=`<h1>${esc(t.cn)}</h1><div class="sub">${S.year}-${String((S.year+1)%100).padStart(2,'0')} 赛季 · ${dateTxt(Math.min(S.day,REG_DAYS+80),true)} · ${phaseTxt()} · ${r.w} 胜 ${r.l} 负，${t.conf}部第 ${seed}</div>
    <div class="row"><div class="col" style="min-width:300px;flex:1.4">${gameCard}${adv}
-     <div class="card"><h3>收件箱</h3>${S.inbox.slice(-8).reverse().map(m=>`<div style="padding:7px 0;border-bottom:1px solid #1f2733"><b>${esc(m.t)}</b> <span class="hint">${dateTxt(Math.min(m.d,REG_DAYS+80))}</span><div class="hint" style="color:var(--txt);opacity:.85">${esc(m.b)}</div></div>`).join('')}</div></div>
+     <div class="card"><h3>收件箱</h3>${S.inbox.slice(-8).reverse().map(m=>`<div style="padding:7px 0;border-bottom:1px solid var(--divider)"><b>${esc(m.t)}</b> <span class="hint">${dateTxt(Math.min(m.d,REG_DAYS+80))}</span><div class="hint" style="color:var(--txt);opacity:.85">${esc(m.b)}</div></div>`).join('')}</div></div>
    <div class="col" style="min-width:260px">
      ${offersHTML()}
      <div class="card"><h3>老板目标：${esc(GOALS[S.board.tier].name)} <span class="r">季前实力第 ${S.board.rank}</span></h3><p style="margin-bottom:8px">${esc(GOALS[S.board.tier].txt)}</p>
-       <div class="fitbar">${bar(S.board.conf,100,S.board.conf>=50?'#00c276':S.board.conf>=25?'#f0a020':'#e5484d')}<b>${S.board.conf}</b></div><div class="hint" style="margin-top:4px">信任度低于 15 会被解雇</div></div>
+       <div class="fitbar">${bar(S.board.conf,100,S.board.conf>=50?'var(--bar-good)':S.board.conf>=25?'var(--bar-warn)':'var(--bar-bad)')}<b>${S.board.conf}</b></div><div class="hint" style="margin-top:4px">信任度低于 15 会被解雇</div></div>
      ${(()=>{ const m=tmeta(G.team), low=t.players.filter(p=>mor(p)<40||p.treq).sort((a,b)=>mor(a)-mor(b)).slice(0,4);
-       return `<div class="card cl" id="lockerroom"><h3>更衣室 <span class="r">化学反应</span></h3><div class="fitbar">${bar(m.chem,100,m.chem>=60?'#00c276':m.chem>=40?'#f0a020':'#e5484d')}<b>${Math.round(m.chem)}</b></div>
+       return `<div class="card cl" id="lockerroom"><h3>更衣室 <span class="r">化学反应</span></h3><div class="fitbar">${bar(m.chem,100,m.chem>=60?'var(--bar-good)':m.chem>=40?'var(--bar-warn)':'var(--bar-bad)')}<b>${Math.round(m.chem)}</b></div>
        ${low.length?`<div style="margin-top:6px">${low.map(p=>`<div>${esc(p.cn)} <span class="hint">士气</span> ${morTag(p)}</div>`).join('')}</div>`:'<div class="hint" style="margin-top:6px">没人闹情绪</div>'}</div>`; })()}
      <div class="card"><h3>最近战绩</h3>${recent.length?recent.map(g=>{ const home=g[1]===G.team, my=home?g[3]:g[4], op=home?g[4]:g[3], o=TEAMS[home?g[2]:g[1]];
-        return `<div class="cl" data-box="r${S.games.indexOf(g)}" style="display:flex;gap:8px;align-items:center;padding:4px 0;cursor:pointer"><span class="pill" style="background:${my>op?'#0a5c3a':'#5c1a1d'}">${my>op?'胜':'负'}</span>${logo(o,18)} ${home?'':'@'}${esc(o.nick)} <b style="margin-left:auto">${my}-${op}</b></div>`; }).join(''):'<div class="hint">还没打比赛</div>'}</div>
+        return `<div class="cl" data-box="r${S.games.indexOf(g)}" style="display:flex;gap:8px;align-items:center;padding:4px 0;cursor:pointer"><span class="pill" style="background:${my>op?'var(--badge-win)':'var(--badge-loss)'}">${my>op?'胜':'负'}</span>${logo(o,18)} ${home?'':'@'}${esc(o.nick)} <b style="margin-left:auto">${my}-${op}</b></div>`; }).join(''):'<div class="hint">还没打比赛</div>'}</div>
      <div class="card"><h3>伤病</h3>${injured.length?injured.map(p=>`<div>${esc(p.cn)} <span class="hint">${esc((G.season.inj[p.id]||{}).name||'')}</span>${injTag(p)}</div>`).join(''):'<div class="hint">全员健康</div>'}</div>
      <div class="card tw"><h3>${t.conf}部排名</h3>${miniStand(cf)}</div>
      ${newsHTML(8)}
@@ -97,7 +97,7 @@ function vHome(v){
   v.querySelectorAll('[data-box]').forEach(el=>el.onclick=()=>showBox(el.dataset.box));
 }
 function miniStand(cf){
-  return `<table><tbody>${cf.map((r,k)=>`<tr style="${r.i===G.team?'background:#2a1c10':''}${k===6||k===10?';border-top:2px solid #3a4658':''}"><td class="n">${k+1}</td><td>${logo(TEAMS[r.i],16)} ${esc(TEAMS[r.i].nick)}</td><td class="n">${r.w}-${r.l}</td><td class="n hint">${r.gb?r.gb.toFixed(1):'-'}</td></tr>`).join('')}</tbody></table>`;
+  return `<table><tbody>${cf.map((r,k)=>`<tr style="${r.i===G.team?'background:var(--selected)':''}${k===6||k===10?';border-top:2px solid var(--line-strong)':''}"><td class="n">${k+1}</td><td>${logo(TEAMS[r.i],16)} ${esc(TEAMS[r.i].nick)}</td><td class="n">${r.w}-${r.l}</td><td class="n hint">${r.gb?r.gb.toFixed(1):'-'}</td></tr>`).join('')}</tbody></table>`;
 }
 function showBox(key){
   const B=G.season.boxes[key]; if(!B) return;
@@ -114,11 +114,11 @@ function vSched(v){
   const mine=S.games.map((g,n)=>({g,n})).filter(x=>x.g[1]===G.team||x.g[2]===G.team);
   let w=0,l=0;
   const rows=mine.map(({g,n},k)=>{ const home=g[1]===G.team, o=TEAMS[home?g[2]:g[1]]; let res='';
-    if(g[3]!=null){ const my=home?g[3]:g[4], op=home?g[4]:g[3]; if(my>op) w++; else l++; res=`<span class="pill" style="background:${my>op?'#0a5c3a':'#5c1a1d'}">${my>op?'胜':'负'}</span> ${my}-${op}${g[5]?' <span class="hint">加时</span>':''}`; }
+    if(g[3]!=null){ const my=home?g[3]:g[4], op=home?g[4]:g[3]; if(my>op) w++; else l++; res=`<span class="pill" style="background:${my>op?'var(--badge-win)':'var(--badge-loss)'}">${my>op?'胜':'负'}</span> ${my}-${op}${g[5]?' <span class="hint">加时</span>':''}`; }
     return `<tr class="${S.boxes['r'+n]?'cl':''}" data-box="r${n}"><td class="n">${k+1}</td><td>${dateTxt(g[0],true)}</td><td>${home?'主':'客'}</td><td>${logo(o,18)} ${esc(o.cn)}</td><td>${res}</td><td class="n hint">${g[3]!=null?w+'-'+l:''}</td></tr>`; });
   const extra=Object.entries(S.boxes).filter(([k,B])=>!k.startsWith('r') && (B.h===G.team||B.a===G.team));
   const extraBox=(title,games)=>games.length?`<div class="card tw"><h3>${title}</h3><table><tbody>${games.map(([k,B])=>{ const home=B.h===G.team, o=TEAMS[home?B.a:B.h], my=home?B.score[0]:B.score[1], op=home?B.score[1]:B.score[0];
-    return `<tr class="cl" data-box="${k}"><td>${home?'主':'客'}</td><td>${logo(o,18)} ${esc(o.cn)}</td><td><span class="pill" style="background:${my>op?'#0a5c3a':'#5c1a1d'}">${my>op?'胜':'负'}</span> ${my}-${op}</td></tr>`;
+    return `<tr class="cl" data-box="${k}"><td>${home?'主':'客'}</td><td>${logo(o,18)} ${esc(o.cn)}</td><td><span class="pill" style="background:${my>op?'var(--badge-win)':'var(--badge-loss)'}">${my>op?'胜':'负'}</span> ${my}-${op}</td></tr>`;
   }).join('')}</tbody></table></div>`:'';
   v.innerHTML=`<h1>赛程</h1><div class="sub">常规赛 ${mine.length} 场。背靠背 ${countB2B(mine)} 次。点可查看的比分行打开技术统计。</div>
    ${extraBox('NBA 杯淘汰赛',extra.filter(([k])=>k.startsWith('cup')))}
@@ -132,7 +132,7 @@ function countB2B(mine){ let c=0; for(let k=1;k<mine.length;k++) if(mine[k].g[0]
 function vStand(v){
   const R=standings();
   const tbl=cf=>{ const arr=confRank(R,cf); return `<div class="card tw"><h3>${cf}部</h3><table><thead><tr><th class="n">#</th><th>球队</th><th class="n">胜</th><th class="n">负</th><th class="n">胜率</th><th class="n">胜场差</th><th class="n">主场</th><th class="n">客场</th><th class="n">分区内</th><th class="n">近10场</th><th>连续</th><th class="n">得分</th><th class="n">失分</th><th class="n">净胜</th></tr></thead><tbody>
-    ${arr.map((r,k)=>`<tr style="${r.i===G.team?'background:#2a1c10':''}${k===6||k===10?';border-top:2px solid #3a4658':''}"><td class="n">${k+1}</td><td>${logo(TEAMS[r.i],18)} ${esc(TEAMS[r.i].cn)}</td><td class="n">${r.w}</td><td class="n">${r.l}</td><td class="n">${r.g?r.pct.toFixed(3).replace(/^0/,''):'-'}</td><td class="n">${r.gb?r.gb.toFixed(1):'-'}</td>
+    ${arr.map((r,k)=>`<tr style="${r.i===G.team?'background:var(--selected)':''}${k===6||k===10?';border-top:2px solid var(--line-strong)':''}"><td class="n">${k+1}</td><td>${logo(TEAMS[r.i],18)} ${esc(TEAMS[r.i].cn)}</td><td class="n">${r.w}</td><td class="n">${r.l}</td><td class="n">${r.g?r.pct.toFixed(3).replace(/^0/,''):'-'}</td><td class="n">${r.gb?r.gb.toFixed(1):'-'}</td>
      <td class="n">${r.hw}-${r.hl}</td><td class="n">${r.aw}-${r.al}</td><td class="n">${r.cw}-${r.cl}</td><td class="n">${r.l10.filter(x=>x==='W').length}-${r.l10.filter(x=>x==='L').length}</td><td>${r.streak}</td>
      <td class="n">${r.g?(r.pf/r.g).toFixed(1):'-'}</td><td class="n">${r.g?(r.pa/r.g).toFixed(1):'-'}</td><td class="n ${r.pf>r.pa?'good':r.pf<r.pa?'bad':''}">${r.g?((r.pf-r.pa)/r.g>0?'+':'')+((r.pf-r.pa)/r.g).toFixed(1):'-'}</td></tr>`).join('')}</tbody></table>
     <div class="hint" style="margin-top:6px">前 6 名直接进季后赛，7–10 名打附加赛</div></div>`; };
@@ -146,7 +146,7 @@ function vStats(v){
   const RR=standings(); const minG = STAT_TAB==='reg'? Math.max(1,Math.floor(Math.max(...RR.map(r=>r.g))*0.7)) : 1;
   const list=Object.entries(src).map(([id,q])=>({p:PBYID[id],q})).filter(x=>x.p && x.q.g>=minG);
   const cat=(title,f,fmt,filter)=>{ const arr=list.filter(filter||(()=>true)).map(x=>({...x,v:f(x.q)})).sort((a,b)=>b.v-a.v).slice(0,15);
-    return `<div class="card tw"><h3>${title}</h3><table><tbody>${arr.map((x,k)=>`<tr style="${x.q.team===G.team?'background:#2a1c10':''}"><td class="n">${k+1}</td><td class="cl" data-id="${x.p.id}">${esc(x.p.cn)}${legendBadge(x.p)}</td><td>${logo(TEAMS[x.q.team],16)}</td><td class="n"><b>${fmt(x.v)}</b></td></tr>`).join('')||'<tr><td class="hint">暂无</td></tr>'}</tbody></table></div>`; };
+    return `<div class="card tw"><h3>${title}</h3><table><tbody>${arr.map((x,k)=>`<tr style="${x.q.team===G.team?'background:var(--selected)':''}"><td class="n">${k+1}</td><td class="cl" data-id="${x.p.id}">${esc(x.p.cn)}${legendBadge(x.p)}</td><td>${logo(TEAMS[x.q.team],16)}</td><td class="n"><b>${fmt(x.v)}</b></td></tr>`).join('')||'<tr><td class="hint">暂无</td></tr>'}</tbody></table></div>`; };
   const f1=x=>x.toFixed(1), pct=x=>(x*100).toFixed(1)+'%';
   v.innerHTML=`<h1>数据榜</h1><div class="sub">场均数据，出场至少 ${minG} 场</div>
    <div class="seg" style="margin-bottom:12px"><button data-st="reg" class="${STAT_TAB==='reg'?'on':''}">常规赛</button><button data-st="po" class="${STAT_TAB==='po'?'on':''}">季后赛</button></div>
@@ -179,5 +179,5 @@ function vCareer(v){
   const C=G.career||[], rings=C.filter(c=>c.champ).length, cups=C.filter(c=>c.cup).length;
   v.innerHTML=`<h1>生涯</h1><div class="sub">总冠军 ${rings} 个 · NBA 杯 ${cups} 个 · 执教 ${C.length} 个完整赛季</div>
    <div class="card tw"><table><thead><tr><th>赛季</th><th>球队</th><th class="n">战绩</th><th>季后赛</th><th>老板目标</th><th>完成</th></tr></thead><tbody>
-   ${C.map(c=>`<tr><td>${c.year}-${String((c.year+1)%100).padStart(2,'0')}</td><td>${logo(TEAMS[c.team],16)} ${esc(TEAMS[c.team].cn)}</td><td class="n">${c.w}-${c.l}</td><td>${c.champ?'<b style="color:var(--acc)">总冠军</b>':esc(c.res)}${c.fmvp?` <span class="hint">FMVP：${esc(c.fmvpName||awardName(c.fmvp,G.season))}</span>`:''}${c.cup?' <span class="pill" style="background:#3a2a10">NBA 杯</span>':''}</td><td>${esc(c.goal)}</td><td class="${c.met?'good':'bad'}">${c.met?'是':'否'}</td></tr>`).join('')||'<tr><td class="hint">还没有打完的赛季</td></tr>'}</tbody></table></div>`;
+   ${C.map(c=>`<tr><td>${c.year}-${String((c.year+1)%100).padStart(2,'0')}</td><td>${logo(TEAMS[c.team],16)} ${esc(TEAMS[c.team].cn)}</td><td class="n">${c.w}-${c.l}</td><td>${c.champ?'<b style="color:var(--acc)">总冠军</b>':esc(c.res)}${c.fmvp?` <span class="hint">FMVP：${esc(c.fmvpName||awardName(c.fmvp,G.season))}</span>`:''}${c.cup?' <span class="pill" style="background:var(--badge-gold)">NBA 杯</span>':''}</td><td>${esc(c.goal)}</td><td class="${c.met?'good':'bad'}">${c.met?'是':'否'}</td></tr>`).join('')||'<tr><td class="hint">还没有打完的赛季</td></tr>'}</tbody></table></div>`;
 }

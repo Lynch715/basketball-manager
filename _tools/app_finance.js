@@ -82,7 +82,7 @@ function vFin(v){
    <div class="row"><div class="col" style="min-width:300px">${cur}
     <div class="card"><h3>老板的底线 <span class="r">${year}-${String((year+1)%100).padStart(2,'0')} 赛季工资</span></h3>
       <p>工资 <b>${money(pay)}</b> + 奢侈税 <b>${money(tax)}</b> = 总支出 <b class="${sp>lim?'bad':''}">${money(sp)}</b></p>
-      <div class="fitbar" style="margin:8px 0">${bar(sp,lim*1.2,sp>lim?'#e5484d':sp>lim*.93?'#f0a020':'#00c276')}<b>${Math.round(sp/lim*100)}%</b></div>
+      <div class="fitbar" style="margin:8px 0">${bar(sp,lim*1.2,sp>lim?'var(--bar-bad)':sp>lim*.93?'var(--bar-warn)':'var(--bar-good)')}<b>${Math.round(sp/lim*100)}%</b></div>
       <p class="hint">老板能接受 ${money(lim)}${lim!==baseOwnerLimit(t.i,year)?'（作弊台已调整）':''}，${sp>lim?`已经超出 <b class="bad">${money(sp-lim)}</b>。赛季结束时按超出比例扣信任度，每超 1% 扣 1 点，最多 15 点。接手的第一个赛季不追究，合同是前任签的。`:`还有 ${money(lim-sp)} 的余量。`}</p></div>
    </div>
    <div class="col" style="min-width:280px">

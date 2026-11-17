@@ -119,8 +119,8 @@ Object.assign(ICON,{
   scout:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 4 4"/><path d="M5 7h4M7 5v4"/></svg>',
   events:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m8 1.8 1.8 3.8 4.1.5-3 2.8.8 4.1L8 11l-3.7 2 .8-4.1-3-2.8 4.1-.5z"/></svg>',
 });
-function morCol(v){ return v>=70?'#00c276':v>=50?'#9bd35a':v>=30?'#f0a020':'#e5484d'; }
-function morTag(p){ const v=Math.round(mor(p)); return `<span style="color:${morCol(v)}">${v}</span>${p.treq?' <span class="pill" style="background:#5c1a1d">要求交易</span>':''}`; }
+function morCol(v){ return v>=70?'var(--good)':v>=50?'var(--rating-solid)':v>=30?'var(--warn)':'var(--bad)'; }
+function morTag(p){ const v=Math.round(mor(p)); return `<span style="color:${morCol(v)}">${v}</span>${p.treq?' <span class="pill" style="background:var(--badge-loss)">要求交易</span>':''}`; }
 function vTrain(v){
   const t=myTeam(), m=tmeta(G.team), S=G.season, ed=staffEditable(), used=m.staff.med+m.staff.trn+m.staff.sct;
   const eff={med:`伤病概率 ×${(1.15-.05*m.staff.med).toFixed(2)}，伤停天数 ×${(1.3-.1*m.staff.med).toFixed(1)}，每天多恢复 ${2*(m.staff.med-3)} 点体能`,
@@ -130,7 +130,7 @@ function vTrain(v){
   v.innerHTML=`<h1>训练</h1><div class="sub">教练组、训练安排、更衣室</div>
    <div class="row"><div class="col" style="min-width:300px">
     <div class="card"><h3>教练组 <span class="r">预算 ${used} / 10 点</span></h3>
-      ${STAFF.map(([k,n])=>`<div style="padding:7px 0;border-bottom:1px solid #1f2733"><div style="display:flex;align-items:center;gap:8px"><b style="width:52px">${n}</b>
+      ${STAFF.map(([k,n])=>`<div style="padding:7px 0;border-bottom:1px solid var(--divider)"><div style="display:flex;align-items:center;gap:8px"><b style="width:52px">${n}</b>
         ${ed?`<button class="sm" data-st="${k}" data-d="-1" ${m.staff[k]<=1?'disabled':''}>−</button>`:''}<span style="letter-spacing:2px">${'<b style="color:var(--acc)">■</b>'.repeat(m.staff[k])}${'<span class="hint">■</span>'.repeat(5-m.staff[k])}</span>${ed?`<button class="sm" data-st="${k}" data-d="1" ${m.staff[k]>=5||used>=10?'disabled':''}>+</button>`:''}</div>
         <div class="hint" style="margin-top:3px">${eff[k]}</div></div>`).join('')}
       <p class="hint" style="margin-top:8px">${ed?'每个部门 1–5 点，合计不超过 10 点。':'教练组只能在休赛期或者开季前调整。'}</p></div>
@@ -138,7 +138,7 @@ function vTrain(v){
       <div style="margin-bottom:8px">全队重点 <select id="tfocus">${Object.entries(FOCUS).map(([k,[n]])=>`<option value="${k}" ${m.focus===k?'selected':''}>${n}</option>`).join('')}</select>
         强度 <select id="tint">${Object.entries(INTEN).map(([k,[n]])=>`<option value="${k}" ${m.inten===k?'selected':''}>${n}</option>`).join('')}</select></div>
       <div class="hint">强度${INTEN[m.inten][0]}：赛季中成长 ×${INTEN[m.inten][1]}，伤病 ×${INTEN[m.inten][2]}，每天恢复 ${INTEN[m.inten][3]} 点体能。成长每两周结算一次，全年成长的四成在赛季里，六成在休赛期。训练重点决定赛季里长的是哪些属性。</div></div>
-    <div class="card"><h3>更衣室 <span class="r">化学反应</span></h3><div class="fitbar">${bar(m.chem,100,m.chem>=60?'#00c276':m.chem>=40?'#f0a020':'#e5484d')}<b>${Math.round(m.chem)}</b></div>
+    <div class="card"><h3>更衣室 <span class="r">化学反应</span></h3><div class="fitbar">${bar(m.chem,100,m.chem>=60?'var(--bar-good)':m.chem>=40?'var(--bar-warn)':'var(--bar-bad)')}<b>${Math.round(m.chem)}</b></div>
       <div class="hint" style="margin-top:6px">阵容稳定、大家士气高、赢球，化学反应会慢慢涨；每来一个新人会掉一截。比赛里命中率 ${m.chem>=50?'+':''}${((m.chem-50)/50).toFixed(1)}%。</div></div>
    </div>
    <div class="col card tw" style="min-width:340px;flex:1.5"><h3>球员</h3><table><thead><tr><th>球员</th><th class="n">总评</th><th class="n">潜力</th><th class="n">本季</th><th class="n">士气</th><th>个人重点</th></tr></thead><tbody>
@@ -166,7 +166,7 @@ function vScout(v){
     ${cheatsEnabled()?`<div class="ctrl"><button id="scout-reveal" ${cheatActionAvailable()?'':'disabled'}>${reveal?'恢复球探估计':'显示真实数据'}</button></div>`:''}
     <p class="hint" style="margin-top:4px">你持有的 ${yr} 年签：${mine.length?mine.map(k=>esc(pickLabel(k))).join('、'):'无'}。别的球队有自己的球探，看法和你不一样。</p></div>
    <div class="card tw"><table><thead><tr><th class="n">顺位</th><th>新秀</th><th>位置</th><th>原型</th><th class="n">年龄</th><th class="n">身高</th><th class="n">总评</th><th class="n">潜力</th><th>上季数据</th>${reveal?'<th>发展类型</th>':'<th>考察</th><th></th>'}</tr></thead><tbody>
-    ${list.map((p,i)=>`<tr style="${F.has(p.id)?'background:#2a1c10':''}"><td class="n">${i+1}</td><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b>${legendBadge(p)} <span class="hint">${esc(p.nat)}</span></td><td>${POS_CN[p.pos]}</td><td>${esc(p.arch||'')}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td class="n">${reveal?p.ovr:rangeTxt(p.scout.o)}</td><td class="n">${reveal?p.pot:rangeTxt(p.scout.p)}</td><td class="hint">${esc(preTxt(p))}</td>
+    ${list.map((p,i)=>`<tr style="${F.has(p.id)?'background:var(--selected)':''}"><td class="n">${i+1}</td><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b>${legendBadge(p)} <span class="hint">${esc(p.nat)}</span></td><td>${POS_CN[p.pos]}</td><td>${esc(p.arch||'')}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td class="n">${reveal?p.ovr:rangeTxt(p.scout.o)}</td><td class="n">${reveal?p.pot:rangeTxt(p.scout.p)}</td><td class="hint">${esc(preTxt(p))}</td>
       ${reveal?`<td>${esc(DEV_CN[p.dev]||'未知')}</td>`:`<td class="hint">${F.has(p.id)?`敬业${profCn(p.prof)} · 伤病风险${durCn(p.dur)}`:''}</td>
       <td>${F.has(p.id)?'<span class="hint">已考察</span>':F.size<lim?`<button class="sm" data-sf="${p.id}">重点考察</button>`:''}</td>`}</tr>`).join('')}</tbody></table></div>`;
   const revealButton=v.querySelector('#scout-reveal');

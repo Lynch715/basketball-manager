@@ -150,24 +150,35 @@ function frameAt(sc, t){
   return {pos, ball:[bx,by,bh], holder};
 }
 
+const COURT_COLORS={
+  dark:{
+    floor:'#3a2a1c', line:'rgba(255,240,220,.5)', lane:'rgba(255,138,31,.09)',
+    rim:'#ff8a1f', holder:'#fff', ring:'rgba(255,255,255,.7)', name:'rgba(255,255,255,.85)'
+  },
+  light:{
+    floor:'#f2d8b5', line:'#8b6445', lane:'#eac89e',
+    rim:'#a63c13', holder:'#392518', ring:'#75482d', name:'#392518'
+  }
+};
 function drawCourt(){
   const c=document.getElementById('court'); if(!c||!LIVE) return; const g=c.getContext('2d'), W=c.width, H=c.height, k=W/94;
+  const colors=document.documentElement.dataset.theme==='light'?COURT_COLORS.light:COURT_COLORS.dark;
   const X=v=>v*k, Y=v=>v*k;
-  g.clearRect(0,0,W,H); g.fillStyle='#3a2a1c'; g.fillRect(0,0,W,H);
-  g.strokeStyle='rgba(255,240,220,.5)'; g.lineWidth=Math.max(1.5,k*.16);
+  g.clearRect(0,0,W,H); g.fillStyle=colors.floor; g.fillRect(0,0,W,H);
+  g.strokeStyle=colors.line; g.lineWidth=Math.max(1.5,k*.16);
   g.strokeRect(X(0),Y(0),X(94),Y(50));
   g.beginPath(); g.moveTo(X(47),0); g.lineTo(X(47),Y(50)); g.stroke();
   g.beginPath(); g.arc(X(47),Y(25),X(6),0,Math.PI*2); g.stroke();
   [[94,-1],[0,1]].forEach(([base,dir])=>{
     const bx=base+dir*5.25;
-    g.fillStyle='rgba(255,138,31,.09)'; g.fillRect(X(Math.min(base,base+dir*19)),Y(17),X(19),Y(16)); g.strokeRect(X(Math.min(base,base+dir*19)),Y(17),X(19),Y(16));
+    g.fillStyle=colors.lane; g.fillRect(X(Math.min(base,base+dir*19)),Y(17),X(19),Y(16)); g.strokeRect(X(Math.min(base,base+dir*19)),Y(17),X(19),Y(16));
     g.beginPath(); g.arc(X(base+dir*19),Y(25),X(6),0,Math.PI*2); g.stroke();
     g.beginPath(); g.moveTo(X(base),Y(3)); g.lineTo(X(base+dir*14),Y(3)); g.stroke();
     g.beginPath(); g.moveTo(X(base),Y(47)); g.lineTo(X(base+dir*14),Y(47)); g.stroke();
     const a=Math.asin(22/23.75); g.beginPath();
     for(let t=-a;t<=a+1e-6;t+=a/40){ const x=bx+dir*Math.cos(t)*23.75, y=25+Math.sin(t)*23.75; t===-a?g.moveTo(X(x),Y(y)):g.lineTo(X(x),Y(y)); } g.stroke();
-    g.strokeStyle='#ff8a1f'; g.beginPath(); g.arc(X(bx),Y(25),X(.75),0,Math.PI*2); g.stroke();
-    g.beginPath(); g.moveTo(X(base+dir*4),Y(22)); g.lineTo(X(base+dir*4),Y(28)); g.stroke(); g.strokeStyle='rgba(255,240,220,.5)';
+    g.strokeStyle=colors.rim; g.beginPath(); g.arc(X(bx),Y(25),X(.75),0,Math.PI*2); g.stroke();
+    g.beginPath(); g.moveTo(X(base+dir*4),Y(22)); g.lineTo(X(base+dir*4),Y(28)); g.stroke(); g.strokeStyle=colors.line;
   });
   const M=LIVE.M;
   // 本节出手点（淡）
@@ -181,11 +192,11 @@ function drawCourt(){
   sides.forEach((ids,s)=>{ const col=colorOf(teamOf(s),s);
     ids.forEach(id=>{ const p=fr.pos[id]; if(!p) return; const pl=PBYID[id];
       g.beginPath(); g.arc(X(p[0]),Y(p[1]),X(1.45),0,Math.PI*2); g.fillStyle=col; g.fill();
-      g.lineWidth=Math.max(1.5,k*.14); g.strokeStyle= fr.holder==id? '#ffffff' : 'rgba(0,0,0,.55)'; g.stroke();
-      if(fr.holder==id){ g.beginPath(); g.arc(X(p[0]),Y(p[1]),X(2.1),0,Math.PI*2); g.strokeStyle='rgba(255,255,255,.7)'; g.stroke(); }
+      g.lineWidth=Math.max(1.5,k*.14); g.strokeStyle= fr.holder==id? colors.holder : 'rgba(0,0,0,.55)'; g.stroke();
+      if(fr.holder==id){ g.beginPath(); g.arc(X(p[0]),Y(p[1]),X(2.1),0,Math.PI*2); g.strokeStyle=colors.ring; g.stroke(); }
       g.fillStyle=lumOf(col)>150?'#111':'#fff'; g.font=`bold ${Math.round(X(1.35))}px -apple-system,sans-serif`; g.textAlign='center'; g.textBaseline='middle';
       g.fillText(pl&&pl.jersey!=null&&pl.jersey!==''?pl.jersey:sn(pl||{cn:'?'}).slice(0,1), X(p[0]), Y(p[1])+1);
-      if(LIVE.showNames){ g.font=`${Math.round(X(1.1))}px -apple-system,sans-serif`; g.fillStyle='rgba(255,255,255,.85)'; g.fillText(sn(pl), X(p[0]), Y(p[1]+2.5)); }
+      if(LIVE.showNames){ g.font=`${Math.round(X(1.35))}px -apple-system,sans-serif`; g.fillStyle=colors.name; g.fillText(sn(pl), X(p[0]), Y(p[1]+2.5)); }
     }); });
   const b=fr.ball; const r=.62+b[2]*.05;
   g.beginPath(); g.arc(X(b[0]),Y(b[1]+.25),X(.55),0,Math.PI*2); g.fillStyle='rgba(0,0,0,.35)'; g.fill();

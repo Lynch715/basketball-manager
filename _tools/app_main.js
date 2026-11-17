@@ -128,7 +128,7 @@ function fixRot(){ // 存档里的球员 id 对不上时重置
 function logo(t,sz){ const c=t.i%6, r=Math.floor(t.i/6); return `<span class="logo" style="width:${sz}px;height:${sz}px;background-position:${c*20}% ${r*25}%" title="${esc(t.cn)}"></span>`; }
 function ovrCol(v){ return v>=90?'#ff8a1f':v>=84?'#ffc043':v>=78?'#7fd36b':v>=72?'#5fb3e0':'#8b98a8'; }
 function ovrTag(v){ return `<span class="ovr" style="background:${ovrCol(v)}">${v}</span>`; }
-function attrCol(v){ return v>=85?'#00c276':v>=72?'#9bd35a':v>=58?'#f0a020':'#e5484d'; }
+function attrCol(v){ return v>=85?'var(--good)':v>=72?'var(--rating-solid)':v>=58?'var(--warn)':'var(--bad)'; }
 function bar(v,max,col){ return `<div class="bar"><i style="width:${clamp(v/max*100,0,100)}%;background:${col}"></i></div>`; }
 function money(w){ const a=Math.abs(w); return (w<0?'-':'')+(a>=10000? (a/10000).toFixed(2)+' 亿' : a+' 万'); }
 function contractTxt(c){ if(!c) return '无合同'; const t={std:'',rk:'新秀',tw:'双向'}[c[2]]; return `${money(c[0])} · 至 ${c[1]}${t?' · '+t:''}`; }
@@ -286,7 +286,7 @@ function tacticsHTML(tac, starters, smallRow){
   const seg=(key,opts)=>`<div class="seg">${opts.map(([k,n])=>`<button class="${(key==='smallOn'?(tac.smallOn?'on':'off'):tac[key])===k?'on':''}" data-tk="${key}" data-tv="${k}">${n}</button>`).join('')}</div>`;
   return `<div class="card"><h3>进攻体系 <span class="r">契合度按当前首发五人计算</span></h3><div class="sysgrid">
     ${Object.entries(E.SYSTEMS).map(([k,s])=>{ const f=E.systemFit(k,comps); return `<div class="syscard ${tac.system===k?'on':''}" data-sys="${k}"><b>${s.name}</b>
-      <div class="fitbar" style="margin-top:4px">${bar(f,1,f>=.6?'#00c276':f>=.4?'#f0a020':'#e5484d')}<span class="hint">${k==='bal'?'—':Math.round(f*100)+'%'}</span></div><p>${SYS_DESC[k]}</p></div>`; }).join('')}
+      <div class="fitbar" style="margin-top:4px">${bar(f,1,f>=.6?'var(--bar-good)':f>=.4?'var(--bar-warn)':'var(--bar-bad)')}<span class="hint">${k==='bal'?'—':Math.round(f*100)+'%'}</span></div><p>${SYS_DESC[k]}</p></div>`; }).join('')}
     </div></div>
     <div class="card"><div style="display:grid;grid-template-columns:auto 1fr;gap:10px 14px;align-items:center">
       <span>节奏</span>${seg('pace',[['slow','慢'],['mid','中'],['fast','快']])}
@@ -469,7 +469,7 @@ function renderTab(full){
   if(L.tab==='en'){
     b.innerHTML=[0,1].map(s=>{ const T=M.teams[s]; return `<div style="padding:10px"><b>${logo(teamOf(s),16)} ${esc(teamOf(s).nick)}</b><table style="margin-top:6px"><tbody>
       ${T.men.filter(m=>!m.out||m.secs>0).sort((a,b)=>(T.on.includes(b)-T.on.includes(a))||b.secs-a.secs).map(m=>`<tr><td>${T.on.includes(m)?'<b style="color:var(--acc)">场上</b>':'<span class="hint">板凳</span>'}</td><td>${esc(sn(m.p))}${legendBadge(m.p)}</td>
-        <td style="width:40%">${bar(m.energy,1,m.energy>.8?'#00c276':m.energy>.6?'#f0a020':'#e5484d')}</td><td class="n">${Math.round(m.secs/60)} / ${Math.round(m.target/60)}′</td><td class="n">${m.pf} 犯</td></tr>`).join('')}</tbody></table></div>`; }).join('');
+        <td style="width:40%">${bar(m.energy,1,m.energy>.8?'var(--bar-good)':m.energy>.6?'var(--bar-warn)':'var(--bar-bad)')}</td><td class="n">${Math.round(m.secs/60)} / ${Math.round(m.target/60)}′</td><td class="n">${m.pf} 犯</td></tr>`).join('')}</tbody></table></div>`; }).join('');
     return; }
   b.innerHTML=boxHTML(bs, s=>teamOf(s), L.finished);
 }
@@ -504,7 +504,7 @@ function subsModal(){
   const draw=()=>{
     const m=document.getElementById('modal');
     const row=(x,sel)=>`<tr class="selrow ${sel?'sel':''}" data-id="${x.id}"><td>${x.slot?'<b>'+x.slot+'</b>':''}</td><td><b>${esc(x.p.cn)}</b>${legendBadge(x.p)} <span class="hint">${POS_CN[x.p.pos]} ${x.p.ovr}</span></td>
-      <td style="width:28%">${bar(x.energy,1,x.energy>.8?'#00c276':x.energy>.6?'#f0a020':'#e5484d')}</td><td class="n">${Math.round(x.secs/60)}′/${Math.round(x.target/60)}′</td><td class="n">${x.pts} 分</td><td class="n ${x.pf>=4?'bad':''}">${x.pf} 犯</td></tr>`;
+      <td style="width:28%">${bar(x.energy,1,x.energy>.8?'var(--bar-good)':x.energy>.6?'var(--bar-warn)':'var(--bar-bad)')}</td><td class="n">${Math.round(x.secs/60)}′/${Math.round(x.target/60)}′</td><td class="n">${x.pts} 分</td><td class="n ${x.pf>=4?'bad':''}">${x.pf} 犯</td></tr>`;
     const bench=T.men.filter(x=>!T.on.includes(x)&&!x.out);
     m.innerHTML=`<div class="modal"><div class="box"><h1>换人</h1><div class="sub">${out?'再点一个替补换上':'先点要换下的场上球员'}</div>
       <div class="card tw"><h3>场上</h3><table><tbody>${T.on.map(x=>row(x,out===x.id)).join('')}</tbody></table></div>

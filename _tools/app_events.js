@@ -110,9 +110,9 @@ function vEvents(v){
   const html0=`<h1>赛事</h1><div class="sub">NBA 杯 · 全明星周末</div>`; let cupHtml='';
   if(S.cup){ let html=''; const C=S.cup;
     html+=`<div class="card"><h3>NBA 杯 ${C.champ!=null?`<span class="r">冠军 ${tn(C.champ)}</span>`:''}</h3><p class="hint">小组赛是 11 月里指定的常规赛，同时算常规赛战绩。每个分区 3 个小组第一加 1 个成绩最好的小组第二进八强。淘汰赛是额外比赛，不计入常规赛战绩和数据。</p></div>`;
-    if(C.ko){ const K=C.ko, row=x=>`<tr style="${(x.h===G.team||x.a===G.team)?'background:#2a1c10':''}"><td class="hint">${dateTxt(x.day)}</td><td>${tn(x.h)}</td><td class="n">${x.score?x.score[0]+'-'+x.score[1]:''}</td><td>${tn(x.a)}</td><td>${x.w!=null?'胜 '+tn(x.w):''}</td></tr>`;
+    if(C.ko){ const K=C.ko, row=x=>`<tr style="${(x.h===G.team||x.a===G.team)?'background:var(--selected)':''}"><td class="hint">${dateTxt(x.day)}</td><td>${tn(x.h)}</td><td class="n">${x.score?x.score[0]+'-'+x.score[1]:''}</td><td>${tn(x.a)}</td><td>${x.w!=null?'胜 '+tn(x.w):''}</td></tr>`;
       html+=`<div class="card tw"><h3>淘汰赛</h3><table><tbody>${[['1/4 决赛','qf'],['半决赛','sf'],['决赛','f']].map(([n,rd])=>`<tr><td colspan="5"><b>${n}</b></td></tr>${K.filter(x=>x.rd===rd).map(row).join('')}`).join('')}</tbody></table></div>`; }
-    html+=`<div class="row">${['东','西'].map(cf=>`<div class="col card tw" style="min-width:280px"><h3>${cf}部小组</h3>${C.groups[cf].map((g,k)=>`<div class="hint" style="margin-top:6px">${cf}部 ${'ABC'[k]} 组</div><table><tbody>${cupGroupTable(S,g).map(r=>`<tr style="${r.i===G.team?'background:#2a1c10':''}"><td>${tn(r.i)}</td><td class="n">${r.w}-${r.l}</td><td class="n">${r.pd>0?'+':''}${r.pd}</td></tr>`).join('')}</tbody></table>`).join('')}</div>`).join('')}</div>`;
+    html+=`<div class="row">${['东','西'].map(cf=>`<div class="col card tw" style="min-width:280px"><h3>${cf}部小组</h3>${C.groups[cf].map((g,k)=>`<div class="hint" style="margin-top:6px">${cf}部 ${'ABC'[k]} 组</div><table><tbody>${cupGroupTable(S,g).map(r=>`<tr style="${r.i===G.team?'background:var(--selected)':''}"><td>${tn(r.i)}</td><td class="n">${r.w}-${r.l}</td><td class="n">${r.pd>0?'+':''}${r.pd}</td></tr>`).join('')}</tbody></table>`).join('')}</div>`).join('')}</div>`;
     cupHtml=html; }
   let asHtml=''; { let html='';
   const AS=S.allStar;

@@ -108,7 +108,7 @@ function offersHTML(){
   return `<div class="card" style="border-color:var(--acc)"><h3>交易报价</h3>${W.offers.map(o=>{ const it=offerItems(o), t=TEAMS[o.from];
     const line=(ps,ks)=>[...ps.map(p=>`<span class="offitem">${esc(p.cn)} ${ovrTag(p.ovr)}<span class="hint">${ageOf(p,yr)} 岁 · ${p.contract?money(p.contract[0]):''}</span></span>`), ...ks.map(k=>`<span class="offitem">${esc(pickLabel(k))}</span>`)].join('')||'无';
     const dPay=tradeSal(it.give,yr)-tradeSal(it.get,yr);
-    return `<div style="padding:8px 0;border-bottom:1px solid #1f2733"><div style="margin-bottom:6px">${logo(t,18)} <b>${esc(t.cn)}</b> <span class="hint">${teamMode(t.i)==='contend'?'争冠中':'重建中'} · ${o.exp.off?'这一步结束前有效':'3 天内有效'}</span></div>
+    return `<div style="padding:8px 0;border-bottom:1px solid var(--divider)"><div style="margin-bottom:6px">${logo(t,18)} <b>${esc(t.cn)}</b> <span class="hint">${teamMode(t.i)==='contend'?'争冠中':'重建中'} · ${o.exp.off?'这一步结束前有效':'3 天内有效'}</span></div>
       <div class="row"><div class="col"><div class="hint">你送出</div>${line(it.get,it.getK)}</div><div class="col"><div class="hint">你得到</div>${line(it.give,it.giveK)}</div></div>
       <div class="hint" style="margin-top:4px">你的工资 ${dPay>=0?'+':''}${money(dPay)}</div>
       <div style="margin-top:6px"><button class="sm pri" data-acc="${o.id}">接受</button> <button class="sm" data-rej="${o.id}">拒绝</button></div></div>`; }).join('')}</div>`;
@@ -119,5 +119,5 @@ function bindOffers(v){
 }
 function newsHTML(n){
   const N=(W.news||[]).slice(-(n||8)).reverse(); if(!N.length) return '';
-  return `<div class="card"><h3>联盟动态</h3>${N.map(x=>`<div style="padding:5px 0;border-bottom:1px solid #1f2733"><span class="pill" style="background:${x.kind==='交易'?'#1d3a5c':x.kind==='匹配'?'#3a2a10':'#1f3a2a'}">${esc(x.kind)}</span> <span class="hint">${x.off?x.y+' 休赛期':dateTxt(Math.min(x.d,REG_DAYS+80))}</span><div style="margin-top:2px">${esc(x.txt)}</div></div>`).join('')}</div>`;
+  return `<div class="card"><h3>联盟动态</h3>${N.map(x=>`<div style="padding:5px 0;border-bottom:1px solid var(--divider)"><span class="pill" style="background:${x.kind==='交易'?'var(--badge-info)':x.kind==='匹配'?'var(--badge-gold)':'var(--badge-news)'}">${esc(x.kind)}</span> <span class="hint">${x.off?x.y+' 休赛期':dateTxt(Math.min(x.d,REG_DAYS+80))}</span><div style="margin-top:2px">${esc(x.txt)}</div></div>`).join('')}</div>`;
 }

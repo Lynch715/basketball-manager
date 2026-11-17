@@ -6,7 +6,7 @@ function numDateTxt(n){ const d=new Date(n*864e5+12*3600e3); return `${d.getMont
 function seasonYearNow(){ return W.off? W.off.year : W.year; }
 function freezeOnSign(p){ const y=seasonYearNow(), dec=dayNumOf(new Date(y,11,15)); p.frz = W.off? dec : Math.max(dec, todayNum()+90); }
 function frozen(p){ return !!(p && p.frz && p.frz>todayNum()); }
-function frzTag(p){ return frozen(p)? ` <span class="pill" style="background:#1d3a5c">冻结至 ${numDateTxt(p.frz)}</span>` : ''; }
+function frzTag(p){ return frozen(p)? ` <span class="pill" style="background:var(--badge-info)">冻结至 ${numDateTxt(p.frz)}</span>` : ''; }
 
 // 薪资匹配：返回 {tier, max}（max=null 表示不限）
 function matchRule(payAfter, outSal, outN, yr){
