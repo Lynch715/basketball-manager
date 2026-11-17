@@ -154,7 +154,18 @@ td.wrap{white-space:normal;min-width:120px}
 .cheat-grid .card{min-width:min(100%,300px);flex-basis:calc(50% - 7px)}
 .cheat-grid select{max-width:100%}
 .cheat-actions{display:grid;gap:8px;margin:12px 0}
-.cheat-actions>div{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.cheat-actions>div{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px}
+.cheat-actions>div>:first-child{overflow-wrap:anywhere}
+.cheat-actions>div>:last-child{justify-self:end}
+.cheat-actions>div>button{white-space:nowrap}
+.cheat-actions>.cheat-rookie-item{align-items:start;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.cheat-rookie-item>[data-legend-pack]{min-inline-size:9em;font-variant-numeric:tabular-nums}
+.legend-featured>span{display:inline-block;max-inline-size:100%}
+.save-slot{display:grid;grid-template-columns:22px minmax(0,1fr) auto;align-items:center;gap:6px 10px;padding:9px 0;border-bottom:1px solid var(--divider)}
+.save-slot-number{color:var(--dim);align-self:start}
+.save-slot-info{overflow-wrap:anywhere}
+.save-slot-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.save-slot-actions:empty{display:none}
 .cheat-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:8px}
 .cheat-fields label,.cheat-contract label{display:flex;align-items:center;justify-content:space-between;gap:6px}
 .cheat-fields label{background:var(--bg);padding:5px 7px;border:1px solid var(--line);border-radius:6px}
@@ -164,7 +175,6 @@ td.wrap{white-space:normal;min-width:120px}
 .cheat-profile label{min-width:0;display:grid;gap:4px}
 .cheat-profile label>input,.cheat-profile label>select{width:100%;text-align:left}
 .cheat-profile input[type=text]{font:inherit;background:var(--bg);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:5px 7px}
-.cheat-rookie-item{padding-bottom:8px;border-bottom:1px solid var(--line)}
 .cheat-check{display:block;margin-top:8px}
 #cheat-trade-title+p,#cheat-trade-title~.tw{margin-top:8px}
 @media(max-width:760px){
@@ -193,6 +203,8 @@ td.wrap{white-space:normal;min-width:120px}
   .card{padding:13px}
   .modal{padding:10px}.modal>.box{padding:14px;max-height:92%}
   .cheat-fields{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+  .save-slot{grid-template-columns:22px minmax(0,1fr)}
+  .save-slot-actions{grid-column:2}
   #tb-stats{display:none}
   #scoreboard .tn{min-width:0;font-size:13px}#scoreboard .sc{font-size:24px;min-width:90px}
   #scoreboard .full{display:none}#scoreboard .short{display:inline}#scoreboard{gap:8px}#sbinfo{gap:10px}

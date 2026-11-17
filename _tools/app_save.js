@@ -80,9 +80,9 @@ function contactHTML(){
 }
 async function slotsHTML(canSave){
   const S=[]; for(let i=1;i<=SLOT_N;i++) S.push(await slotGet('s'+i));
-  return `<div class="card"><h3>存档位</h3>${S.map((s,k)=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--divider);flex-wrap:wrap">
-      <b style="width:22px;color:var(--dim)">${k+1}</b><div style="flex:1;min-width:180px">${metaTxt(s)}</div>
-      <div>${canSave?`<button class="sm" data-ss="${k+1}">存到这里</button> `:''}${s?`<button class="sm pri" data-sl="${k+1}">读取</button> <button class="sm" data-sd="${k+1}">删除</button>`:''}</div></div>`).join('')}
+  return `<div class="card"><h3>存档位</h3>${S.map((s,k)=>`<div class="save-slot">
+      <b class="save-slot-number">${k+1}</b><div class="save-slot-info">${metaTxt(s)}</div>
+      <div class="save-slot-actions">${canSave?`<button class="sm" data-ss="${k+1}">存到这里</button>`:''}${s?`<button class="sm pri" data-sl="${k+1}">读取</button><button class="sm" data-sd="${k+1}">删除</button>`:''}</div></div>`).join('')}
     <p class="hint" style="margin-top:8px">存档位只在这台设备的这个浏览器里。换手机、换电脑，或者清理浏览器数据之前，先导出存档文件。</p>
     <div style="margin-top:10px">${canSave?'<button id="exportsave">导出存档文件</button> ':''}<button id="importbtn">导入存档文件</button><input type="file" id="importfile" accept=".json,application/json" style="display:none"></div></div>`;
 }

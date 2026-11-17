@@ -95,7 +95,7 @@ function customRookiesPanel(available){
 }
 
 function legendFeatured(pack){
-  return pack.featured.map(id=>pack.players.find(p=>p.id===id)).map(p=>p.cn||p.en).join('、');
+  return pack.featured.map(id=>pack.players.find(p=>p.id===id)).map(p=>p.cn||p.en);
 }
 
 function legendDraftPanel(available){
@@ -106,7 +106,8 @@ function legendDraftPanel(available){
     <p class="hint">${occupied?'这届选秀已加入传奇新秀包。':'选一届加入候选名单。各队按现有签位和顺序选人。'}</p>
     <div class="cheat-actions">${LEGEND_DRAFT_PACKS.map(pack=>`<div class="cheat-rookie-item">
       <div><b>${pack.year} 届 · ${pack.players.length} 人</b>
-        <div class="hint">${esc(legendFeatured(pack))}</div></div>
+        <div class="hint legend-featured">${legendFeatured(pack).map((name,index,names)=>
+          `<span>${esc(name)}${index<names.length-1?'、':''}</span>`).join('')}</div></div>
       ${added[pack.year]?`<span class="hint">已加入 ${esc(added[pack.year])} 年选秀</span>`:
         `<button class="sm" data-legend-pack="${pack.year}" ${available&&!occupied?'':'disabled'}>选择 ${pack.year} 届</button>`}
     </div>`).join('')}</div>
@@ -378,7 +379,7 @@ function showLegendDraftPack(sourceYear){
   modal.innerHTML=`<div class="modal"><div class="box" role="dialog" aria-modal="true" aria-labelledby="legend-pack-title">
     <h1 id="legend-pack-title">加入 ${sourceYear} 届传奇新秀</h1>
     <p class="hint">${pack.players.length} 名球员将参加本存档的 ${year} 年选秀。</p>
-    <p>${esc(legendFeatured(pack))}等球员会和原来的新秀一起参选。其他球队也可以选中他们。</p>
+    <p>${esc(legendFeatured(pack).join('、'))}等球员会和原来的新秀一起参选。其他球队也可以选中他们。</p>
     <div class="ctrl"><button id="legend-pack-add" class="pri">加入 ${year} 年选秀</button>
       <button id="legend-pack-cancel">取消</button></div>
   </div></div>`;

@@ -154,7 +154,18 @@ td.wrap{white-space:normal;min-width:120px}
 .cheat-grid .card{min-width:min(100%,300px);flex-basis:calc(50% - 7px)}
 .cheat-grid select{max-width:100%}
 .cheat-actions{display:grid;gap:8px;margin:12px 0}
-.cheat-actions>div{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.cheat-actions>div{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px}
+.cheat-actions>div>:first-child{overflow-wrap:anywhere}
+.cheat-actions>div>:last-child{justify-self:end}
+.cheat-actions>div>button{white-space:nowrap}
+.cheat-actions>.cheat-rookie-item{align-items:start;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.cheat-rookie-item>[data-legend-pack]{min-inline-size:9em;font-variant-numeric:tabular-nums}
+.legend-featured>span{display:inline-block;max-inline-size:100%}
+.save-slot{display:grid;grid-template-columns:22px minmax(0,1fr) auto;align-items:center;gap:6px 10px;padding:9px 0;border-bottom:1px solid var(--divider)}
+.save-slot-number{color:var(--dim);align-self:start}
+.save-slot-info{overflow-wrap:anywhere}
+.save-slot-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.save-slot-actions:empty{display:none}
 .cheat-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(126px,1fr));gap:8px}
 .cheat-fields label,.cheat-contract label{display:flex;align-items:center;justify-content:space-between;gap:6px}
 .cheat-fields label{background:var(--bg);padding:5px 7px;border:1px solid var(--line);border-radius:6px}
@@ -164,7 +175,6 @@ td.wrap{white-space:normal;min-width:120px}
 .cheat-profile label{min-width:0;display:grid;gap:4px}
 .cheat-profile label>input,.cheat-profile label>select{width:100%;text-align:left}
 .cheat-profile input[type=text]{font:inherit;background:var(--bg);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:5px 7px}
-.cheat-rookie-item{padding-bottom:8px;border-bottom:1px solid var(--line)}
 .cheat-check{display:block;margin-top:8px}
 #cheat-trade-title+p,#cheat-trade-title~.tw{margin-top:8px}
 @media(max-width:760px){
@@ -193,6 +203,8 @@ td.wrap{white-space:normal;min-width:120px}
   .card{padding:13px}
   .modal{padding:10px}.modal>.box{padding:14px;max-height:92%}
   .cheat-fields{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+  .save-slot{grid-template-columns:22px minmax(0,1fr)}
+  .save-slot-actions{grid-column:2}
   #tb-stats{display:none}
   #scoreboard .tn{min-width:0;font-size:13px}#scoreboard .sc{font-size:24px;min-width:90px}
   #scoreboard .full{display:none}#scoreboard .short{display:inline}#scoreboard{gap:8px}#sbinfo{gap:10px}
@@ -4488,9 +4500,9 @@ function contactHTML(){
 }
 async function slotsHTML(canSave){
   const S=[]; for(let i=1;i<=SLOT_N;i++) S.push(await slotGet('s'+i));
-  return `<div class="card"><h3>存档位</h3>${S.map((s,k)=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--divider);flex-wrap:wrap">
-      <b style="width:22px;color:var(--dim)">${k+1}</b><div style="flex:1;min-width:180px">${metaTxt(s)}</div>
-      <div>${canSave?`<button class="sm" data-ss="${k+1}">存到这里</button> `:''}${s?`<button class="sm pri" data-sl="${k+1}">读取</button> <button class="sm" data-sd="${k+1}">删除</button>`:''}</div></div>`).join('')}
+  return `<div class="card"><h3>存档位</h3>${S.map((s,k)=>`<div class="save-slot">
+      <b class="save-slot-number">${k+1}</b><div class="save-slot-info">${metaTxt(s)}</div>
+      <div class="save-slot-actions">${canSave?`<button class="sm" data-ss="${k+1}">存到这里</button>`:''}${s?`<button class="sm pri" data-sl="${k+1}">读取</button><button class="sm" data-sd="${k+1}">删除</button>`:''}</div></div>`).join('')}
     <p class="hint" style="margin-top:8px">存档位只在这台设备的这个浏览器里。换手机、换电脑，或者清理浏览器数据之前，先导出存档文件。</p>
     <div style="margin-top:10px">${canSave?'<button id="exportsave">导出存档文件</button> ':''}<button id="importbtn">导入存档文件</button><input type="file" id="importfile" accept=".json,application/json" style="display:none"></div></div>`;
 }
@@ -4635,7 +4647,7 @@ function customRookiesPanel(available){
 }
 
 function legendFeatured(pack){
-  return pack.featured.map(id=>pack.players.find(p=>p.id===id)).map(p=>p.cn||p.en).join('、');
+  return pack.featured.map(id=>pack.players.find(p=>p.id===id)).map(p=>p.cn||p.en);
 }
 
 function legendDraftPanel(available){
@@ -4646,7 +4658,8 @@ function legendDraftPanel(available){
     <p class="hint">${occupied?'这届选秀已加入传奇新秀包。':'选一届加入候选名单。各队按现有签位和顺序选人。'}</p>
     <div class="cheat-actions">${LEGEND_DRAFT_PACKS.map(pack=>`<div class="cheat-rookie-item">
       <div><b>${pack.year} 届 · ${pack.players.length} 人</b>
-        <div class="hint">${esc(legendFeatured(pack))}</div></div>
+        <div class="hint legend-featured">${legendFeatured(pack).map((name,index,names)=>
+          `<span>${esc(name)}${index<names.length-1?'、':''}</span>`).join('')}</div></div>
       ${added[pack.year]?`<span class="hint">已加入 ${esc(added[pack.year])} 年选秀</span>`:
         `<button class="sm" data-legend-pack="${pack.year}" ${available&&!occupied?'':'disabled'}>选择 ${pack.year} 届</button>`}
     </div>`).join('')}</div>
@@ -4918,7 +4931,7 @@ function showLegendDraftPack(sourceYear){
   modal.innerHTML=`<div class="modal"><div class="box" role="dialog" aria-modal="true" aria-labelledby="legend-pack-title">
     <h1 id="legend-pack-title">加入 ${sourceYear} 届传奇新秀</h1>
     <p class="hint">${pack.players.length} 名球员将参加本存档的 ${year} 年选秀。</p>
-    <p>${esc(legendFeatured(pack))}等球员会和原来的新秀一起参选。其他球队也可以选中他们。</p>
+    <p>${esc(legendFeatured(pack).join('、'))}等球员会和原来的新秀一起参选。其他球队也可以选中他们。</p>
     <div class="ctrl"><button id="legend-pack-add" class="pri">加入 ${year} 年选秀</button>
       <button id="legend-pack-cancel">取消</button></div>
   </div></div>`;
