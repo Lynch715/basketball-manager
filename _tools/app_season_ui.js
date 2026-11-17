@@ -146,7 +146,7 @@ function vStats(v){
   const RR=standings(); const minG = STAT_TAB==='reg'? Math.max(1,Math.floor(Math.max(...RR.map(r=>r.g))*0.7)) : 1;
   const list=Object.entries(src).map(([id,q])=>({p:PBYID[id],q})).filter(x=>x.p && x.q.g>=minG);
   const cat=(title,f,fmt,filter)=>{ const arr=list.filter(filter||(()=>true)).map(x=>({...x,v:f(x.q)})).sort((a,b)=>b.v-a.v).slice(0,15);
-    return `<div class="card tw"><h3>${title}</h3><table><tbody>${arr.map((x,k)=>`<tr style="${x.q.team===G.team?'background:#2a1c10':''}"><td class="n">${k+1}</td><td class="cl" data-id="${x.p.id}">${esc(x.p.cn)}</td><td>${logo(TEAMS[x.q.team],16)}</td><td class="n"><b>${fmt(x.v)}</b></td></tr>`).join('')||'<tr><td class="hint">暂无</td></tr>'}</tbody></table></div>`; };
+    return `<div class="card tw"><h3>${title}</h3><table><tbody>${arr.map((x,k)=>`<tr style="${x.q.team===G.team?'background:#2a1c10':''}"><td class="n">${k+1}</td><td class="cl" data-id="${x.p.id}">${esc(x.p.cn)}${legendBadge(x.p)}</td><td>${logo(TEAMS[x.q.team],16)}</td><td class="n"><b>${fmt(x.v)}</b></td></tr>`).join('')||'<tr><td class="hint">暂无</td></tr>'}</tbody></table></div>`; };
   const f1=x=>x.toFixed(1), pct=x=>(x*100).toFixed(1)+'%';
   v.innerHTML=`<h1>数据榜</h1><div class="sub">场均数据，出场至少 ${minG} 场</div>
    <div class="seg" style="margin-bottom:12px"><button data-st="reg" class="${STAT_TAB==='reg'?'on':''}">常规赛</button><button data-st="po" class="${STAT_TAB==='po'?'on':''}">季后赛</button></div>

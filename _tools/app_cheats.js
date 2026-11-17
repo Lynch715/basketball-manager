@@ -94,6 +94,25 @@ function customRookiesPanel(available){
   </section>`;
 }
 
+function legendFeatured(pack){
+  return pack.featured.map(id=>pack.players.find(p=>p.id===id)).map(p=>p.cn||p.en).join('、');
+}
+
+function legendDraftPanel(available){
+  const year=customDraftYear(), added=W.legendDraftPacks??{};
+  const occupied=Object.values(added).includes(year);
+  return `<section class="card">
+    <h3>传奇新秀包 <span class="r">${esc(year)} 年选秀</span></h3>
+    <p class="hint">${occupied?'这届选秀已加入传奇新秀包。':'选一届加入候选名单。各队按现有签位和顺序选人。'}</p>
+    <div class="cheat-actions">${LEGEND_DRAFT_PACKS.map(pack=>`<div class="cheat-rookie-item">
+      <div><b>${pack.year} 届 · ${pack.players.length} 人</b>
+        <div class="hint">${esc(legendFeatured(pack))}</div></div>
+      ${added[pack.year]?`<span class="hint">已加入 ${esc(added[pack.year])} 年选秀</span>`:
+        `<button class="sm" data-legend-pack="${pack.year}" ${available&&!occupied?'':'disabled'}>选择 ${pack.year} 届</button>`}
+    </div>`).join('')}</div>
+  </section>`;
+}
+
 function vCheats(v){
   const enabled=cheatsEnabled(), available=cheatActionAvailable();
   const S=G.season, team=myTeam(), year=ctxYear(), limit=ownerLimit(team.i,year);
@@ -145,7 +164,7 @@ function vCheats(v){
           <p class="hint">在球探页和选秀名单显示真实总评、潜力和发展类型。</p>
           <div class="ctrl"><button id="cheat-reveal"${disabled}>${scoutRevealed()?'关闭新秀透视':'开启新秀透视'}</button><button data-cheat-view="scout">前往球探</button></div>
         </section>
-      </div>${customRookiesPanel(available)}`:''}
+      </div>${customRookiesPanel(available)}${legendDraftPanel(available)}`:''}
     <section class="card"><h3>修改前备份</h3><div id="cheat-backup" class="hint">${G.cheats?.backup?'读取备份…':'首次修改后可在这里恢复。'}</div></section>`;
   const q=s=>v.querySelector(s);
   const go=view=>{ G.view=view; render(); };
@@ -159,6 +178,9 @@ function vCheats(v){
     q('#create-custom-rookie').onclick=()=>showCustomRookie();
     v.querySelectorAll('[data-custom-rookie]').forEach(b=>{
       b.onclick=()=>showCustomRookie(+b.dataset.customRookie);
+    });
+    v.querySelectorAll('[data-legend-pack]').forEach(b=>{
+      b.onclick=()=>showLegendDraftPack(+b.dataset.legendPack);
     });
     q('#cheat-heal').onclick=e=>performCheatEdit(e.currentTarget,()=>{
       for(const p of team.players){
@@ -344,6 +366,26 @@ function showCustomRookie(id){
     performCheatEdit(form.querySelector('[type=submit]'),()=>saveCustomRookie(year,profile,id),
       p?`${profile.cn}的新秀资料已保存`:`${profile.cn}已加入 ${year} 年选秀`,validate);
   };
+}
+
+function showLegendDraftPack(sourceYear){
+  if(!cheatsEnabled() || !cheatActionAvailable()) return;
+  const year=customDraftYear();
+  let pack;
+  try{ pack=checkLegendDraftPack(sourceYear,year); }
+  catch(error){ toast(error.message); return; }
+  const modal=document.getElementById('modal');
+  modal.innerHTML=`<div class="modal"><div class="box" role="dialog" aria-modal="true" aria-labelledby="legend-pack-title">
+    <h1 id="legend-pack-title">加入 ${sourceYear} 届传奇新秀</h1>
+    <p class="hint">${pack.players.length} 名球员将参加本存档的 ${year} 年选秀。</p>
+    <p>${esc(legendFeatured(pack))}等球员会和原来的新秀一起参选。其他球队也可以选中他们。</p>
+    <div class="ctrl"><button id="legend-pack-add" class="pri">加入 ${year} 年选秀</button>
+      <button id="legend-pack-cancel">取消</button></div>
+  </div></div>`;
+  modal.querySelector('#legend-pack-cancel').onclick=()=>{ if(!cheatBusy) closeModal(); };
+  modal.querySelector('#legend-pack-add').onclick=e=>performCheatEdit(e.currentTarget,
+    ()=>addLegendDraftPack(sourceYear,year),`${sourceYear} 届传奇新秀已加入 ${year} 年选秀`,
+    ()=>checkLegendDraftPack(sourceYear,year));
 }
 
 function showCheatTrade(){

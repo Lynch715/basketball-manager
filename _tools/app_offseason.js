@@ -210,6 +210,69 @@ function saveCustomRookie(year,profile,id){
   return p;
 }
 
+function checkLegendDraftPack(sourceYear,targetYear){
+  const pack=LEGEND_DRAFT_PACKS.find(entry=>entry.year===sourceYear);
+  if(!pack) throw new Error('找不到该传奇新秀包');
+  if(!Number.isSafeInteger(targetYear) || targetYear!==customDraftYear()) throw new Error('目标选秀届次已变动，请重新选择');
+  const added=W.legendDraftPacks??{};
+  if(added[sourceYear]) throw new Error('当前存档已经加入过这届传奇新秀');
+  if(Object.values(added).includes(targetYear)) throw new Error('这届选秀已加入一个传奇新秀包');
+  return pack;
+}
+
+function legendPositions(row){
+  const hybrid={G:['PG','SG'],GF:['SG','SF'],FC:['PF','C'],F:row.ht>=80?['PF','SF']:['SF','PF']};
+  return hybrid[row.pos]??[row.pos];
+}
+
+// 本作的位置基线，依次对应 ATTR_DEF 的 21 项能力。档案给每人设定初始总评、成长上限和打法。
+const LEGEND_POSITION_BASE={
+  PG:[70,36,67,64,75,79,77,33,65,40,65,28,29,45,80,66,49,77,66,61,71],
+  SG:[71,58,70,69,76,70,63,43,67,43,64,33,32,48,77,73,54,77,64,62,71],
+  SF:[73,68,65,61,71,65,59,56,68,56,62,47,43,57,73,74,62,76,64,63,72],
+  PF:[75,72,59,45,67,56,55,68,56,67,49,62,67,71,64,69,74,75,62,66,74],
+  C: [76,74,52,30,61,45,51,73,46,75,43,74,72,76,55,65,79,72,61,68,74]
+};
+function legendAttributes(row,pos){
+  const base=LEGEND_POSITION_BASE[pos], style=ARCH[row.style].d;
+  const shape=KEYS.map((key,i)=>base[i]+(style[key]??0)+(row.traits?.[key]??0));
+  let best, error=Infinity;
+  // 保留能力之间的差异，用正式总评公式寻找最接近档案评分的档位。
+  for(let shift=-50;shift<=50;shift++){
+    const a=Object.fromEntries(KEYS.map((key,i)=>[key,clamp(shape[i]+shift,20,99)]));
+    const distance=Math.abs(calcOvr({pos,a})-row.overall)+Math.abs(shift)/101;
+    if(distance<error){ best=a; error=distance; }
+  }
+  return best;
+}
+
+function addLegendDraftPack(sourceYear,targetYear){
+  const pack=checkLegendDraftPack(sourceYear,targetYear);
+  const pending=!!W.off && targetYear>W.off.year;
+  if(!pending) ensureDraftClass(targetYear);
+  const players=pack.players.map(row=>{
+    const [pos,...pos2]=legendPositions(row);
+    const age=sourceYear-row.born, ht=Math.round(row.ht*2.54), wt=Math.round(row.wt*.45359237);
+    const [baseHeight,baseWingspan]=CUSTOM_ROOKIE_SIZE[pos];
+    const a=legendAttributes(row,pos), ovr=calcOvr({pos,a});
+    const pot=clamp(row.potential,ovr,99);
+    return {id:PID++,cn:row.cn||row.en,en:row.en,age,pos,pos2,ht,ws:ht+baseWingspan-baseHeight,
+      wt,born:(targetYear-age)+'-01',nat:'',jersey:'',dur:80,prof:60,dev:'normal',vol:1,
+      arch:row.style,a,ovr,pot,contract:null,hist:[],
+      legendDraft:{id:row.id,year:sourceYear,round:row.round,pick:row.pick}};
+  });
+  if(pending){
+    W.customDraftQueue??={};
+    (W.customDraftQueue[targetYear]??=[]).push(...players);
+  }else{
+    W.draftClass.push(...players);
+    for(const p of players) PBYID[p.id]=p;
+    refreshScout();
+  }
+  (W.legendDraftPacks??={})[sourceYear]=targetYear;
+  return players;
+}
+
 // ---------- 选秀权 ----------
 function ensurePicks(year){ W.picks[year]=W.picks[year]||{1:{},2:{}}; [1,2].forEach(r=>{ for(let i=0;i<30;i++) if(W.picks[year][r][i]==null) W.picks[year][r][i]=i; }); }
 function picksOwnedBy(ti){ const out=[]; Object.keys(W.picks).forEach(y=>[1,2].forEach(r=>Object.entries(W.picks[y][r]).forEach(([orig,own])=>{ if(own===ti && +y>=(W.off?W.off.year:W.year+1) && !pickUsed({year:+y,round:r,orig:+orig})) out.push({year:+y,round:r,orig:+orig}); }))); return out.sort((a,b)=>a.year-b.year||a.round-b.round); }

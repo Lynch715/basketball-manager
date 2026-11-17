@@ -142,7 +142,7 @@ function vTrain(v){
       <div class="hint" style="margin-top:6px">阵容稳定、大家士气高、赢球，化学反应会慢慢涨；每来一个新人会掉一截。比赛里命中率 ${m.chem>=50?'+':''}${((m.chem-50)/50).toFixed(1)}%。</div></div>
    </div>
    <div class="col card tw" style="min-width:340px;flex:1.5"><h3>球员</h3><table><thead><tr><th>球员</th><th class="n">总评</th><th class="n">潜力</th><th class="n">本季</th><th class="n">士气</th><th>个人重点</th></tr></thead><tbody>
-    ${ps.map(p=>{ const d=ovr0[p.id]!=null? p.ovr-ovr0[p.id] : 0; return `<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b> <span class="hint">${POS_CN[p.pos]} · ${p.age}</span>${injTag(p)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${deltaTag(d)}</td><td class="n">${morTag(p)}</td>
+    ${ps.map(p=>{ const d=ovr0[p.id]!=null? p.ovr-ovr0[p.id] : 0; return `<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b>${legendBadge(p)} <span class="hint">${POS_CN[p.pos]} · ${p.age}</span>${injTag(p)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${deltaTag(d)}</td><td class="n">${morTag(p)}</td>
       <td><select data-tf="${p.id}"><option value="">跟全队</option>${Object.entries(FOCUS).map(([k,[n]])=>`<option value="${k}" ${p.tf===k?'selected':''}>${n}</option>`).join('')}</select></td></tr>`; }).join('')}</tbody></table>
     <p class="hint" style="margin-top:8px">士气影响比赛发挥（最多 ±3%）和续约要价。上场时间达到他的预期、球队赢球，士气就往上走；士气太低会公开要求交易，续约时也不肯留。</p></div></div>`;
   v.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{ const k=b.dataset.st, d=+b.dataset.d; const nv=m.staff[k]+d; if(nv<1||nv>5||(d>0&&used>=10)) return; m.staff[k]=nv; if(k==='sct') refreshScout(); save(); vTrain(v); });
@@ -166,7 +166,7 @@ function vScout(v){
     ${cheatsEnabled()?`<div class="ctrl"><button id="scout-reveal" ${cheatActionAvailable()?'':'disabled'}>${reveal?'恢复球探估计':'显示真实数据'}</button></div>`:''}
     <p class="hint" style="margin-top:4px">你持有的 ${yr} 年签：${mine.length?mine.map(k=>esc(pickLabel(k))).join('、'):'无'}。别的球队有自己的球探，看法和你不一样。</p></div>
    <div class="card tw"><table><thead><tr><th class="n">顺位</th><th>新秀</th><th>位置</th><th>原型</th><th class="n">年龄</th><th class="n">身高</th><th class="n">总评</th><th class="n">潜力</th><th>上季数据</th>${reveal?'<th>发展类型</th>':'<th>考察</th><th></th>'}</tr></thead><tbody>
-    ${list.map((p,i)=>`<tr style="${F.has(p.id)?'background:#2a1c10':''}"><td class="n">${i+1}</td><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b> <span class="hint">${esc(p.nat)}</span></td><td>${POS_CN[p.pos]}</td><td>${esc(p.arch||'')}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td class="n">${reveal?p.ovr:rangeTxt(p.scout.o)}</td><td class="n">${reveal?p.pot:rangeTxt(p.scout.p)}</td><td class="hint">${esc(preTxt(p))}</td>
+    ${list.map((p,i)=>`<tr style="${F.has(p.id)?'background:#2a1c10':''}"><td class="n">${i+1}</td><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b>${legendBadge(p)} <span class="hint">${esc(p.nat)}</span></td><td>${POS_CN[p.pos]}</td><td>${esc(p.arch||'')}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td class="n">${reveal?p.ovr:rangeTxt(p.scout.o)}</td><td class="n">${reveal?p.pot:rangeTxt(p.scout.p)}</td><td class="hint">${esc(preTxt(p))}</td>
       ${reveal?`<td>${esc(DEV_CN[p.dev]||'未知')}</td>`:`<td class="hint">${F.has(p.id)?`敬业${profCn(p.prof)} · 伤病风险${durCn(p.dur)}`:''}</td>
       <td>${F.has(p.id)?'<span class="hint">已考察</span>':F.size<lim?`<button class="sm" data-sf="${p.id}">重点考察</button>`:''}</td>`}</tr>`).join('')}</tbody></table></div>`;
   const revealButton=v.querySelector('#scout-reveal');

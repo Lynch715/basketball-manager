@@ -64,6 +64,7 @@ input[type=number]{width:58px;text-align:right}
 .seg button{border:0;border-radius:0;border-right:1px solid var(--line);background:var(--bg)}
 .seg button:last-child{border-right:0}.seg button.on{background:#2a1c10;color:var(--acc)}
 .pill{display:inline-block;padding:0 6px;border-radius:4px;font-size:11px;font-weight:700;line-height:18px}
+.legend-badge{background:#382812;color:#ffd37c;border:1px solid #805d2a;white-space:nowrap;vertical-align:middle}
 .hint{color:var(--dim);font-size:12px}
 .logo{display:inline-block;background-image:url(logos.png);background-size:600% 500%;background-repeat:no-repeat;vertical-align:middle;flex:0 0 auto}
 .ovr{display:inline-block;min-width:28px;text-align:center;border-radius:4px;font-weight:700;font-size:12px;padding:0 4px;color:#111}
@@ -857,6 +858,7 @@ const REAL_ROSTERS={
 ["Jamarion Sharp","贾马里恩·夏普","C",[],"2001-08",226,236,107,"美国",68,65,90,[61,69,33,25,41,28,34,53,30,70,40,82,67,70,27,30,64,75,52,60,70],null,"",null]]
 };
 
+const LEGEND_DRAFT_PACKS=[{"year":1984,"draftHistory":"https://www.nba.com/stats/draft/history?Season=1984","featured":["jordami01","olajuha01","barklch01","stockjo01"],"players":[{"id":"olajuha01","en":"Hakeem Olajuwon","cn":"哈基姆·奥拉朱旺","pos":"C","born":1963,"ht":84,"wt":255,"round":1,"pick":1,"overall":83,"potential":98,"style":"护框者","traits":{"post":16,"finish":10,"jmp":9,"stl":12,"blk":7,"three":-12}},{"id":"bowiesa01","en":"Sam Bowie","cn":"萨姆·鲍伊","pos":"C","born":1961,"ht":85,"wt":235,"round":1,"pick":2,"overall":70,"potential":78,"style":"护框者","traits":{"mid":12,"pass":9,"sta":-9}},{"id":"jordami01","en":"Michael Jordan","cn":"迈克尔·乔丹","pos":"GF","born":1963,"ht":78,"wt":198,"round":1,"pick":3,"overall":84,"potential":99,"style":"得分手","traits":{"dunk":23,"jmp":17,"spd":13,"perD":22,"stl":18,"diq":13,"three":-23,"sta":7}},{"id":"perkisa01","en":"Sam Perkins","cn":"萨姆·帕金斯","pos":"F","born":1961,"ht":81,"wt":235,"round":1,"pick":4,"overall":73,"potential":84,"style":"老成型","traits":{"three":13,"mid":6,"post":7,"jmp":-3}},{"id":"barklch01","en":"Charles Barkley","cn":"查尔斯·巴克利","pos":"PF","born":1963,"ht":78,"wt":252,"round":1,"pick":5,"overall":79,"potential":97,"style":"运动型","traits":{"oreb":21,"dreb":17,"str":12,"post":15,"pass":11,"three":-8}},{"id":"turpime01","en":"Melvin Turpin","pos":"C","born":1960,"ht":83,"wt":240,"round":1,"pick":6,"overall":66,"potential":76,"style":"护框者","traits":{"post":11,"finish":4,"sta":-7}},{"id":"roberal01","en":"Alvin Robertson","cn":"阿尔文·罗伯特森","pos":"SG","born":1962,"ht":76,"wt":185,"round":1,"pick":7,"overall":71,"potential":90,"style":"锋线防守者","traits":{"stl":14,"pass":8,"handle":5,"three":-10}},{"id":"gordola01","en":"Lancaster Gordon","pos":"SG","born":1962,"ht":75,"wt":185,"round":1,"pick":8,"overall":61,"potential":70,"style":"得分手"},{"id":"thorpot01","en":"Otis Thorpe","cn":"奥蒂斯·索普","pos":"F","born":1962,"ht":82,"wt":248,"round":1,"pick":9,"overall":69,"potential":87,"style":"运动型","traits":{"oreb":12,"dreb":9,"str":9,"post":8}},{"id":"woodle01","en":"Leon Wood","pos":"PG","born":1962,"ht":75,"wt":185,"round":1,"pick":10,"overall":62,"potential":73,"style":"组织者","traits":{"three":5}},{"id":"willike02","en":"Kevin Willis","cn":"凯文·威利斯","pos":"FC","born":1962,"ht":84,"wt":220,"round":1,"pick":11,"overall":68,"potential":86,"style":"护框者","traits":{"oreb":11,"dreb":13,"blk":-4,"sta":6}},{"id":"mccorti01","en":"Tim McCormick","pos":"C","born":1962,"ht":83,"wt":240,"round":1,"pick":12,"overall":65,"potential":76,"style":"老成型","traits":{"post":7,"oreb":7}},{"id":"humphja01","en":"Jay Humphries","pos":"SG","born":1962,"ht":75,"wt":185,"round":1,"pick":13,"overall":66,"potential":81,"style":"组织者","traits":{"stl":5,"spd":4}},{"id":"cagemi01","en":"Michael Cage","cn":"迈克尔·凯奇","pos":"F","born":1962,"ht":81,"wt":224,"round":1,"pick":14,"overall":66,"potential":83,"style":"护框者","traits":{"oreb":13,"dreb":12,"blk":-5}},{"id":"stanste01","en":"Terence Stansbury","pos":"SG","born":1961,"ht":77,"wt":170,"round":1,"pick":15,"overall":61,"potential":72,"style":"运动型","traits":{"dunk":7}},{"id":"stockjo01","en":"John Stockton","cn":"约翰·斯托克顿","pos":"PG","born":1962,"ht":73,"wt":170,"round":1,"pick":16,"overall":69,"potential":96,"style":"组织者","traits":{"pass":13,"stl":9,"oiq":11,"ft":6,"three":5,"spd":-4}},{"id":"turneje01","en":"Jeff Turner","pos":"F","born":1962,"ht":81,"wt":230,"round":1,"pick":17,"overall":62,"potential":74,"style":"老成型","traits":{"mid":8}},{"id":"flemive01","en":"Vern Fleming","pos":"PG","born":1962,"ht":77,"wt":185,"round":1,"pick":18,"overall":66,"potential":80,"style":"组织者","traits":{"three":-12,"finish":9}},{"id":"thompbe01","en":"Bernard Thompson","pos":"SF","born":1962,"ht":78,"wt":210,"round":1,"pick":19,"overall":60,"potential":71,"style":"锋线防守者"},{"id":"campbto01","en":"Tony Campbell","pos":"SF","born":1962,"ht":79,"wt":215,"round":1,"pick":20,"overall":63,"potential":80,"style":"得分手","traits":{"mid":10}},{"id":"fieldke01","en":"Kenny Fields","pos":"SF","born":1962,"ht":77,"wt":220,"round":1,"pick":21,"overall":60,"potential":70,"style":"得分手"},{"id":"jonesea01","en":"Earl Jones","pos":"C","born":1961,"ht":84,"wt":210,"round":1,"pick":23,"overall":58,"potential":68,"style":"护框者"},{"id":"youngmi01","en":"Michael Young","pos":"SF","born":1961,"ht":79,"wt":220,"round":1,"pick":24,"overall":60,"potential":70,"style":"射手"},{"id":"durrade01","en":"Devin Durrant","pos":"SF","born":1960,"ht":79,"wt":200,"round":2,"pick":25,"overall":59,"potential":67,"style":"得分手"},{"id":"anderro01","en":"Ron Anderson","pos":"SF","born":1958,"ht":79,"wt":215,"round":2,"pick":27,"overall":62,"potential":76,"style":"得分手","traits":{"mid":6,"perD":5}},{"id":"grayst01","en":"Stuart Gray","pos":"C","born":1963,"ht":84,"wt":235,"round":2,"pick":29,"overall":58,"potential":67,"style":"护框者"},{"id":"murphja01","en":"Jay Murphy","pos":"F","born":1962,"ht":81,"wt":220,"round":2,"pick":31,"overall":57,"potential":65,"style":"老成型"},{"id":"coltest01","en":"Steve Colter","pos":"PG","born":1962,"ht":75,"wt":165,"round":2,"pick":33,"overall":61,"potential":74,"style":"组织者","traits":{"handle":6}},{"id":"jonesch02","en":"Charles Jones","pos":"C","born":1962,"ht":80,"wt":215,"round":2,"pick":36,"overall":58,"potential":71,"style":"护框者","traits":{"blk":8}},{"id":"youngda01","en":"Danny Young","pos":"PG","born":1962,"ht":75,"wt":175,"round":2,"pick":39,"overall":61,"potential":74,"style":"组织者","traits":{"perD":5}},{"id":"whitewi01","en":"Willie White","pos":"SG","born":1962,"ht":75,"wt":195,"round":2,"pick":42,"overall":57,"potential":66,"style":"射手"},{"id":"kerseje01","en":"Jerome Kersey","cn":"杰罗姆·科尔西","pos":"SF","born":1962,"ht":79,"wt":215,"round":2,"pick":46,"overall":61,"potential":83,"style":"运动型","traits":{"dunk":8,"perD":12,"hustle":9,"dreb":7}},{"id":"mcdonbe01","en":"Ben McDonald","pos":"SF","born":1962,"ht":80,"wt":210,"round":3,"pick":50,"overall":56,"potential":65,"style":"锋线防守者"},{"id":"peterji01","en":"Jim Petersen","pos":"F","born":1962,"ht":82,"wt":235,"round":3,"pick":51,"overall":60,"potential":75,"style":"护框者","traits":{"mid":9,"ft":8}},{"id":"crossje01","en":"Jeff Cross","pos":"F","born":1961,"ht":82,"wt":240,"round":3,"pick":61,"overall":55,"potential":65,"style":"护框者"},{"id":"popeda01","en":"David Pope","pos":"SF","born":1962,"ht":79,"wt":220,"round":3,"pick":62,"overall":56,"potential":65,"style":"得分手"},{"id":"carliri01","en":"Rick Carlisle","cn":"里克·卡莱尔","pos":"SG","born":1959,"ht":77,"wt":210,"round":3,"pick":70,"overall":58,"potential":68,"style":"老成型","traits":{"three":7,"pass":4}},{"id":"henryca01","en":"Carl Henry","pos":"GF","born":1960,"ht":78,"wt":205,"round":4,"pick":80,"overall":56,"potential":66,"style":"得分手"},{"id":"thornbo01","en":"Bob Thornton","pos":"F","born":1962,"ht":82,"wt":225,"round":4,"pick":87,"overall":57,"potential":69,"style":"护框者"},{"id":"jonesoz01","en":"Ozell Jones","pos":"C","born":1960,"ht":83,"wt":235,"round":4,"pick":90,"overall":55,"potential":64,"style":"护框者"},{"id":"bannike01","en":"Ken Bannister","pos":"F","born":1960,"ht":81,"wt":235,"round":7,"pick":156,"overall":56,"potential":68,"style":"护框者"},{"id":"martibr01","en":"Brian Martin","pos":"F","born":1962,"ht":81,"wt":212,"round":9,"pick":185,"overall":54,"potential":64,"style":"运动型"}]},{"year":1996,"draftHistory":"https://www.nba.com/stats/draft/history?Season=1996","featured":["bryanko01","iversal01","nashst01","allenra02"],"players":[{"id":"iversal01","en":"Allen Iverson","cn":"阿伦·艾弗森","pos":"PG","born":1975,"ht":72,"wt":165,"round":1,"pick":1,"overall":82,"potential":97,"style":"得分手","traits":{"spd":22,"handle":16,"stl":12,"sta":10,"str":-9,"intD":-9,"pass":7,"three":-4}},{"id":"cambyma01","en":"Marcus Camby","cn":"马库斯·坎比","pos":"C","born":1974,"ht":83,"wt":220,"round":1,"pick":2,"overall":74,"potential":90,"style":"护框者","traits":{"blk":12,"jmp":9,"spd":8,"str":-6}},{"id":"abdursh01","en":"Shareef Abdur-Rahim","cn":"谢里夫·阿卜杜尔-拉希姆","pos":"F","born":1976,"ht":81,"wt":225,"round":1,"pick":3,"overall":76,"potential":89,"style":"得分手","traits":{"post":16,"dreb":10,"three":-6}},{"id":"marbust01","en":"Stephon Marbury","cn":"斯蒂芬·马布里","pos":"PG","born":1977,"ht":74,"wt":180,"round":1,"pick":4,"overall":76,"potential":92,"style":"组织者","traits":{"finish":12,"spd":9,"mid":6}},{"id":"allenra02","en":"Ray Allen","cn":"雷·阿伦","pos":"SG","born":1975,"ht":77,"wt":205,"round":1,"pick":5,"overall":75,"potential":94,"style":"射手","traits":{"three":12,"ft":9,"dunk":8,"sta":6}},{"id":"walkean02","en":"Antoine Walker","cn":"安托万·沃克","pos":"F","born":1976,"ht":81,"wt":224,"round":1,"pick":6,"overall":75,"potential":89,"style":"得分手","traits":{"pass":12,"handle":6,"dreb":8,"ft":-8}},{"id":"wrighlo02","en":"Lorenzen Wright","cn":"洛伦岑·赖特","pos":"C","born":1975,"ht":83,"wt":225,"round":1,"pick":7,"overall":66,"potential":81,"style":"护框者","traits":{"oreb":9}},{"id":"kittlke01","en":"Kerry Kittles","cn":"克里·基特尔斯","pos":"SG","born":1974,"ht":77,"wt":179,"round":1,"pick":8,"overall":72,"potential":84,"style":"射手","traits":{"perD":12,"stl":7}},{"id":"walkesa01","en":"Samaki Walker","pos":"F","born":1976,"ht":81,"wt":240,"round":1,"pick":9,"overall":64,"potential":77,"style":"护框者","traits":{"oreb":6,"ft":-8}},{"id":"dampier01","en":"Erick Dampier","cn":"埃里克·丹皮尔","pos":"C","born":1975,"ht":83,"wt":265,"round":1,"pick":10,"overall":65,"potential":82,"style":"护框者","traits":{"str":8,"oreb":9,"spd":-9}},{"id":"fulleto02","en":"Todd Fuller","pos":"C","born":1974,"ht":83,"wt":255,"round":1,"pick":11,"overall":60,"potential":71,"style":"护框者"},{"id":"potapvi01","en":"Vitaly Potapenko","cn":"维塔利·波塔潘科","pos":"C","born":1975,"ht":82,"wt":280,"round":1,"pick":12,"overall":62,"potential":76,"style":"老成型","traits":{"post":8,"str":9}},{"id":"bryanko01","en":"Kobe Bryant","cn":"科比·布莱恩特","pos":"GF","born":1978,"ht":78,"wt":212,"round":1,"pick":13,"overall":69,"potential":99,"style":"运动型","traits":{"handle":14,"mid":15,"ft":9,"perD":12,"dunk":9,"three":6}},{"id":"nashst01","en":"Steve Nash","cn":"史蒂夫·纳什","pos":"PG","born":1974,"ht":75,"wt":195,"round":1,"pick":15,"overall":67,"potential":96,"style":"组织者","traits":{"three":18,"ft":16,"pass":12,"mid":10,"perD":-9,"jmp":-9}},{"id":"delkto01","en":"Tony Delk","cn":"托尼·德尔克","pos":"PG","born":1974,"ht":73,"wt":189,"round":1,"pick":16,"overall":65,"potential":79,"style":"得分手","traits":{"three":7}},{"id":"onealje01","en":"Jermaine O'Neal","cn":"杰梅因·奥尼尔","pos":"FC","born":1978,"ht":83,"wt":226,"round":1,"pick":17,"overall":60,"potential":91,"style":"护框者","traits":{"blk":8,"mid":8,"jmp":10,"str":-7}},{"id":"wallajo01","en":"John Wallace","cn":"约翰·华莱士","pos":"SF","born":1974,"ht":80,"wt":225,"round":1,"pick":18,"overall":63,"potential":75,"style":"得分手","traits":{"post":6}},{"id":"mccarwa01","en":"Walter McCarty","cn":"沃尔特·麦卡蒂","pos":"F","born":1974,"ht":82,"wt":230,"round":1,"pick":19,"overall":61,"potential":74,"style":"射手","traits":{"perD":6,"str":-5}},{"id":"ilgauzy01","en":"Zydrunas Ilgauskas","cn":"扎伊德鲁纳斯·伊尔戈斯卡斯","pos":"C","born":1975,"ht":87,"wt":238,"round":1,"pick":20,"overall":67,"potential":87,"style":"老成型","traits":{"post":13,"mid":13,"blk":11,"dreb":10,"spd":-11,"jmp":-7}},{"id":"jonesdo01","en":"Dontae' Jones","pos":"SF","born":1975,"ht":80,"wt":220,"round":1,"pick":21,"overall":57,"potential":68,"style":"运动型"},{"id":"rogerro02","en":"Roy Rogers","pos":"F","born":1973,"ht":82,"wt":235,"round":1,"pick":22,"overall":60,"potential":72,"style":"护框者","traits":{"blk":7}},{"id":"fishede01","en":"Derek Fisher","cn":"德里克·费舍尔","pos":"PG","born":1974,"ht":73,"wt":200,"round":1,"pick":24,"overall":63,"potential":83,"style":"老成型","traits":{"three":11,"perD":6,"str":8}},{"id":"muursma01","en":"Martin Müürsepp","pos":"F","born":1974,"ht":81,"wt":235,"round":1,"pick":25,"overall":59,"potential":72,"style":"射手","traits":{"post":5}},{"id":"willije01","en":"Jerome Williams","pos":"F","born":1973,"ht":81,"wt":206,"round":1,"pick":26,"overall":61,"potential":77,"style":"运动型","traits":{"oreb":15,"dreb":10,"hustle":10,"three":-12}},{"id":"evansbr01","en":"Brian Evans","pos":"SF","born":1973,"ht":80,"wt":220,"round":1,"pick":27,"overall":58,"potential":68,"style":"射手"},{"id":"laudepr01","en":"Priest Lauderdale","pos":"C","born":1973,"ht":88,"wt":325,"round":1,"pick":28,"overall":57,"potential":69,"style":"护框者","traits":{"spd":-10}},{"id":"knightr01","en":"Travis Knight","pos":"C","born":1974,"ht":84,"wt":235,"round":1,"pick":29,"overall":60,"potential":73,"style":"护框者"},{"id":"harriot01","en":"Othella Harrington","pos":"F","born":1974,"ht":81,"wt":235,"round":2,"pick":30,"overall":62,"potential":77,"style":"老成型","traits":{"post":9,"oreb":7}},{"id":"hendrma01","en":"Mark Hendrickson","pos":"F","born":1974,"ht":81,"wt":220,"round":2,"pick":31,"overall":57,"potential":68,"style":"护框者"},{"id":"livinra01","en":"Randy Livingston","pos":"PG","born":1975,"ht":76,"wt":209,"round":2,"pick":42,"overall":60,"potential":73,"style":"组织者"},{"id":"davisbe01","en":"Ben Davis","pos":"F","born":1972,"ht":81,"wt":240,"round":2,"pick":43,"overall":56,"potential":66,"style":"护框者"},{"id":"rosema01","en":"Malik Rose","cn":"马利克·罗斯","pos":"PF","born":1974,"ht":79,"wt":250,"round":2,"pick":44,"overall":60,"potential":80,"style":"运动型","traits":{"str":12,"oreb":13,"dreb":8,"hustle":9}},{"id":"feickja01","en":"Jamie Feick","pos":"C","born":1974,"ht":80,"wt":255,"round":2,"pick":48,"overall":58,"potential":74,"style":"护框者","traits":{"oreb":9,"dreb":10}},{"id":"robinch01","en":"Chris Robinson","pos":"SG","born":1974,"ht":77,"wt":200,"round":2,"pick":51,"overall":56,"potential":66,"style":"得分手"},{"id":"popema01","en":"Mark Pope","pos":"F","born":1972,"ht":82,"wt":235,"round":2,"pick":52,"overall":58,"potential":70,"style":"老成型","traits":{"three":5}},{"id":"nordgje01","en":"Jeff Nordgaard","pos":"SF","born":1973,"ht":79,"wt":225,"round":2,"pick":53,"overall":55,"potential":65,"style":"射手"},{"id":"andersh01","en":"Shandon Anderson","cn":"尚顿·安德森","pos":"GF","born":1973,"ht":78,"wt":208,"round":2,"pick":54,"overall":62,"potential":78,"style":"锋线防守者","traits":{"finish":7}},{"id":"gearyre01","en":"Reggie Geary","pos":"PG","born":1973,"ht":74,"wt":187,"round":2,"pick":56,"overall":57,"potential":67,"style":"锋线防守者","traits":{"three":5}},{"id":"barrydr01","en":"Drew Barry","pos":"G","born":1973,"ht":77,"wt":191,"round":2,"pick":57,"overall":57,"potential":67,"style":"组织者"}]}];
 </script>
 <script>
 /* 《篮球经理》比赛引擎 —— 纯函数，不碰 DOM，浏览器和 Node 都能跑。
@@ -1479,6 +1481,7 @@ const SYS_DESC = {bal:'不偏重任何打法', pnr:'持球人和大个子挡拆�
 const esc = s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const clamp=(x,a,b)=>x<a?a:x>b?b:x;
 const sn = p=>!p?'已退役球员':p.cn.includes('·')?p.cn.split('·').pop():p.cn;
+const legendBadge = p=>p?.legendDraft?' <span class="pill legend-badge">传奇</span>':'';
 
 // ---------- 数据 ----------
 // W：联盟层面的状态（年份、选秀权、死钱、选秀、休赛期进度），和球员一起存进「联盟存档」
@@ -1516,7 +1519,7 @@ function payroll(t, year){ year=year||W.year; let s=0;
 
 // ---------- 联盟存档 ----------
 const WORLD_KEY='bbm_world_v1';
-const PFIELDS=['id','en','cn','pos','pos2','born','jersey','ht','ws','wt','nat','pot','dur','prof','a','contract','ovr','hist','draft','fa','twoWay','rkOpt','rk1','rfa','sheet','mor','treq','tf','gx','sz','frz','arch','dev','vol','pre','rookieYear','customRookie'];
+const PFIELDS=['id','en','cn','pos','pos2','born','jersey','ht','ws','wt','nat','pot','dur','prof','a','contract','ovr','hist','draft','fa','twoWay','rkOpt','rk1','rfa','sheet','mor','treq','tf','gx','sz','frz','arch','dev','vol','pre','rookieYear','customRookie','legendDraft'];
 function worldSaveData(){
   const pl=[]; const put=(p,team)=>{ const o={}; PFIELDS.forEach(k=>{ if(p[k]!==undefined) o[k]=p[k]; }); o.team=team; pl.push(o); };
   TEAMS.forEach(t=>t.players.forEach(p=>put(p,t.i))); FREE.forEach(p=>put(p,-1));
@@ -1670,7 +1673,7 @@ function vRoster(v){
   const year=ctxYear(), C=CFG(year), pay=payroll(t,year);
   v.innerHTML=`<h1>阵容</h1><div class="sub">${t.players.length} 人 · ${W.off?'下季':'本季'}工资 ${money(pay)}（工资帽 ${money(C.cap)}，奢侈税线 ${money(C.tax)}，第二土豪线 ${money(C.apron2)}）· 点表头排序，点球员看详情</div>
    <div class="card tw"><table><thead><tr>${cols.map(([k,n])=>`<th class="${k==='cn'||k==='pos'?'':'n'}" data-k="${k}" style="cursor:pointer">${n}${SORT.k===k?(SORT.d<0?' ↓':' ↑'):''}</th>`).join('')}</tr></thead><tbody>
-   ${ps.map(p=>`<tr class="cl" data-id="${p.id}"><td><b>${esc(p.cn)}</b>${injTag(p)}</td><td>${playerPositions(p)}</td><td class="n">${p.age}</td>
+   ${ps.map(p=>`<tr class="cl" data-id="${p.id}"><td><b>${esc(p.cn)}</b>${legendBadge(p)}${injTag(p)}</td><td>${playerPositions(p)}</td><td class="n">${p.age}</td>
      <td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${Math.round(val(p,'cond'))}</td><td class="n">${morTag(p)}</td><td class="n">${val(p,'gp')}</td><td class="n">${val(p,'ppg').toFixed(1)}</td><td class="n">${val(p,'rpg').toFixed(1)}</td><td class="n">${val(p,'apg').toFixed(1)}</td>
      ${['three','finish','pass','perD','intD'].map(k=>`<td class="n" style="color:${attrCol(p.a[k])}">${p.a[k]}</td>`).join('')}
      <td class="n">${p.contract?money(p.contract[0]):'-'}</td><td class="n">${p.contract?p.contract[1]+(p.contract[2]==='tw'?' 双向':p.contract[2]==='rk'?' 新秀':''):'-'}</td></tr>`).join('')}
@@ -1683,15 +1686,18 @@ function showPlayer(p){
   const m=document.getElementById('modal');
   const pros=(W.draftClass||[]).includes(p) && !p.drafted;
   const profileYear=pros ? (W.dcYear??W.year+1) : (W.off?.year??W.year);
+  const legend=p.legendDraft;
+  const historicalPick=Number.isSafeInteger(legend?.year) && Number.isSafeInteger(legend?.pick) && legend.pick>0;
   const reveal=pros && scoutRevealed();
   if(pros && !reveal){ refreshScout(); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0], r=srand(p.id*7+3);
     p={...p, a:Object.fromEntries(KEYS.map(k=>[k,clamp(Math.round(p.a[k]+(r()*2-1)*hw*1.5),20,99)]))}; }
   m.innerHTML=`<div class="modal"><div class="box">
-    <div class="pmhead" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">${pros?'':ovrTag(p.ovr)}<div><h1 style="margin:0">${esc(p.cn)}</h1>
+    <div class="pmhead" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">${pros?'':ovrTag(p.ovr)}<div><h1 style="margin:0">${esc(p.cn)}${legendBadge(p)}</h1>
     <div class="hint">${p.en!==p.cn?esc(p.en)+' · ':''}${POS_CN[p.pos]}${p.pos2.length?'（可打 '+p.pos2.map(x=>POS_CN[x]).join('、')+'）':''} · ${ageOf(p,profileYear)} 岁${p.nat?' · '+esc(p.nat):''}</div></div>
     <div style="margin-left:auto;text-align:right">${pros?`<div>总评 <b>${reveal?p.ovr:rangeTxt(p.scout.o)}</b> · 潜力 <b>${reveal?p.pot:rangeTxt(p.scout.p)}</b></div><div class="hint">${reveal?'真实数据':'球探报告，属性也有误差'}</div>`:`<div>潜力 <b>${p.pot}</b></div><div class="hint">${contractTxt(p.contract)}</div>${G.team!=null&&teamOfId(p.id)>=0?`<div class="hint">士气 ${morTag(p)}</div>`:''}`}</div></div>
     ${pros?`<div class="card" style="margin-bottom:10px;padding:10px"><div>原型：<b>${esc(p.arch||'')}</b> · ${esc(preTxt(p))}</div>${reveal?`<div>发展类型 <b>${esc(DEV_CN[p.dev]||'未知')}</b> · 敬业${profCn(p.prof)} · 伤病风险${durCn(p.dur)}</div>`:(W.scoutFocus||[]).includes(p.id)?`<div class="hint" style="margin-top:4px">重点考察：敬业${profCn(p.prof)}，伤病风险${durCn(p.dur)}</div>`:''}</div>`:(p.arch&&p.draft?`<div class="hint" style="margin-bottom:8px">选秀时的原型：${esc(p.arch)}</div>`:'')}
-    <div class="row" style="margin-bottom:10px;font-size:12px"><span>身高 <b>${p.ht}</b> cm</span><span>臂展 <b>${p.ws}</b> cm</span><span>体重 <b>${p.wt}</b> kg</span><span>出生 ${p.born}</span></div>
+    <div class="row" style="margin-bottom:10px;font-size:12px"><span>身高 <b>${p.ht}</b> cm</span><span>臂展 <b>${p.ws}</b> cm</span><span>体重 <b>${p.wt}</b> kg</span><span>${historicalPick?'游戏内出生':'出生'} ${p.born}</span></div>
+    ${historicalPick?`<p class="hint">${legend.year} 年历史选秀 · 第 ${legend.pick} 顺位</p>`:''}
     ${ATTR_GROUPS.map(([g,ks])=>`<h2>${g}</h2><div class="attrs">${ks.map(k=>`<div class="attr"><span>${ATTR_CN[k]}</span><b style="color:${attrCol(p.a[k])}">${p.a[k]}</b></div>`).join('')}</div>`).join('')}
     ${(p.hist&&p.hist.length)?`<h2>生涯数据</h2><div class="tw"><table><thead><tr><th>赛季</th><th>球队</th><th class="n">出场</th><th class="n">时间</th><th class="n">得分</th><th class="n">篮板</th><th class="n">助攻</th><th class="n">抢断</th><th class="n">盖帽</th><th class="n">命中率</th><th class="n">三分%</th></tr></thead><tbody>${p.hist.map(h=>`<tr><td>${h[0]}-${String((h[0]+1)%100).padStart(2,'0')}${h[2]?' 季后赛':''}</td><td>${h[1]>=0&&TEAMS[h[1]]?logo(TEAMS[h[1]],14)+' '+esc(TEAMS[h[1]].nick):''}</td>${h.slice(3).map(x=>`<td class="n">${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:''}${p.draft?`<p class="hint" style="margin-top:8px">${p.draft.year} 年第 ${p.draft.no} 顺位，被${TEAMS[p.draft.team]?TEAMS[p.draft.team].cn:''}选中</p>`:''}
     <div style="text-align:right;margin-top:14px"><button onclick="closeModal()">关闭</button></div></div></div>`;
@@ -1722,7 +1728,7 @@ function vRot(v){
      <td class="n ${f<1?(f<.8?'bad':'warn'):''}">${Math.round(f*100)}%</td><td class="n">${minInput(id)}</td><td>${tendSel(id)}</td></tr>`; }).join('')}
    </tbody></table></div>
    <div class="card tw"><h3>替补（按上场顺序）</h3><table><thead><tr><th>#</th><th>球员</th><th>位置</th><th class="n">总评</th><th class="n">目标分钟</th><th>出手</th><th></th></tr></thead><tbody>
-   ${bench.map((id,i)=>{ const p=P(id); return `<tr><td>${i+6}</td><td class="cl" data-id="${id}"><b>${esc(p.cn)}</b>${injTag(p)}</td><td>${playerPositions(p)}</td>
+   ${bench.map((id,i)=>{ const p=P(id); return `<tr><td>${i+6}</td><td class="cl" data-id="${id}"><b>${esc(p.cn)}</b>${legendBadge(p)}${injTag(p)}</td><td>${playerPositions(p)}</td>
      <td class="n">${ovrTag(p.ovr)}</td><td class="n">${minInput(id)}</td><td>${tendSel(id)}</td>
      <td><button class="sm" data-up="${i}" ${i===0?'disabled':''}>上移</button> <button class="sm" data-dn="${i}" ${i===bench.length-1?'disabled':''}>下移</button></td></tr>`; }).join('')}
    </tbody></table></div>
@@ -1935,7 +1941,7 @@ function renderTab(full){
   const bs=E.boxScore(M);
   if(L.tab==='en'){
     b.innerHTML=[0,1].map(s=>{ const T=M.teams[s]; return `<div style="padding:10px"><b>${logo(teamOf(s),16)} ${esc(teamOf(s).nick)}</b><table style="margin-top:6px"><tbody>
-      ${T.men.filter(m=>!m.out||m.secs>0).sort((a,b)=>(T.on.includes(b)-T.on.includes(a))||b.secs-a.secs).map(m=>`<tr><td>${T.on.includes(m)?'<b style="color:var(--acc)">场上</b>':'<span class="hint">板凳</span>'}</td><td>${esc(sn(m.p))}</td>
+      ${T.men.filter(m=>!m.out||m.secs>0).sort((a,b)=>(T.on.includes(b)-T.on.includes(a))||b.secs-a.secs).map(m=>`<tr><td>${T.on.includes(m)?'<b style="color:var(--acc)">场上</b>':'<span class="hint">板凳</span>'}</td><td>${esc(sn(m.p))}${legendBadge(m.p)}</td>
         <td style="width:40%">${bar(m.energy,1,m.energy>.8?'#00c276':m.energy>.6?'#f0a020':'#e5484d')}</td><td class="n">${Math.round(m.secs/60)} / ${Math.round(m.target/60)}′</td><td class="n">${m.pf} 犯</td></tr>`).join('')}</tbody></table></div>`; }).join('');
     return; }
   b.innerHTML=boxHTML(bs, s=>teamOf(s), L.finished);
@@ -1945,7 +1951,7 @@ function boxHTML(bs, tOf, showMvp){
   return (showMvp&&mvp?`<div style="padding:10px 10px 0"><span class="hint">本场最佳</span> <b>${esc(awardName(mvp.id,G.season))}</b> ${mvp.pts} 分 ${mvp.oreb+mvp.dreb} 篮板 ${mvp.ast} 助攻</div>`:'')+
    bs.map((t,side)=>`<div class="tw" style="padding:10px"><b>${logo(tOf(side),16)} ${esc(tOf(side).nick)}</b> <span class="hint">${E.SYSTEMS[t.system].name}，契合度 ${Math.round(t.fit*100)}% · 快攻 ${t.st.fast} · 内线 ${t.st.paint} · 二次进攻 ${t.st.second} · 替补 ${t.st.bench}</span>
     <table style="margin-top:6px"><thead><tr><th>球员</th><th class="n">时间</th><th class="n">得分</th><th class="n">投篮</th><th class="n">三分</th><th class="n">罚球</th><th class="n">篮板</th><th class="n">助攻</th><th class="n">抢断</th><th class="n">盖帽</th><th class="n">失误</th><th class="n">犯规</th><th class="n">+/-</th></tr></thead><tbody>
-    ${t.players.sort((a,b)=>b.starter-a.starter||b.min-a.min).map(p=>`<tr><td>${p.starter?'<b>':''}${esc(sn(PBYID[p.id]))}${p.starter?'</b>':''}${p.inj?' <span class="bad">伤</span>':''}</td>
+    ${t.players.sort((a,b)=>b.starter-a.starter||b.min-a.min).map(p=>`<tr><td>${p.starter?'<b>':''}${esc(sn(PBYID[p.id]))}${p.starter?'</b>':''}${legendBadge(PBYID[p.id])}${p.inj?' <span class="bad">伤</span>':''}</td>
       <td class="n">${Math.round(p.min)}</td><td class="n"><b>${p.pts}</b></td><td class="n">${p.fgm}-${p.fga}</td><td class="n">${p.tpm}-${p.tpa}</td><td class="n">${p.ftm}-${p.fta}</td>
       <td class="n">${p.oreb+p.dreb}</td><td class="n">${p.ast}</td><td class="n">${p.stl}</td><td class="n">${p.blk}</td><td class="n">${p.tov}</td><td class="n">${p.pf}</td><td class="n">${p.pm>0?'+':''}${p.pm}</td></tr>`).join('')}
     <tr><td class="hint">合计</td><td></td><td class="n"><b>${t.pts}</b></td>${(()=>{const s=k=>t.players.reduce((a,p)=>a+p[k],0); const fg=s('fgm')+'-'+s('fga'), pct=s('fga')?Math.round(s('fgm')/s('fga')*100):0;
@@ -1970,7 +1976,7 @@ function subsModal(){
   const M=LIVE.M, us=M.userSide, T=M.teams[us]; let out=null;
   const draw=()=>{
     const m=document.getElementById('modal');
-    const row=(x,sel)=>`<tr class="selrow ${sel?'sel':''}" data-id="${x.id}"><td>${x.slot?'<b>'+x.slot+'</b>':''}</td><td><b>${esc(x.p.cn)}</b> <span class="hint">${POS_CN[x.p.pos]} ${x.p.ovr}</span></td>
+    const row=(x,sel)=>`<tr class="selrow ${sel?'sel':''}" data-id="${x.id}"><td>${x.slot?'<b>'+x.slot+'</b>':''}</td><td><b>${esc(x.p.cn)}</b>${legendBadge(x.p)} <span class="hint">${POS_CN[x.p.pos]} ${x.p.ovr}</span></td>
       <td style="width:28%">${bar(x.energy,1,x.energy>.8?'#00c276':x.energy>.6?'#f0a020':'#e5484d')}</td><td class="n">${Math.round(x.secs/60)}′/${Math.round(x.target/60)}′</td><td class="n">${x.pts} 分</td><td class="n ${x.pf>=4?'bad':''}">${x.pf} 犯</td></tr>`;
     const bench=T.men.filter(x=>!T.on.includes(x)&&!x.out);
     m.innerHTML=`<div class="modal"><div class="box"><h1>换人</h1><div class="sub">${out?'再点一个替补换上':'先点要换下的场上球员'}</div>
@@ -2564,7 +2570,7 @@ function vStats(v){
   const RR=standings(); const minG = STAT_TAB==='reg'? Math.max(1,Math.floor(Math.max(...RR.map(r=>r.g))*0.7)) : 1;
   const list=Object.entries(src).map(([id,q])=>({p:PBYID[id],q})).filter(x=>x.p && x.q.g>=minG);
   const cat=(title,f,fmt,filter)=>{ const arr=list.filter(filter||(()=>true)).map(x=>({...x,v:f(x.q)})).sort((a,b)=>b.v-a.v).slice(0,15);
-    return `<div class="card tw"><h3>${title}</h3><table><tbody>${arr.map((x,k)=>`<tr style="${x.q.team===G.team?'background:#2a1c10':''}"><td class="n">${k+1}</td><td class="cl" data-id="${x.p.id}">${esc(x.p.cn)}</td><td>${logo(TEAMS[x.q.team],16)}</td><td class="n"><b>${fmt(x.v)}</b></td></tr>`).join('')||'<tr><td class="hint">暂无</td></tr>'}</tbody></table></div>`; };
+    return `<div class="card tw"><h3>${title}</h3><table><tbody>${arr.map((x,k)=>`<tr style="${x.q.team===G.team?'background:#2a1c10':''}"><td class="n">${k+1}</td><td class="cl" data-id="${x.p.id}">${esc(x.p.cn)}${legendBadge(x.p)}</td><td>${logo(TEAMS[x.q.team],16)}</td><td class="n"><b>${fmt(x.v)}</b></td></tr>`).join('')||'<tr><td class="hint">暂无</td></tr>'}</tbody></table></div>`; };
   const f1=x=>x.toFixed(1), pct=x=>(x*100).toFixed(1)+'%';
   v.innerHTML=`<h1>数据榜</h1><div class="sub">场均数据，出场至少 ${minG} 场</div>
    <div class="seg" style="margin-bottom:12px"><button data-st="reg" class="${STAT_TAB==='reg'?'on':''}">常规赛</button><button data-st="po" class="${STAT_TAB==='po'?'on':''}">季后赛</button></div>
@@ -2810,6 +2816,69 @@ function saveCustomRookie(year,profile,id){
   Object.assign(p,profile);
   if(!pending) refreshScout();
   return p;
+}
+
+function checkLegendDraftPack(sourceYear,targetYear){
+  const pack=LEGEND_DRAFT_PACKS.find(entry=>entry.year===sourceYear);
+  if(!pack) throw new Error('找不到该传奇新秀包');
+  if(!Number.isSafeInteger(targetYear) || targetYear!==customDraftYear()) throw new Error('目标选秀届次已变动，请重新选择');
+  const added=W.legendDraftPacks??{};
+  if(added[sourceYear]) throw new Error('当前存档已经加入过这届传奇新秀');
+  if(Object.values(added).includes(targetYear)) throw new Error('这届选秀已加入一个传奇新秀包');
+  return pack;
+}
+
+function legendPositions(row){
+  const hybrid={G:['PG','SG'],GF:['SG','SF'],FC:['PF','C'],F:row.ht>=80?['PF','SF']:['SF','PF']};
+  return hybrid[row.pos]??[row.pos];
+}
+
+// 本作的位置基线，依次对应 ATTR_DEF 的 21 项能力。档案给每人设定初始总评、成长上限和打法。
+const LEGEND_POSITION_BASE={
+  PG:[70,36,67,64,75,79,77,33,65,40,65,28,29,45,80,66,49,77,66,61,71],
+  SG:[71,58,70,69,76,70,63,43,67,43,64,33,32,48,77,73,54,77,64,62,71],
+  SF:[73,68,65,61,71,65,59,56,68,56,62,47,43,57,73,74,62,76,64,63,72],
+  PF:[75,72,59,45,67,56,55,68,56,67,49,62,67,71,64,69,74,75,62,66,74],
+  C: [76,74,52,30,61,45,51,73,46,75,43,74,72,76,55,65,79,72,61,68,74]
+};
+function legendAttributes(row,pos){
+  const base=LEGEND_POSITION_BASE[pos], style=ARCH[row.style].d;
+  const shape=KEYS.map((key,i)=>base[i]+(style[key]??0)+(row.traits?.[key]??0));
+  let best, error=Infinity;
+  // 保留能力之间的差异，用正式总评公式寻找最接近档案评分的档位。
+  for(let shift=-50;shift<=50;shift++){
+    const a=Object.fromEntries(KEYS.map((key,i)=>[key,clamp(shape[i]+shift,20,99)]));
+    const distance=Math.abs(calcOvr({pos,a})-row.overall)+Math.abs(shift)/101;
+    if(distance<error){ best=a; error=distance; }
+  }
+  return best;
+}
+
+function addLegendDraftPack(sourceYear,targetYear){
+  const pack=checkLegendDraftPack(sourceYear,targetYear);
+  const pending=!!W.off && targetYear>W.off.year;
+  if(!pending) ensureDraftClass(targetYear);
+  const players=pack.players.map(row=>{
+    const [pos,...pos2]=legendPositions(row);
+    const age=sourceYear-row.born, ht=Math.round(row.ht*2.54), wt=Math.round(row.wt*.45359237);
+    const [baseHeight,baseWingspan]=CUSTOM_ROOKIE_SIZE[pos];
+    const a=legendAttributes(row,pos), ovr=calcOvr({pos,a});
+    const pot=clamp(row.potential,ovr,99);
+    return {id:PID++,cn:row.cn||row.en,en:row.en,age,pos,pos2,ht,ws:ht+baseWingspan-baseHeight,
+      wt,born:(targetYear-age)+'-01',nat:'',jersey:'',dur:80,prof:60,dev:'normal',vol:1,
+      arch:row.style,a,ovr,pot,contract:null,hist:[],
+      legendDraft:{id:row.id,year:sourceYear,round:row.round,pick:row.pick}};
+  });
+  if(pending){
+    W.customDraftQueue??={};
+    (W.customDraftQueue[targetYear]??=[]).push(...players);
+  }else{
+    W.draftClass.push(...players);
+    for(const p of players) PBYID[p.id]=p;
+    refreshScout();
+  }
+  (W.legendDraftPacks??={})[sourceYear]=targetYear;
+  return players;
 }
 
 // ---------- 选秀权 ----------
@@ -3117,9 +3186,9 @@ function vOff(v){
       <p class="hint">${esc(classTxt())}。${myTurn?(reveal?'在下面的名单里挑一个人。当前显示真实数据。':'在下面的名单里挑一个人。总评和潜力是球探给的区间，不一定准。'):''}</p>
       <div class="ctrl" style="margin-top:4px">${myTurn?'<button id="autopick">让系统替我选</button>':''}${!D.done&&!myTurn?'<button id="tomypick">选到我的下一个签位</button>':''}${!D.done?` <button id="tradepick">交易签位</button>`:''}</div></div>
      <div class="row"><div class="col card tw" style="min-width:320px;flex:1.6"><h3>新秀 <span class="r">${avail.length} 人可选</span></h3><table><thead><tr><th>新秀</th><th>位置</th><th class="n">年龄</th><th class="n">身高</th><th>原型</th><th class="n">总评</th><th class="n">潜力</th><th class="n">三分</th><th class="n">终结</th><th class="n">外防</th><th class="n">内防</th><th>上季数据</th>${reveal?'<th>发展类型</th>':''}<th></th></tr></thead><tbody>
-      ${avail.map(p=>`<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b></td><td>${POS_CN[p.pos]}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td>${esc(p.arch||'')}</td><td class="n">${reveal?p.ovr:rangeTxt(p.scout.o)}</td><td class="n">${reveal?p.pot:rangeTxt(p.scout.p)}</td>
+      ${avail.map(p=>`<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b>${legendBadge(p)}</td><td>${POS_CN[p.pos]}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td>${esc(p.arch||'')}</td><td class="n">${reveal?p.ovr:rangeTxt(p.scout.o)}</td><td class="n">${reveal?p.pot:rangeTxt(p.scout.p)}</td>
         ${['three','finish','perD','intD'].map(k=>{ const r=srand(p.id*7+3); KEYS.slice(0,KEYS.indexOf(k)).forEach(()=>r()); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0]; const x=reveal?p.a[k]:clamp(Math.round(p.a[k]+(r()*2-1)*hw*1.5),20,99); return `<td class="n" style="color:${attrCol(x)}">${x}</td>`; }).join('')}<td class="hint">${esc(preTxt(p))}</td>${reveal?`<td>${esc(DEV_CN[p.dev]||'未知')}</td>`:''}<td>${myTurn?`<button class="sm pri" data-pick="${p.id}">选他</button>`:''}</td></tr>`).join('')}</tbody></table></div>
-      <div class="col card tw" style="min-width:240px"><h3>已选</h3><table><tbody>${D.log.slice().reverse().map(x=>{ const p=PBYID[x.pid]; return `<tr style="${x.team===G.team?'background:#2a1c10':''}"><td class="n">${x.no}</td><td>${logo(TEAMS[x.team],16)}</td><td class="cl" data-id="${x.pid}">${esc(p?p.cn:'')}</td><td class="hint">${p?POS_CN[p.pos]:''}</td></tr>`; }).join('')||'<tr><td class="hint">还没开始</td></tr>'}</tbody></table></div></div>`;
+      <div class="col card tw" style="min-width:240px"><h3>已选</h3><table><tbody>${D.log.slice().reverse().map(x=>{ const p=PBYID[x.pid]; return `<tr style="${x.team===G.team?'background:#2a1c10':''}"><td class="n">${x.no}</td><td>${logo(TEAMS[x.team],16)}</td><td class="cl" data-id="${x.pid}">${esc(p?p.cn:'')}${legendBadge(p)}</td><td class="hint">${p?POS_CN[p.pos]:''}</td></tr>`; }).join('')||'<tr><td class="hint">还没开始</td></tr>'}</tbody></table></div></div>`;
     next = D.done? '进入续约' : '跳过剩下的选秀（系统替我选）';
   }
   else if(O.step===3){ const ex=expiringOf(G.team);
@@ -3127,7 +3196,7 @@ function vOff(v){
       <p>已签下季合同的工资总额 <b>${money(pay)}</b> · 工资帽 ${money(C.cap)} · 奢侈税线 ${money(C.tax)} · 第二土豪线 ${money(C.apron2)}</p><p class="hint">续约自己的球员不受工资帽限制。没处理的球员，点「下一步」后会进入自由市场。</p></div>
      <div class="card tw"><h3>合同到期的球员 <span class="r">${ex.length} 人</span></h3>${ex.length?`<table><thead><tr><th>球员</th><th class="n">年龄</th><th class="n">总评</th><th class="n">潜力</th><th class="n">上季场均</th><th class="n">要价</th><th>心情</th><th class="n">士气</th><th></th></tr></thead><tbody>
       ${ex.map(p=>{ const a=O.asks[p.id]||(O.asks[p.id]=makeAsk(p,G.team)); const h=(p.hist||[]).filter(x=>!x[2]).slice(-1)[0];
-        return `<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b> <span class="hint">${POS_CN[p.pos]}</span></td><td class="n">${ageOf(p,O.year)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${h?`${h[5]} 分 ${h[4]} 分钟`:'-'}</td>
+        return `<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b>${legendBadge(p)} <span class="hint">${POS_CN[p.pos]}</span></td><td class="n">${ageOf(p,O.year)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${h?`${h[5]} 分 ${h[4]} 分钟`:'-'}</td>
           <td class="n"><b>${money(a.amt)}</b> × ${a.yrs} 年</td><td class="hint">${a.refuse?'<span class="bad">不愿续约</span>':a.mood<1?'满意':a.mood<1.12?'一般':'不太满意'}</td><td class="n">${morTag(p)}</td>
           <td>${expType(p)==='option'?`<span class="pill" style="background:#1d3a5c">球队选项</span> 下季 ${money(Math.round(p.contract[0]*1.05))} <button class="sm pri" data-opt="${p.id}">执行</button> <button class="sm" data-rsx="${p.id}">放弃</button>`
             : `${expType(p)==='rfa'?`<span class="pill" style="background:#3a2a10">可发资格报价</span> `:''}${a.refuse&&expType(p)!=='rfa'?'<span class="hint">他想离开，不接受续约</span>':`<button class="sm pri" data-rs="${p.id}">接受要价</button> <button class="sm" data-rsd="${p.id}">压价 10%</button>`}${expType(p)==='rfa'?` <button class="sm" data-qo="${p.id}">发资格报价 ${money(qoAmt(p))}</button>`:''} <button class="sm" data-rsx="${p.id}">放弃</button>`}</td></tr>`; }).join('')}</tbody></table>
@@ -3147,7 +3216,7 @@ function vOff(v){
      ${last?`<div class="card tw"><h3>上一轮结果</h3>${last.signed.filter(s=>s.user).map(s=>`<div class="good">签下 ${esc(PBYID[s.pid].cn)}：${money(s.amt)} × ${s.yrs} 年</div>`).join('')}${last.signed.filter(s=>s.matched===G.team).map(s=>`<div class="bad">${esc(TEAMS[s.ti].nick)}匹配了你给 ${esc(PBYID[s.pid].cn)} 的报价单</div>`).join('')}${last.rejected.map(id=>`<div class="bad">${esc(PBYID[id]?PBYID[id].cn:'')} 没接受你的报价</div>`).join('')}
        <table style="margin-top:6px"><tbody>${last.signed.filter(s=>!s.user).sort((a,b)=>PBYID[b.pid].ovr-PBYID[a.pid].ovr).slice(0,10).map(s=>`<tr><td>${esc(PBYID[s.pid].cn)} ${ovrTag(PBYID[s.pid].ovr)}</td><td>→ ${logo(TEAMS[s.ti],16)} ${esc(TEAMS[s.ti].nick)}</td><td class="n">${money(s.amt)} × ${s.yrs}</td></tr>`).join('')}</tbody></table></div>`:''}
      <div class="card tw"><h3>自由球员 <span class="r">前 120 人</span></h3><table><thead><tr><th>球员</th><th>位置</th><th class="n">年龄</th><th class="n">总评</th><th class="n">潜力</th><th class="n">要价</th><th>我的报价</th></tr></thead><tbody>
-      ${fas.filter(p=>!p.sheet).map(p=>{ const a=faAsk(p), o=off[p.id]; return `<tr style="${o?'background:#2a1c10':''}"><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b>${p.rfa?` <span class="pill" style="background:#3a2a10">受限 · ${esc(TEAMS[p.rfa.team].nick)}</span>`:''}</td><td>${POS_CN[p.pos]}</td><td class="n">${ageOf(p,O.year)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${money(a.ask)} × ${a.yrs}</td>
+      ${fas.filter(p=>!p.sheet).map(p=>{ const a=faAsk(p), o=off[p.id]; return `<tr style="${o?'background:#2a1c10':''}"><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b>${legendBadge(p)}${p.rfa?` <span class="pill" style="background:#3a2a10">受限 · ${esc(TEAMS[p.rfa.team].nick)}</span>`:''}</td><td>${POS_CN[p.pos]}</td><td class="n">${ageOf(p,O.year)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${money(a.ask)} × ${a.yrs}</td>
         <td>${o?`${money(o.amt)} × ${o.yrs} 年 <button class="sm" data-unoffer="${p.id}">撤回</button>`:`<input type="number" value="${a.ask}" min="${C.minSal}" step="10" data-amt="${p.id}" style="width:74px"> 万 <select data-yrs="${p.id}">${[1,2,3,4].map(y=>`<option ${y===a.yrs?'selected':''}>${y}</option>`).join('')}</select> 年 <button class="sm" data-offer="${p.id}">报价</button>`}</td></tr>`; }).join('')}</tbody></table></div>`;
     next = O.faRound<5? `结束第 ${O.faRound} 轮` : '结束自由市场';
   }
@@ -3322,7 +3391,7 @@ function vTrade(v){
   const ev=evalTrade(), empty=!TR.mineP.size&&!TR.theirP.size&&!TR.mineK.size&&!TR.theirK.size;
   const verdict = ev.ratio>=1? ['会接受','var(--good)'] : ev.ratio>=.85? ['差一点','var(--warn)'] : ['差很远','var(--bad)'];
   const side=(t,setP,setK,key)=>`<div class="card tw"><h3>${logo(t,20)} ${esc(t.cn)} <span class="r">${t===pt?(ev.mode==='rebuild'?'重建中，看重年轻人和选秀权':'争冠中，看重即战力'):''} 工资 ${money(payroll(t,yr))}</span></h3><table><thead><tr><th></th><th>球员</th><th class="n">年龄</th><th class="n">总评</th><th class="n">潜力</th><th class="n">年薪</th><th class="n">到期</th></tr></thead><tbody>
-    ${t.players.slice().sort((a,b)=>b.ovr-a.ovr).map(p=>`<tr><td><input type="checkbox" data-${key}p="${p.id}" ${setP.has(p.id)?'checked':''} ${frozen(p)||!activeContract(p,yr)?'disabled':''}></td><td class="cl" data-id="${p.id}">${esc(p.cn)}${injTag(p)}${frzTag(p)}</td><td class="n">${ageOf(p,yr)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${p.contract?money(p.contract[0]):'-'}</td><td class="n">${p.contract?p.contract[1]+(p.contract[2]==='rk'?' 新秀':p.contract[2]==='tw'?' 双向':''):''}</td></tr>`).join('')}
+    ${t.players.slice().sort((a,b)=>b.ovr-a.ovr).map(p=>`<tr><td><input type="checkbox" data-${key}p="${p.id}" ${setP.has(p.id)?'checked':''} ${frozen(p)||!activeContract(p,yr)?'disabled':''}></td><td class="cl" data-id="${p.id}">${esc(p.cn)}${legendBadge(p)}${injTag(p)}${frzTag(p)}</td><td class="n">${ageOf(p,yr)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${p.contract?money(p.contract[0]):'-'}</td><td class="n">${p.contract?p.contract[1]+(p.contract[2]==='rk'?' 新秀':p.contract[2]==='tw'?' 双向':''):''}</td></tr>`).join('')}
     </tbody></table><div style="margin-top:8px">${picksOwnedBy(t.i).map(pk=>`<label class="pill" style="background:#1c2430;margin:2px;padding:3px 8px;cursor:pointer"><input type="checkbox" data-${key}k="${pkKey(pk)}" ${setK.has(pkKey(pk))?'checked':''}> ${esc(pickLabel(pk))}${key==='m'&&setK.has(pkKey(pk))&&pk.round===1&&pk.orig===G.team&&!protOf(pk)&&!(W.off&&W.off.lottery&&pk.year===W.off.lottery.year)?` <select data-prot="${pkKey(pk)}" onclick="event.stopPropagation()">${PROT_OPTS.map(n=>`<option value="${n}" ${(TR.prot[pkKey(pk)]||0)===n?'selected':''}>${n?'前 '+n+' 保护':'不保护'}</option>`).join('')}</select>`:''}</label>`).join('')||'<span class="hint">没有选秀权</span>'}</div></div>`;
   v.innerHTML=`<h1>交易</h1><div class="sub">${W.off?'休赛期可以随时交易':'交易截止日：'+(G.season.year+1)+' 年 2 月 5 日'} · 勾选双方要交换的球员和选秀权</div>
    <div class="card"><div class="row" style="align-items:center"><span>交易对象</span><select id="tp">${TEAMS.filter(t=>t.i!==G.team).map(t=>`<option value="${t.i}" ${t.i===TR.partner?'selected':''}>${esc(t.cn)}</option>`).join('')}</select>
@@ -3357,11 +3426,11 @@ function vFA(v){
   const minRoster = W.off? 0 : 13;
   v.innerHTML=`<h1>自由球员</h1><div class="sub">${W.off?'休赛期':'赛季中'}签约：${W.off?'按要价':'要价打六折'}，合同 1 年。工资 ${money(pay)} · 工资帽剩 ${money(Math.max(0,C.cap-pay))} · 中产 ${(W.mle[yr]||{})[G.team]?'已用':pay<C.apron1?money(C.mleNT):pay<C.apron2?money(C.mleTP):'不可用'} · 正式合同 ${rosterCount(t,yr)} / 15</div>
    <div class="card tw"><h3>市场上的球员</h3><table><thead><tr><th>球员</th><th>位置</th><th class="n">年龄</th><th class="n">总评</th><th class="n">潜力</th><th class="n">要价</th><th></th></tr></thead><tbody>
-    ${fas.map(p=>{ const a=inSeasonAsk(p), r=p.sheet?{ok:false,why:'报价单处理中，请到休赛期处理'}:p.rfa?{ok:false,why:'受限球员，请到休赛期报价'}:offerRule(G.team,a,yr); return `<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b></td><td>${POS_CN[p.pos]}</td><td class="n">${ageOf(p,yr)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${money(a)}</td>
+    ${fas.map(p=>{ const a=inSeasonAsk(p), r=p.sheet?{ok:false,why:'报价单处理中，请到休赛期处理'}:p.rfa?{ok:false,why:'受限球员，请到休赛期报价'}:offerRule(G.team,a,yr); return `<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b>${legendBadge(p)}</td><td>${POS_CN[p.pos]}</td><td class="n">${ageOf(p,yr)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${money(a)}</td>
       <td>${r.ok?`<button class="sm pri" data-sign="${p.id}">签下（${r.kind}）</button>`:`<span class="hint">${esc(r.why)}</span>`}</td></tr>`; }).join('')}</tbody></table></div>
-   ${(()=>{ const tw=t.players.filter(p=>p.contract&&p.contract[2]==='tw'); return tw.length?`<div class="card tw"><h3>双向合同 <span class="r">${tw.length} / 3，不占 15 人名额，不算工资</span></h3><table><tbody>${tw.map(p=>`<tr><td>${esc(p.cn)} <span class="hint">${POS_CN[p.pos]} · ${ageOf(p,yr)} 岁</span></td><td class="n">${ovrTag(p.ovr)}</td><td class="n">潜力 ${p.pot}</td><td class="n">至 ${p.contract[1]}</td><td>${rosterCount(t,yr)<15?`<button class="sm" data-tw="${p.id}">转正式合同（底薪 × 2 年）</button>`:'<span class="hint">正式合同已满 15 人</span>'}</td></tr>`).join('')}</tbody></table></div>`:''; })()}
+   ${(()=>{ const tw=t.players.filter(p=>p.contract&&p.contract[2]==='tw'); return tw.length?`<div class="card tw"><h3>双向合同 <span class="r">${tw.length} / 3，不占 15 人名额，不算工资</span></h3><table><tbody>${tw.map(p=>`<tr><td>${esc(p.cn)}${legendBadge(p)} <span class="hint">${POS_CN[p.pos]} · ${ageOf(p,yr)} 岁</span></td><td class="n">${ovrTag(p.ovr)}</td><td class="n">潜力 ${p.pot}</td><td class="n">至 ${p.contract[1]}</td><td>${rosterCount(t,yr)<15?`<button class="sm" data-tw="${p.id}">转正式合同（底薪 × 2 年）</button>`:'<span class="hint">正式合同已满 15 人</span>'}</td></tr>`).join('')}</tbody></table></div>`:''; })()}
    <div class="card tw"><h3>裁人 <span class="r">剩余合同照付，算进工资（死钱）</span></h3><table><tbody>
-    ${mineStd.sort((a,b)=>a.ovr-b.ovr).map(p=>`<tr><td>${esc(p.cn)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.contract?money(p.contract[0])+' 至 '+p.contract[1]:''}</td><td>${mineStd.length>minRoster?`<button class="sm" data-waive="${p.id}">裁掉</button>`:''}</td></tr>`).join('')}</tbody></table>
+    ${mineStd.sort((a,b)=>a.ovr-b.ovr).map(p=>`<tr><td>${esc(p.cn)}${legendBadge(p)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.contract?money(p.contract[0])+' 至 '+p.contract[1]:''}</td><td>${mineStd.length>minRoster?`<button class="sm" data-waive="${p.id}">裁掉</button>`:''}</td></tr>`).join('')}</tbody></table>
     ${(W.dead[G.team]||[]).filter(d=>d.exp>yr).length?`<p class="hint" style="margin-top:6px">死钱：${W.dead[G.team].filter(d=>d.exp>yr).map(d=>`${esc(d.cn)} ${money(d.amt)} 至 ${d.exp}`).join('；')}</p>`:''}</div>`;
   v.querySelectorAll('[data-sign]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.sign]; const r=signFA(p,G.team,inSeasonAsk(p),1,yr); if(r.ok){ reindex(); fixRot(); save(); toast(`签下 ${p.cn}`); if(G.season) applyPlayerState(); } else toast(r.why); render(); });
   v.querySelectorAll('[data-tw]').forEach(b=>b.onclick=()=>{ const p=PBYID[b.dataset.tw]; p.contract=[CFG(yr).minSal, yr+2, 'std']; reindex(); fixRot(); save(); toast(`${p.cn} 转为正式合同`); render(); });
@@ -3804,7 +3873,7 @@ function vTrain(v){
       <div class="hint" style="margin-top:6px">阵容稳定、大家士气高、赢球，化学反应会慢慢涨；每来一个新人会掉一截。比赛里命中率 ${m.chem>=50?'+':''}${((m.chem-50)/50).toFixed(1)}%。</div></div>
    </div>
    <div class="col card tw" style="min-width:340px;flex:1.5"><h3>球员</h3><table><thead><tr><th>球员</th><th class="n">总评</th><th class="n">潜力</th><th class="n">本季</th><th class="n">士气</th><th>个人重点</th></tr></thead><tbody>
-    ${ps.map(p=>{ const d=ovr0[p.id]!=null? p.ovr-ovr0[p.id] : 0; return `<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b> <span class="hint">${POS_CN[p.pos]} · ${p.age}</span>${injTag(p)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${deltaTag(d)}</td><td class="n">${morTag(p)}</td>
+    ${ps.map(p=>{ const d=ovr0[p.id]!=null? p.ovr-ovr0[p.id] : 0; return `<tr><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b>${legendBadge(p)} <span class="hint">${POS_CN[p.pos]} · ${p.age}</span>${injTag(p)}</td><td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${deltaTag(d)}</td><td class="n">${morTag(p)}</td>
       <td><select data-tf="${p.id}"><option value="">跟全队</option>${Object.entries(FOCUS).map(([k,[n]])=>`<option value="${k}" ${p.tf===k?'selected':''}>${n}</option>`).join('')}</select></td></tr>`; }).join('')}</tbody></table>
     <p class="hint" style="margin-top:8px">士气影响比赛发挥（最多 ±3%）和续约要价。上场时间达到他的预期、球队赢球，士气就往上走；士气太低会公开要求交易，续约时也不肯留。</p></div></div>`;
   v.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{ const k=b.dataset.st, d=+b.dataset.d; const nv=m.staff[k]+d; if(nv<1||nv>5||(d>0&&used>=10)) return; m.staff[k]=nv; if(k==='sct') refreshScout(); save(); vTrain(v); });
@@ -3828,7 +3897,7 @@ function vScout(v){
     ${cheatsEnabled()?`<div class="ctrl"><button id="scout-reveal" ${cheatActionAvailable()?'':'disabled'}>${reveal?'恢复球探估计':'显示真实数据'}</button></div>`:''}
     <p class="hint" style="margin-top:4px">你持有的 ${yr} 年签：${mine.length?mine.map(k=>esc(pickLabel(k))).join('、'):'无'}。别的球队有自己的球探，看法和你不一样。</p></div>
    <div class="card tw"><table><thead><tr><th class="n">顺位</th><th>新秀</th><th>位置</th><th>原型</th><th class="n">年龄</th><th class="n">身高</th><th class="n">总评</th><th class="n">潜力</th><th>上季数据</th>${reveal?'<th>发展类型</th>':'<th>考察</th><th></th>'}</tr></thead><tbody>
-    ${list.map((p,i)=>`<tr style="${F.has(p.id)?'background:#2a1c10':''}"><td class="n">${i+1}</td><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b> <span class="hint">${esc(p.nat)}</span></td><td>${POS_CN[p.pos]}</td><td>${esc(p.arch||'')}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td class="n">${reveal?p.ovr:rangeTxt(p.scout.o)}</td><td class="n">${reveal?p.pot:rangeTxt(p.scout.p)}</td><td class="hint">${esc(preTxt(p))}</td>
+    ${list.map((p,i)=>`<tr style="${F.has(p.id)?'background:#2a1c10':''}"><td class="n">${i+1}</td><td class="cl" data-id="${p.id}"><b>${esc(p.cn)}</b>${legendBadge(p)} <span class="hint">${esc(p.nat)}</span></td><td>${POS_CN[p.pos]}</td><td>${esc(p.arch||'')}</td><td class="n">${p.age}</td><td class="n">${p.ht}</td><td class="n">${reveal?p.ovr:rangeTxt(p.scout.o)}</td><td class="n">${reveal?p.pot:rangeTxt(p.scout.p)}</td><td class="hint">${esc(preTxt(p))}</td>
       ${reveal?`<td>${esc(DEV_CN[p.dev]||'未知')}</td>`:`<td class="hint">${F.has(p.id)?`敬业${profCn(p.prof)} · 伤病风险${durCn(p.dur)}`:''}</td>
       <td>${F.has(p.id)?'<span class="hint">已考察</span>':F.size<lim?`<button class="sm" data-sf="${p.id}">重点考察</button>`:''}</td>`}</tr>`).join('')}</tbody></table></div>`;
   const revealButton=v.querySelector('#scout-reveal');
@@ -4503,6 +4572,25 @@ function customRookiesPanel(available){
   </section>`;
 }
 
+function legendFeatured(pack){
+  return pack.featured.map(id=>pack.players.find(p=>p.id===id)).map(p=>p.cn||p.en).join('、');
+}
+
+function legendDraftPanel(available){
+  const year=customDraftYear(), added=W.legendDraftPacks??{};
+  const occupied=Object.values(added).includes(year);
+  return `<section class="card">
+    <h3>传奇新秀包 <span class="r">${esc(year)} 年选秀</span></h3>
+    <p class="hint">${occupied?'这届选秀已加入传奇新秀包。':'选一届加入候选名单。各队按现有签位和顺序选人。'}</p>
+    <div class="cheat-actions">${LEGEND_DRAFT_PACKS.map(pack=>`<div class="cheat-rookie-item">
+      <div><b>${pack.year} 届 · ${pack.players.length} 人</b>
+        <div class="hint">${esc(legendFeatured(pack))}</div></div>
+      ${added[pack.year]?`<span class="hint">已加入 ${esc(added[pack.year])} 年选秀</span>`:
+        `<button class="sm" data-legend-pack="${pack.year}" ${available&&!occupied?'':'disabled'}>选择 ${pack.year} 届</button>`}
+    </div>`).join('')}</div>
+  </section>`;
+}
+
 function vCheats(v){
   const enabled=cheatsEnabled(), available=cheatActionAvailable();
   const S=G.season, team=myTeam(), year=ctxYear(), limit=ownerLimit(team.i,year);
@@ -4554,7 +4642,7 @@ function vCheats(v){
           <p class="hint">在球探页和选秀名单显示真实总评、潜力和发展类型。</p>
           <div class="ctrl"><button id="cheat-reveal"${disabled}>${scoutRevealed()?'关闭新秀透视':'开启新秀透视'}</button><button data-cheat-view="scout">前往球探</button></div>
         </section>
-      </div>${customRookiesPanel(available)}`:''}
+      </div>${customRookiesPanel(available)}${legendDraftPanel(available)}`:''}
     <section class="card"><h3>修改前备份</h3><div id="cheat-backup" class="hint">${G.cheats?.backup?'读取备份…':'首次修改后可在这里恢复。'}</div></section>`;
   const q=s=>v.querySelector(s);
   const go=view=>{ G.view=view; render(); };
@@ -4568,6 +4656,9 @@ function vCheats(v){
     q('#create-custom-rookie').onclick=()=>showCustomRookie();
     v.querySelectorAll('[data-custom-rookie]').forEach(b=>{
       b.onclick=()=>showCustomRookie(+b.dataset.customRookie);
+    });
+    v.querySelectorAll('[data-legend-pack]').forEach(b=>{
+      b.onclick=()=>showLegendDraftPack(+b.dataset.legendPack);
     });
     q('#cheat-heal').onclick=e=>performCheatEdit(e.currentTarget,()=>{
       for(const p of team.players){
@@ -4753,6 +4844,26 @@ function showCustomRookie(id){
     performCheatEdit(form.querySelector('[type=submit]'),()=>saveCustomRookie(year,profile,id),
       p?`${profile.cn}的新秀资料已保存`:`${profile.cn}已加入 ${year} 年选秀`,validate);
   };
+}
+
+function showLegendDraftPack(sourceYear){
+  if(!cheatsEnabled() || !cheatActionAvailable()) return;
+  const year=customDraftYear();
+  let pack;
+  try{ pack=checkLegendDraftPack(sourceYear,year); }
+  catch(error){ toast(error.message); return; }
+  const modal=document.getElementById('modal');
+  modal.innerHTML=`<div class="modal"><div class="box" role="dialog" aria-modal="true" aria-labelledby="legend-pack-title">
+    <h1 id="legend-pack-title">加入 ${sourceYear} 届传奇新秀</h1>
+    <p class="hint">${pack.players.length} 名球员将参加本存档的 ${year} 年选秀。</p>
+    <p>${esc(legendFeatured(pack))}等球员会和原来的新秀一起参选。其他球队也可以选中他们。</p>
+    <div class="ctrl"><button id="legend-pack-add" class="pri">加入 ${year} 年选秀</button>
+      <button id="legend-pack-cancel">取消</button></div>
+  </div></div>`;
+  modal.querySelector('#legend-pack-cancel').onclick=()=>{ if(!cheatBusy) closeModal(); };
+  modal.querySelector('#legend-pack-add').onclick=e=>performCheatEdit(e.currentTarget,
+    ()=>addLegendDraftPack(sourceYear,year),`${sourceYear} 届传奇新秀已加入 ${year} 年选秀`,
+    ()=>checkLegendDraftPack(sourceYear,year));
 }
 
 function showCheatTrade(){

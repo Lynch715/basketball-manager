@@ -4,6 +4,7 @@ const {root,appContext,clone}=require('./balance_20261020/support.cjs');
 const files=['app_save.js','app_cheats.js'];
 function context(storage){
   const c=appContext(storage);
+  c.run('const LEGEND_DRAFT_PACKS='+fs.readFileSync(root+'/legend_draft_packs.json','utf8'));
   for(const f of files) c.run(fs.readFileSync(root+'/'+f,'utf8'));
   c.run('globalThis.alert=()=>{};');
   return c;
@@ -126,6 +127,7 @@ async function main(){
   console.log('PASS 普通交易规则、薪资放行、冷冻期、截止日、实际转队、抽签后的签位归属');
 
   await customRookieCases();
+  await legendDraftCases();
 }
 
 async function customRookieCases(){
@@ -211,5 +213,76 @@ async function customRookieCases(){
   assert.equal(next.run('aiDraftPick(1).id'),queuedId);
   assert.equal(next.run(`teamOfId(${id})`),0);
   console.log('PASS 当届开选后排到下一届、队列存读档、生成时合并、AI 正常参选');
+}
+
+async function legendDraftCases(){
+  const storage=legacy(), old=[...storage];
+  const app=context(storage), run=app.run;
+  assert.ok(run(`LEGEND_DRAFT_PACKS.every(pack=>pack.players.every(row=>{
+    const [pos]=legendPositions(row), a=legendAttributes(row,pos);
+    return !Object.hasOwn(row,'ratings') && ARCH[row.style] &&
+      Object.keys(row.traits??{}).every(key=>KEYS.includes(key)) &&
+      Math.abs(calcOvr({pos,a})-row.overall)<=1 && row.potential>=calcOvr({pos,a}) && row.potential<=99 &&
+      KEYS.every(key=>Number.isInteger(a[key]) && a[key]>=20 && a[key]<=99);
+  }))`));
+  assert.equal(run('legendBadge({})'),'');
+  run('load();');
+  assert.deepEqual([...storage],old);
+  assert.equal(run('W.legendDraftPacks'),undefined);
+  run('setCheatPreference({enabled:true});');
+  const original=clone(run('W.draftClass.map(p=>p.id)'));
+  const picks=clone(run('W.picks'));
+  const before=clone(run('currentSaveKeys()'));
+  await run('runCheatEdit(()=>addLegendDraftPack(1984,2027));');
+  const slot=run('G.cheats.backup'), backup=storage.get('bbm_slot_'+slot);
+  assert.deepEqual(JSON.parse(backup).keys,before);
+  assert.deepEqual(clone(run('W.picks')),picks);
+  assert.deepEqual(clone(run(`W.draftClass.filter(p=>!p.legendDraft).map(p=>p.id)`)),original);
+  assert.equal(run('W.draftClass.length'),original.length+42);
+  assert.equal(run('new Set(W.draftClass.map(p=>p.id)).size'),original.length+42);
+  assert.ok(run(`W.draftClass.filter(p=>p.legendDraft).every(p=>p.pot>=p.ovr && p.pot<=99 &&
+    POS.includes(p.pos) && p.pos2.every(pos=>POS.includes(pos) && p.pos!==pos) &&
+    KEYS.every(key=>Number.isInteger(p.a[key]) && p.a[key]>=20 && p.a[key]<=99))`));
+  assert.throws(()=>run('checkLegendDraftPack(1996,2027)'),/已加入一个/);
+  assert.throws(()=>run('checkLegendDraftPack(1984,2027)'),/已经加入过/);
+
+  const draft=context(storage);
+  draft.run(`load();
+    const jordan=W.draftClass.find(p=>p.en==='Michael Jordan');
+    const first={no:9,round:1,orig:G.team,owner:G.team};
+    const second={no:10,round:1,orig:1,owner:1};
+    W.off={step:2,year:2027,draft:{year:2027,idx:0,order:[first,second],log:[]}};
+    if(!draftPlayer(first,jordan)) throw new Error('原签位未能选中传奇');
+    W.off.draft.idx++;
+    save();
+  `);
+  const resumed=context(storage);
+  resumed.run("load(); const jordan=myTeam().players.find(p=>p.en==='Michael Jordan');");
+  assert.deepEqual(clone(resumed.run(`[
+    jordan.age,jordan.drafted,jordan.legendDraft.year,jordan.legendDraft.pick,jordan.draft.no,
+    jordan.draft.team,jordan.contract[2],W.off.draft.idx
+  ]`)),[21,true,1984,3,9,0,'rk',1]);
+  assert.match(resumed.run('legendBadge(jordan)'),/legend-badge.*传奇/);
+  assert.equal(resumed.run('jordan.pot'),99);
+  assert.equal(resumed.run('draftPlayer(W.off.draft.order[1],jordan)'),false);
+  assert.equal(resumed.run('customDraftYear()'),2028);
+  assert.throws(()=>resumed.run('checkLegendDraftPack(1996,2027)'),/届次已变动/);
+  await resumed.run('runCheatEdit(()=>addLegendDraftPack(1996,2028));');
+  assert.equal(storage.get('bbm_slot_'+slot),backup);
+  assert.equal(resumed.run('W.customDraftQueue[2028].length'),39);
+  assert.equal(resumed.run('W.draftClass.some(p=>p.legendDraft?.year===1996)'),false);
+
+  const next=context(storage);
+  next.run('load(); draftAdvance(false); startNewSeason();');
+  assert.equal(next.run('W.dcYear'),2028);
+  assert.equal(next.run('W.customDraftQueue'),undefined);
+  assert.equal(next.run('W.draftClass.length'),109);
+  assert.equal(next.run('W.draftClass.filter(p=>p.legendDraft?.year===1996).length'),39);
+  assert.equal(next.run("W.draftClass.find(p=>p.en==='Kobe Bryant').age"),18);
+  assert.equal(next.run('aiDraftPick(1).legendDraft.year'),1996);
+  assert.throws(()=>next.run('checkLegendDraftPack(1984,2028)'),/已经加入过/);
+  await next.run('slotGet(G.cheats.backup).then(s=>restore(readCheatBackup(s)));');
+  for(const [key,value] of Object.entries(before)) assert.equal(storage.get(key),value);
+  console.log('PASS 传奇包兼容旧档，保留原候选和签位，历史顺位、实际选秀和新秀合同重载，跨年排队与恢复首次备份');
 }
 main().catch(error=>{ console.error(error); process.exitCode=1; });

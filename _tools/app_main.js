@@ -8,6 +8,7 @@ const SYS_DESC = {bal:'不偏重任何打法', pnr:'持球人和大个子挡拆�
 const esc = s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const clamp=(x,a,b)=>x<a?a:x>b?b:x;
 const sn = p=>!p?'已退役球员':p.cn.includes('·')?p.cn.split('·').pop():p.cn;
+const legendBadge = p=>p?.legendDraft?' <span class="pill legend-badge">传奇</span>':'';
 
 // ---------- 数据 ----------
 // W：联盟层面的状态（年份、选秀权、死钱、选秀、休赛期进度），和球员一起存进「联盟存档」
@@ -45,7 +46,7 @@ function payroll(t, year){ year=year||W.year; let s=0;
 
 // ---------- 联盟存档 ----------
 const WORLD_KEY='bbm_world_v1';
-const PFIELDS=['id','en','cn','pos','pos2','born','jersey','ht','ws','wt','nat','pot','dur','prof','a','contract','ovr','hist','draft','fa','twoWay','rkOpt','rk1','rfa','sheet','mor','treq','tf','gx','sz','frz','arch','dev','vol','pre','rookieYear','customRookie'];
+const PFIELDS=['id','en','cn','pos','pos2','born','jersey','ht','ws','wt','nat','pot','dur','prof','a','contract','ovr','hist','draft','fa','twoWay','rkOpt','rk1','rfa','sheet','mor','treq','tf','gx','sz','frz','arch','dev','vol','pre','rookieYear','customRookie','legendDraft'];
 function worldSaveData(){
   const pl=[]; const put=(p,team)=>{ const o={}; PFIELDS.forEach(k=>{ if(p[k]!==undefined) o[k]=p[k]; }); o.team=team; pl.push(o); };
   TEAMS.forEach(t=>t.players.forEach(p=>put(p,t.i))); FREE.forEach(p=>put(p,-1));
@@ -199,7 +200,7 @@ function vRoster(v){
   const year=ctxYear(), C=CFG(year), pay=payroll(t,year);
   v.innerHTML=`<h1>阵容</h1><div class="sub">${t.players.length} 人 · ${W.off?'下季':'本季'}工资 ${money(pay)}（工资帽 ${money(C.cap)}，奢侈税线 ${money(C.tax)}，第二土豪线 ${money(C.apron2)}）· 点表头排序，点球员看详情</div>
    <div class="card tw"><table><thead><tr>${cols.map(([k,n])=>`<th class="${k==='cn'||k==='pos'?'':'n'}" data-k="${k}" style="cursor:pointer">${n}${SORT.k===k?(SORT.d<0?' ↓':' ↑'):''}</th>`).join('')}</tr></thead><tbody>
-   ${ps.map(p=>`<tr class="cl" data-id="${p.id}"><td><b>${esc(p.cn)}</b>${injTag(p)}</td><td>${playerPositions(p)}</td><td class="n">${p.age}</td>
+   ${ps.map(p=>`<tr class="cl" data-id="${p.id}"><td><b>${esc(p.cn)}</b>${legendBadge(p)}${injTag(p)}</td><td>${playerPositions(p)}</td><td class="n">${p.age}</td>
      <td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${Math.round(val(p,'cond'))}</td><td class="n">${morTag(p)}</td><td class="n">${val(p,'gp')}</td><td class="n">${val(p,'ppg').toFixed(1)}</td><td class="n">${val(p,'rpg').toFixed(1)}</td><td class="n">${val(p,'apg').toFixed(1)}</td>
      ${['three','finish','pass','perD','intD'].map(k=>`<td class="n" style="color:${attrCol(p.a[k])}">${p.a[k]}</td>`).join('')}
      <td class="n">${p.contract?money(p.contract[0]):'-'}</td><td class="n">${p.contract?p.contract[1]+(p.contract[2]==='tw'?' 双向':p.contract[2]==='rk'?' 新秀':''):'-'}</td></tr>`).join('')}
@@ -212,15 +213,18 @@ function showPlayer(p){
   const m=document.getElementById('modal');
   const pros=(W.draftClass||[]).includes(p) && !p.drafted;
   const profileYear=pros ? (W.dcYear??W.year+1) : (W.off?.year??W.year);
+  const legend=p.legendDraft;
+  const historicalPick=Number.isSafeInteger(legend?.year) && Number.isSafeInteger(legend?.pick) && legend.pick>0;
   const reveal=pros && scoutRevealed();
   if(pros && !reveal){ refreshScout(); const hw=SCOUT_HW[((W.scoutFocus||[]).includes(p.id)?5:scoutLevel(G.team))-1][0], r=srand(p.id*7+3);
     p={...p, a:Object.fromEntries(KEYS.map(k=>[k,clamp(Math.round(p.a[k]+(r()*2-1)*hw*1.5),20,99)]))}; }
   m.innerHTML=`<div class="modal"><div class="box">
-    <div class="pmhead" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">${pros?'':ovrTag(p.ovr)}<div><h1 style="margin:0">${esc(p.cn)}</h1>
+    <div class="pmhead" style="display:flex;align-items:center;gap:12px;margin-bottom:12px">${pros?'':ovrTag(p.ovr)}<div><h1 style="margin:0">${esc(p.cn)}${legendBadge(p)}</h1>
     <div class="hint">${p.en!==p.cn?esc(p.en)+' · ':''}${POS_CN[p.pos]}${p.pos2.length?'（可打 '+p.pos2.map(x=>POS_CN[x]).join('、')+'）':''} · ${ageOf(p,profileYear)} 岁${p.nat?' · '+esc(p.nat):''}</div></div>
     <div style="margin-left:auto;text-align:right">${pros?`<div>总评 <b>${reveal?p.ovr:rangeTxt(p.scout.o)}</b> · 潜力 <b>${reveal?p.pot:rangeTxt(p.scout.p)}</b></div><div class="hint">${reveal?'真实数据':'球探报告，属性也有误差'}</div>`:`<div>潜力 <b>${p.pot}</b></div><div class="hint">${contractTxt(p.contract)}</div>${G.team!=null&&teamOfId(p.id)>=0?`<div class="hint">士气 ${morTag(p)}</div>`:''}`}</div></div>
     ${pros?`<div class="card" style="margin-bottom:10px;padding:10px"><div>原型：<b>${esc(p.arch||'')}</b> · ${esc(preTxt(p))}</div>${reveal?`<div>发展类型 <b>${esc(DEV_CN[p.dev]||'未知')}</b> · 敬业${profCn(p.prof)} · 伤病风险${durCn(p.dur)}</div>`:(W.scoutFocus||[]).includes(p.id)?`<div class="hint" style="margin-top:4px">重点考察：敬业${profCn(p.prof)}，伤病风险${durCn(p.dur)}</div>`:''}</div>`:(p.arch&&p.draft?`<div class="hint" style="margin-bottom:8px">选秀时的原型：${esc(p.arch)}</div>`:'')}
-    <div class="row" style="margin-bottom:10px;font-size:12px"><span>身高 <b>${p.ht}</b> cm</span><span>臂展 <b>${p.ws}</b> cm</span><span>体重 <b>${p.wt}</b> kg</span><span>出生 ${p.born}</span></div>
+    <div class="row" style="margin-bottom:10px;font-size:12px"><span>身高 <b>${p.ht}</b> cm</span><span>臂展 <b>${p.ws}</b> cm</span><span>体重 <b>${p.wt}</b> kg</span><span>${historicalPick?'游戏内出生':'出生'} ${p.born}</span></div>
+    ${historicalPick?`<p class="hint">${legend.year} 年历史选秀 · 第 ${legend.pick} 顺位</p>`:''}
     ${ATTR_GROUPS.map(([g,ks])=>`<h2>${g}</h2><div class="attrs">${ks.map(k=>`<div class="attr"><span>${ATTR_CN[k]}</span><b style="color:${attrCol(p.a[k])}">${p.a[k]}</b></div>`).join('')}</div>`).join('')}
     ${(p.hist&&p.hist.length)?`<h2>生涯数据</h2><div class="tw"><table><thead><tr><th>赛季</th><th>球队</th><th class="n">出场</th><th class="n">时间</th><th class="n">得分</th><th class="n">篮板</th><th class="n">助攻</th><th class="n">抢断</th><th class="n">盖帽</th><th class="n">命中率</th><th class="n">三分%</th></tr></thead><tbody>${p.hist.map(h=>`<tr><td>${h[0]}-${String((h[0]+1)%100).padStart(2,'0')}${h[2]?' 季后赛':''}</td><td>${h[1]>=0&&TEAMS[h[1]]?logo(TEAMS[h[1]],14)+' '+esc(TEAMS[h[1]].nick):''}</td>${h.slice(3).map(x=>`<td class="n">${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:''}${p.draft?`<p class="hint" style="margin-top:8px">${p.draft.year} 年第 ${p.draft.no} 顺位，被${TEAMS[p.draft.team]?TEAMS[p.draft.team].cn:''}选中</p>`:''}
     <div style="text-align:right;margin-top:14px"><button onclick="closeModal()">关闭</button></div></div></div>`;
@@ -251,7 +255,7 @@ function vRot(v){
      <td class="n ${f<1?(f<.8?'bad':'warn'):''}">${Math.round(f*100)}%</td><td class="n">${minInput(id)}</td><td>${tendSel(id)}</td></tr>`; }).join('')}
    </tbody></table></div>
    <div class="card tw"><h3>替补（按上场顺序）</h3><table><thead><tr><th>#</th><th>球员</th><th>位置</th><th class="n">总评</th><th class="n">目标分钟</th><th>出手</th><th></th></tr></thead><tbody>
-   ${bench.map((id,i)=>{ const p=P(id); return `<tr><td>${i+6}</td><td class="cl" data-id="${id}"><b>${esc(p.cn)}</b>${injTag(p)}</td><td>${playerPositions(p)}</td>
+   ${bench.map((id,i)=>{ const p=P(id); return `<tr><td>${i+6}</td><td class="cl" data-id="${id}"><b>${esc(p.cn)}</b>${legendBadge(p)}${injTag(p)}</td><td>${playerPositions(p)}</td>
      <td class="n">${ovrTag(p.ovr)}</td><td class="n">${minInput(id)}</td><td>${tendSel(id)}</td>
      <td><button class="sm" data-up="${i}" ${i===0?'disabled':''}>上移</button> <button class="sm" data-dn="${i}" ${i===bench.length-1?'disabled':''}>下移</button></td></tr>`; }).join('')}
    </tbody></table></div>
@@ -464,7 +468,7 @@ function renderTab(full){
   const bs=E.boxScore(M);
   if(L.tab==='en'){
     b.innerHTML=[0,1].map(s=>{ const T=M.teams[s]; return `<div style="padding:10px"><b>${logo(teamOf(s),16)} ${esc(teamOf(s).nick)}</b><table style="margin-top:6px"><tbody>
-      ${T.men.filter(m=>!m.out||m.secs>0).sort((a,b)=>(T.on.includes(b)-T.on.includes(a))||b.secs-a.secs).map(m=>`<tr><td>${T.on.includes(m)?'<b style="color:var(--acc)">场上</b>':'<span class="hint">板凳</span>'}</td><td>${esc(sn(m.p))}</td>
+      ${T.men.filter(m=>!m.out||m.secs>0).sort((a,b)=>(T.on.includes(b)-T.on.includes(a))||b.secs-a.secs).map(m=>`<tr><td>${T.on.includes(m)?'<b style="color:var(--acc)">场上</b>':'<span class="hint">板凳</span>'}</td><td>${esc(sn(m.p))}${legendBadge(m.p)}</td>
         <td style="width:40%">${bar(m.energy,1,m.energy>.8?'#00c276':m.energy>.6?'#f0a020':'#e5484d')}</td><td class="n">${Math.round(m.secs/60)} / ${Math.round(m.target/60)}′</td><td class="n">${m.pf} 犯</td></tr>`).join('')}</tbody></table></div>`; }).join('');
     return; }
   b.innerHTML=boxHTML(bs, s=>teamOf(s), L.finished);
@@ -474,7 +478,7 @@ function boxHTML(bs, tOf, showMvp){
   return (showMvp&&mvp?`<div style="padding:10px 10px 0"><span class="hint">本场最佳</span> <b>${esc(awardName(mvp.id,G.season))}</b> ${mvp.pts} 分 ${mvp.oreb+mvp.dreb} 篮板 ${mvp.ast} 助攻</div>`:'')+
    bs.map((t,side)=>`<div class="tw" style="padding:10px"><b>${logo(tOf(side),16)} ${esc(tOf(side).nick)}</b> <span class="hint">${E.SYSTEMS[t.system].name}，契合度 ${Math.round(t.fit*100)}% · 快攻 ${t.st.fast} · 内线 ${t.st.paint} · 二次进攻 ${t.st.second} · 替补 ${t.st.bench}</span>
     <table style="margin-top:6px"><thead><tr><th>球员</th><th class="n">时间</th><th class="n">得分</th><th class="n">投篮</th><th class="n">三分</th><th class="n">罚球</th><th class="n">篮板</th><th class="n">助攻</th><th class="n">抢断</th><th class="n">盖帽</th><th class="n">失误</th><th class="n">犯规</th><th class="n">+/-</th></tr></thead><tbody>
-    ${t.players.sort((a,b)=>b.starter-a.starter||b.min-a.min).map(p=>`<tr><td>${p.starter?'<b>':''}${esc(sn(PBYID[p.id]))}${p.starter?'</b>':''}${p.inj?' <span class="bad">伤</span>':''}</td>
+    ${t.players.sort((a,b)=>b.starter-a.starter||b.min-a.min).map(p=>`<tr><td>${p.starter?'<b>':''}${esc(sn(PBYID[p.id]))}${p.starter?'</b>':''}${legendBadge(PBYID[p.id])}${p.inj?' <span class="bad">伤</span>':''}</td>
       <td class="n">${Math.round(p.min)}</td><td class="n"><b>${p.pts}</b></td><td class="n">${p.fgm}-${p.fga}</td><td class="n">${p.tpm}-${p.tpa}</td><td class="n">${p.ftm}-${p.fta}</td>
       <td class="n">${p.oreb+p.dreb}</td><td class="n">${p.ast}</td><td class="n">${p.stl}</td><td class="n">${p.blk}</td><td class="n">${p.tov}</td><td class="n">${p.pf}</td><td class="n">${p.pm>0?'+':''}${p.pm}</td></tr>`).join('')}
     <tr><td class="hint">合计</td><td></td><td class="n"><b>${t.pts}</b></td>${(()=>{const s=k=>t.players.reduce((a,p)=>a+p[k],0); const fg=s('fgm')+'-'+s('fga'), pct=s('fga')?Math.round(s('fgm')/s('fga')*100):0;
@@ -499,7 +503,7 @@ function subsModal(){
   const M=LIVE.M, us=M.userSide, T=M.teams[us]; let out=null;
   const draw=()=>{
     const m=document.getElementById('modal');
-    const row=(x,sel)=>`<tr class="selrow ${sel?'sel':''}" data-id="${x.id}"><td>${x.slot?'<b>'+x.slot+'</b>':''}</td><td><b>${esc(x.p.cn)}</b> <span class="hint">${POS_CN[x.p.pos]} ${x.p.ovr}</span></td>
+    const row=(x,sel)=>`<tr class="selrow ${sel?'sel':''}" data-id="${x.id}"><td>${x.slot?'<b>'+x.slot+'</b>':''}</td><td><b>${esc(x.p.cn)}</b>${legendBadge(x.p)} <span class="hint">${POS_CN[x.p.pos]} ${x.p.ovr}</span></td>
       <td style="width:28%">${bar(x.energy,1,x.energy>.8?'#00c276':x.energy>.6?'#f0a020':'#e5484d')}</td><td class="n">${Math.round(x.secs/60)}′/${Math.round(x.target/60)}′</td><td class="n">${x.pts} 分</td><td class="n ${x.pf>=4?'bad':''}">${x.pf} 犯</td></tr>`;
     const bench=T.men.filter(x=>!T.on.includes(x)&&!x.out);
     m.innerHTML=`<div class="modal"><div class="box"><h1>换人</h1><div class="sub">${out?'再点一个替补换上':'先点要换下的场上球员'}</div>
