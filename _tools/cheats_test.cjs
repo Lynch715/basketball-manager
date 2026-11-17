@@ -281,8 +281,37 @@ async function legendDraftCases(){
   assert.equal(next.run("W.draftClass.find(p=>p.en==='Kobe Bryant').age"),18);
   assert.equal(next.run('aiDraftPick(1).legendDraft.year'),1996);
   assert.throws(()=>next.run('checkLegendDraftPack(1984,2028)'),/已经加入过/);
+  assert.throws(()=>next.run('checkLegendDraftPack(2003,2028)'),/已加入一个/);
   await next.run('slotGet(G.cheats.backup).then(s=>restore(readCheatBackup(s)));');
   for(const [key,value] of Object.entries(before)) assert.equal(storage.get(key),value);
   console.log('PASS 传奇包兼容旧档，保留原候选和签位，历史顺位、实际选秀和新秀合同重载，跨年排队与恢复首次备份');
+
+  const gold=context(storage);
+  gold.run('load();');
+  assert.deepEqual(clone(gold.run('currentSaveKeys()')),before);
+  await gold.run('runCheatEdit(()=>addLegendDraftPack(2003,2027));');
+  assert.deepEqual(clone(gold.run('W.picks')),picks);
+  assert.deepEqual(JSON.parse(storage.get('bbm_slot_'+gold.run('G.cheats.backup'))).keys,before);
+  assert.equal(gold.run('W.draftClass.length'),original.length+58);
+  assert.ok(gold.run(`W.draftClass.filter(p=>p.legendDraft?.year===2003).every((p,i)=>
+    p.legendDraft.pick===i+1 && p.legendDraft.round===(i<29?1:2))`));
+  assert.deepEqual(clone(gold.run(`W.draftClass.filter(p=>p.legendDraft?.year===2003 && [1,3,4,5,57].includes(p.legendDraft.pick))
+    .map(p=>[p.cn,p.age,p.legendDraft.pick])`)),[
+    ['勒布朗·詹姆斯',18,1],['卡梅隆·安东尼',19,3],['克里斯·波什',19,4],['德维恩·韦德',21,5],['薛玉洋',20,57]
+  ]);
+  gold.run(`(()=>{
+    const ownPick={no:9,round:1,orig:G.team,owner:G.team};
+    const wade=W.draftClass.find(p=>p.legendDraft?.year===2003 && p.legendDraft.pick===5);
+    W.off={step:2,year:2027,draft:{year:2027,idx:0,order:[ownPick],log:[]}};
+    if(!draftPlayer(ownPick,wade)) throw new Error('原签位未能选中韦德');
+    W.off.draft.idx++;
+    save();
+  })();`);
+  const selected=context(storage);
+  selected.run("load(); const wade=myTeam().players.find(p=>p.en==='Dwyane Wade');");
+  assert.deepEqual(clone(selected.run('[wade.draft.no,wade.legendDraft.pick,wade.contract[2],wade.drafted]')),[9,5,'rk',true]);
+  assert.match(selected.run('legendBadge(wade)'),/legend-badge.*传奇/);
+  assert.throws(()=>selected.run('checkLegendDraftPack(2003,2028)'),/已经加入过/);
+  console.log('PASS 2003 届完整两轮、独立历史身份、原签位正常签约和标识重载');
 }
 main().catch(error=>{ console.error(error); process.exitCode=1; });

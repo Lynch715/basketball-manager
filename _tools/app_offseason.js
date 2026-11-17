@@ -221,6 +221,7 @@ function checkLegendDraftPack(sourceYear,targetYear){
 }
 
 function legendPositions(row){
+  if(row.pos2) return [row.pos,...row.pos2];
   const hybrid={G:['PG','SG'],GF:['SG','SF'],FC:['PF','C'],F:row.ht>=80?['PF','SF']:['SF','PF']};
   return hybrid[row.pos]??[row.pos];
 }
@@ -252,7 +253,7 @@ function addLegendDraftPack(sourceYear,targetYear){
   if(!pending) ensureDraftClass(targetYear);
   const players=pack.players.map(row=>{
     const [pos,...pos2]=legendPositions(row);
-    const age=sourceYear-row.born, ht=Math.round(row.ht*2.54), wt=Math.round(row.wt*.45359237);
+    const age=row.age??(sourceYear-row.born), ht=Math.round(row.ht*2.54), wt=Math.round(row.wt*.45359237);
     const [baseHeight,baseWingspan]=CUSTOM_ROOKIE_SIZE[pos];
     const a=legendAttributes(row,pos), ovr=calcOvr({pos,a});
     const pot=clamp(row.potential,ovr,99);
