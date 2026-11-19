@@ -238,7 +238,7 @@ function vRoster(v){
   });
   const year=ctxYear(), C=CFG(year), pay=payroll(t,year);
   v.innerHTML=`<h1>阵容</h1><div class="sub">${t.players.length} 人 · ${W.off?'下季':'本季'}工资 ${money(pay)}（工资帽 ${money(C.cap)}，奢侈税线 ${money(C.tax)}，第二土豪线 ${money(C.apron2)}）· 点表头排序，点球员看详情</div>
-   <div class="card tw"><table><thead><tr>${cols.map(([k,n])=>`<th scope="col" class="${k==='cn'||k==='pos'?'':'n'}" data-k="${k}"${SORT.k===k?` aria-sort="${SORT.d<0?'descending':'ascending'}"`:''}><button type="button" class="roster-sort">${n}${SORT.k===k?` <span aria-hidden="true">${SORT.d<0?'↓':'↑'}</span>`:''}</button></th>`).join('')}</tr></thead><tbody>
+   <div class="card tw"><table><thead><tr>${cols.map(([k,n])=>`<th scope="col" class="${k==='cn'||k==='pos'?'':'n'}" data-k="${k}"${SORT.k===k?` aria-sort="${SORT.d<0?'descending':'ascending'}"`:''}><button type="button" class="table-sort">${n}${SORT.k===k?` <span aria-hidden="true">${SORT.d<0?'↓':'↑'}</span>`:''}</button></th>`).join('')}</tr></thead><tbody>
    ${ps.map(p=>`<tr class="cl" data-id="${p.id}"><td><b>${esc(p.cn)}</b>${legendBadge(p)}${injTag(p)}</td><td class="n">${ratings.get(p.id)?.toFixed(1)??'—'}</td><td>${playerPositions(p)}</td><td class="n">${p.age}</td>
      <td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${Math.round(val(p,'cond'))}</td><td class="n">${morTag(p)}</td><td class="n">${val(p,'gp')}</td><td class="n">${val(p,'ppg').toFixed(1)}</td><td class="n">${val(p,'rpg').toFixed(1)}</td><td class="n">${val(p,'apg').toFixed(1)}</td>
      ${['three','finish','pass','perD','intD'].map(k=>`<td class="n" style="color:${attrCol(p.a[k])}">${p.a[k]}</td>`).join('')}
