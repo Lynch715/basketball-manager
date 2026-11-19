@@ -47,6 +47,18 @@ function payroll(t, year){ year=year||W.year; let s=0;
 // ---------- 联盟存档 ----------
 const WORLD_KEY='bbm_world_v1';
 const PFIELDS=['id','en','cn','pos','pos2','born','jersey','ht','ws','wt','nat','pot','dur','prof','a','contract','ovr','hist','draft','fa','twoWay','rkOpt','rk1','rfa','sheet','mor','treq','tf','gx','sz','frz','arch','dev','vol','pre','rookieYear','customRookie','legendDraft'];
+function migrateRosterPosition(p){
+  const fix=REAL_POSITION_FIXES[p.en];
+  if(!Array.isArray(fix) || p.customRookie || p.legendDraft) return;
+  const [born,from,to]=fix;
+  if(p.born!==born || p.pos!==from[0] || p.pos2?.length!==from.length-1 ||
+     !p.pos2.every((pos,i)=>pos===from[i+1])) return;
+  [p.pos,...p.pos2]=to;
+  if(from[0]!==p.pos){
+    p.ovr=calcOvr(p);
+    p.pot=Math.max(p.pot,p.ovr);
+  }
+}
 function worldSaveData(){
   const pl=[]; const put=(p,team)=>{ const o={}; PFIELDS.forEach(k=>{ if(p[k]!==undefined) o[k]=p[k]; }); o.team=team; pl.push(o); };
   TEAMS.forEach(t=>t.players.forEach(p=>put(p,t.i))); FREE.forEach(p=>put(p,-1));
@@ -58,7 +70,12 @@ function loadWorld(){ try{
   W=s.W; PID=s.PID; if(W.centers) E.setC(W.centers);
   TEAMS.forEach(t=>t.players=[]); FREE.length=0;
   const rosterYear=W.off?.year??W.year, draftYear=W.dcYear??W.year+1;
-  s.players.forEach(o=>{ const p=Object.assign({},o); delete p.team; p.age=ageOf(p,rosterYear); if(o.team>=0) TEAMS[o.team].players.push(p); else FREE.push(p); });
+  s.players.forEach(o=>{
+    const p=Object.assign({},o); delete p.team; p.age=ageOf(p,rosterYear);
+    migrateRosterPosition(p);
+    if(o.team>=0) TEAMS[o.team].players.push(p); else FREE.push(p);
+  });
+  W.retired?.forEach(migrateRosterPosition);
   W.draftClass=(W.draftClass||[]).map(o=>{ const p=Object.assign({},o); p.age=ageOf(p,draftYear); return p; });
   const live={}; TEAMS.forEach(t=>t.players.forEach(p=>live[p.id]=p)); FREE.forEach(p=>live[p.id]=p);
   W.draftClass=W.draftClass.map(p=>{
@@ -193,20 +210,51 @@ function vPick(v){
 let SORT={k:'ovr',d:-1};
 function vRoster(v){
   const t=myTeam();
-  const cols=[['cn','球员'],['pos','位置'],['age','年龄'],['ovr','总评'],['pot','潜力'],['cond','状态'],['mor','士气'],['gp','出场'],['ppg','得分'],['rpg','篮板'],['apg','助攻'],['three','三分'],['finish','终结'],['pass','传球'],['perD','外防'],['intD','内防'],['sal','年薪'],['exp','到期']];
+  const cols=[['cn','球员'],['rating','场均评分'],['pos','位置'],['age','年龄'],['ovr','总评'],['pot','潜力'],['cond','状态'],['mor','士气'],['gp','出场'],['ppg','得分'],['rpg','篮板'],['apg','助攻'],['three','三分'],['finish','终结'],['pass','传球'],['perD','外防'],['intD','内防'],['sal','年薪'],['exp','到期']];
   const S=G.season, st=p=>S.ps[p.id];
-  const val=(p,k)=>k==='sal'?(p.contract?p.contract[0]:0):k==='exp'?(p.contract?p.contract[1]:0):k==='cond'?((p.energy??1)*100):k==='mor'?mor(p):k==='gp'?(st(p)?st(p).g:0):k==='ppg'?(st(p)&&st(p).g?st(p).pts/st(p).g:0):k==='rpg'?(st(p)&&st(p).g?(st(p).oreb+st(p).dreb)/st(p).g:0):k==='apg'?(st(p)&&st(p).g?st(p).ast/st(p).g:0):k in p.a?p.a[k]:p[k];
-  const ps=t.players.slice().sort((a,b)=>{const x=val(a,SORT.k),y=val(b,SORT.k); return (x>y?1:x<y?-1:0)*SORT.d;});
+  const ratings=new Map(t.players.map(p=>{
+    const q=st(p), score=q?.g>0?E.gameScore(q)/q.g:null;
+    return [p.id,Number.isFinite(score)?score:null];
+  }));
+  function val(p,k){
+    const q=st(p);
+    switch(k){
+      case 'sal': return p.contract?.[0]??0;
+      case 'exp': return p.contract?.[1]??0;
+      case 'cond': return (p.energy??1)*100;
+      case 'mor': return mor(p);
+      case 'gp': return q?.g??0;
+      case 'rating': return ratings.get(p.id);
+      case 'ppg': return q?.g?q.pts/q.g:0;
+      case 'rpg': return q?.g?(q.oreb+q.dreb)/q.g:0;
+      case 'apg': return q?.g?q.ast/q.g:0;
+      default: return k in p.a?p.a[k]:p[k];
+    }
+  }
+  const ps=t.players.slice().sort((a,b)=>{
+    const x=val(a,SORT.k), y=val(b,SORT.k);
+    if(SORT.k==='rating' && (x===null || y===null)) return Number(x===null)-Number(y===null);
+    return (x>y?1:x<y?-1:0)*SORT.d;
+  });
   const year=ctxYear(), C=CFG(year), pay=payroll(t,year);
   v.innerHTML=`<h1>阵容</h1><div class="sub">${t.players.length} 人 · ${W.off?'下季':'本季'}工资 ${money(pay)}（工资帽 ${money(C.cap)}，奢侈税线 ${money(C.tax)}，第二土豪线 ${money(C.apron2)}）· 点表头排序，点球员看详情</div>
-   <div class="card tw"><table><thead><tr>${cols.map(([k,n])=>`<th class="${k==='cn'||k==='pos'?'':'n'}" data-k="${k}" style="cursor:pointer">${n}${SORT.k===k?(SORT.d<0?' ↓':' ↑'):''}</th>`).join('')}</tr></thead><tbody>
-   ${ps.map(p=>`<tr class="cl" data-id="${p.id}"><td><b>${esc(p.cn)}</b>${legendBadge(p)}${injTag(p)}</td><td>${playerPositions(p)}</td><td class="n">${p.age}</td>
+   <div class="card tw"><table><thead><tr>${cols.map(([k,n])=>`<th scope="col" class="${k==='cn'||k==='pos'?'':'n'}" data-k="${k}"${SORT.k===k?` aria-sort="${SORT.d<0?'descending':'ascending'}"`:''}><button type="button" class="roster-sort">${n}${SORT.k===k?` <span aria-hidden="true">${SORT.d<0?'↓':'↑'}</span>`:''}</button></th>`).join('')}</tr></thead><tbody>
+   ${ps.map(p=>`<tr class="cl" data-id="${p.id}"><td><b>${esc(p.cn)}</b>${legendBadge(p)}${injTag(p)}</td><td class="n">${ratings.get(p.id)?.toFixed(1)??'—'}</td><td>${playerPositions(p)}</td><td class="n">${p.age}</td>
      <td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${Math.round(val(p,'cond'))}</td><td class="n">${morTag(p)}</td><td class="n">${val(p,'gp')}</td><td class="n">${val(p,'ppg').toFixed(1)}</td><td class="n">${val(p,'rpg').toFixed(1)}</td><td class="n">${val(p,'apg').toFixed(1)}</td>
      ${['three','finish','pass','perD','intD'].map(k=>`<td class="n" style="color:${attrCol(p.a[k])}">${p.a[k]}</td>`).join('')}
      <td class="n">${p.contract?money(p.contract[0]):'-'}</td><td class="n">${p.contract?p.contract[1]+(p.contract[2]==='tw'?' 双向':p.contract[2]==='rk'?' 新秀':''):'-'}</td></tr>`).join('')}
-   </tbody></table></div>`;
-  v.querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{ const k=th.dataset.k; SORT = SORT.k===k?{k,d:-SORT.d}:{k,d:(k==='cn'||k==='pos'?1:-1)}; vRoster(v); });
-  // 表头的「球员」「位置」保持左对齐
+   </tbody></table></div>
+   <p class="hint">场均评分按常规赛比赛数据计算，计入投篮效率、攻防贡献、失误和犯规。</p>`;
+  v.querySelectorAll('th[data-k]').forEach(th=>{
+    th.onclick=()=>{
+      const k=th.dataset.k, keyboard=th.querySelector('button').matches(':focus-visible');
+      const scrollLeft=v.querySelector('.tw').scrollLeft;
+      SORT=SORT.k===k?{k,d:-SORT.d}:{k,d:(k==='cn'||k==='pos'?1:-1)};
+      vRoster(v);
+      v.querySelector('.tw').scrollLeft=scrollLeft;
+      if(keyboard) v.querySelector(`th[data-k="${k}"] button`).focus({preventScroll:true});
+    };
+  });
   v.querySelectorAll('tr.cl').forEach(tr=>tr.onclick=()=>showPlayer(PBYID[tr.dataset.id]));
 }
 function showPlayer(p){

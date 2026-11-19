@@ -54,6 +54,34 @@ ALIAS = {  # 2K 写法 -> BBGM 写法
  'Yang Hansen':'Hansen Yang',
 }
 
+# 经球队资料复核的位置（旧版、新版）。名单排序和合同沿用数据校准结果。
+POSITION_OVERRIDES = {
+    'Jalen Williams': (['C', 'PF'], ['SF', 'PF']),
+    'Alex Caruso': (['SF', 'PG'], ['SG', 'PG']),
+    'Gary Payton II': (['SF', 'PF'], ['SG', 'PG']),
+    'Brandin Podziemski': (['PG'], ['PG', 'SG']),
+    'Darius Acuff Jr.': (['PG', 'SF'], ['PG']),
+    'Trey Alexander': (['PG', 'SF'], ['PG', 'SG']),
+    'Danny Wolf': (['PF', 'SF'], ['PF', 'C']),
+    'Josh Minott': (['PF', 'C'], ['PF', 'SF']),
+    'Cameron Johnson': (['SF', 'SG'], ['SF', 'PF']),
+    'Dillon Jones': (['PF', 'C'], ['SF', 'PF']),
+    'John Konchar': (['SF', 'PF'], ['SG', 'SF']),
+    'Ochai Agbaji': (['SF', 'PF'], ['SG', 'SF']),
+}
+
+def apply_position_overrides(rosters):
+    fixes = {}
+    for roster in rosters.values():
+        for row in roster:
+            name = row[0]
+            fix = POSITION_OVERRIDES.get(name)
+            if fix:
+                previous, positions = fix
+                fixes[name] = [row[4], previous, positions]
+                row[2], row[3] = positions[0], positions[1:]
+    return fixes
+
 TEAMS = [  # 缩写, 中文城市, 中文队名, 联盟, 赛区
  ('ATL','亚特兰大','老鹰','东','东南'),('BOS','波士顿','凯尔特人','东','大西洋'),('BKN','布鲁克林','篮网','东','大西洋'),
  ('CHA','夏洛特','黄蜂','东','东南'),('CHI','芝加哥','公牛','东','中部'),('CLE','克利夫兰','骑士','东','中部'),
@@ -132,8 +160,8 @@ for r in rows:
     mon, day, yr = (MONTHS[m.group(1)], int(m.group(2)), int(m.group(3))) if m else (7, 1, 2000)
     if bp and bp.get('born',{}).get('year'): yr = bp['born']['year']   # 2kratings 有少数年份错，以 BBGM 为准
     age = AGE_REF[0]-yr - ((mon,day) > AGE_REF[1:])
-    ps = [x.strip() for x in r['pos'].split('/') if x.strip()]
-    ps = [x if x in POS else {'S':'SF'}.get(x,x) for x in ps]
+    ps = [x.strip() for x in r['pos'].split('/')]
+    ps = list(dict.fromkeys(x for x in ps if x in POS))
     a = attrs_of(r)
     ovr = ovr_calc(a, ps[0])
     room = POT_ROOM.get(r['potential'], 3)
@@ -232,9 +260,11 @@ out.append('// [英文名,中文名,主位置,[副位置],出生年月,身高cm,
 roster = collections.OrderedDict((ab,[]) for ab,*_ in TEAMS); roster['FA'] = []
 for p in sorted(players, key=lambda p:-p['ovr']):
     roster[p['team']].append([p['en'],p['cn'],p['pos'],p['pos2'],p['born'],p['ht'],p['ws'],p['wt'],p['nat'],p['pot'],p['dur'],p['prof'],p['a'],p['c'],p['jersey'],SEASON if p['rookie2026'] else ((p['bb'].get('draft') or {}).get('year',SEASON-1)+1 if p['bb'] else None)])
+position_fixes = apply_position_overrides(roster)
 out.append('const REAL_ROSTERS={')
 out.append(',\n'.join(f'{js(ab)}:[\n'+',\n'.join(js(x) for x in lst)+']' for ab,lst in roster.items()))
 out.append('};')
+out.append(f'const REAL_POSITION_FIXES={js(position_fixes)};')
 open(OUT_JS,'w',encoding='utf-8').write('\n'.join(out)+'\n')
 
 # ---------- 校验报告 ----------
