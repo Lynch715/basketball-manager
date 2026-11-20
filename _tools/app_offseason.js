@@ -316,7 +316,7 @@ function draftPlayer(pk, p){
   if(pk.round===1){ p.contract=[rookieScale(pk.no), yr+2, 'rk']; p.rkOpt=2; p.rk1=true; }
   else if(t.players.filter(x=>x.contract&&x.contract[2]==='tw').length<3){ p.contract=[Math.round(CFG(yr).minSal*.5), yr+2, 'tw']; p.rkOpt=0; p.rk1=false; }
   else { p.contract=[CFG(yr).minSal, yr+2, 'rk']; p.rkOpt=0; p.rk1=false; }
-  t.players.push(p); PBYID[p.id]=p; chemHit(pk.owner,.25); D.log.push({no:pk.no, round:pk.round, team:pk.owner, pid:p.id});
+  joinRoster(t,p); PBYID[p.id]=p; chemHit(pk.owner,.25); D.log.push({no:pk.no, round:pk.round, team:pk.owner, pid:p.id});
   return true;
 }
 function draftAdvance(untilUser){ // 一直选到轮到玩家（或者选完）
@@ -358,7 +358,7 @@ function signDirect(p, ti, amt, yrs, yr){ // 工资帽豁免仍遵守人数与�
   if(rosterCount(t,yr)+(already && activeContract(p,yr) && p.contract[2]!=='tw'?0:1)>15) return {ok:false,why:'阵容已满 15 人'};
   if(!already && !FREE.includes(p)) return {ok:false,why:'球员已不在自由市场'};
   const i=FREE.indexOf(p); if(i>=0) FREE.splice(i,1);
-  p.contract=[amt, yr+yrs, 'std']; delete p.fa; delete p.rfa; delete p.sheet; if(!TEAMS[ti].players.includes(p)){ TEAMS[ti].players.push(p); chemHit(ti,1); } PBYID[p.id]=p; TEAMS[ti]._rot=null; if(!already || (old && amt>old[0]*1.2)) freezeOnSign(p); return {ok:true}; }
+  p.contract=[amt, yr+yrs, 'std']; delete p.fa; delete p.rfa; delete p.sheet; if(!already){ joinRoster(t,p); chemHit(ti,1); } PBYID[p.id]=p; t._rot=null; if(!already || (old && amt>old[0]*1.2)) freezeOnSign(p); return {ok:true}; }
 function makeAsk(p, ti){
   const yr=W.off.year, age=ageOf(p,yr), mood=moodOf(p,ti);
   const amt=Math.max(CFG(yr).minSal,Math.round(marketSalary(p.ovr,age,yr)*mood));
@@ -411,8 +411,9 @@ function signFA(p, ti, amt, yrs, yr, resolvedRFA){
   const r=offerRule(ti,amt,yr); if(!r.ok) return r;
   if(r.kind && r.kind.includes('中产')){ W.mle[yr]=W.mle[yr]||{}; W.mle[yr][ti]=true; }
   const i=FREE.indexOf(p); if(i>=0) FREE.splice(i,1);
-  p.contract=[amt, yr+yrs, 'std']; delete p.fa; delete p.rfa; delete p.sheet; TEAMS[ti].players.push(p); PBYID[p.id]=p; chemHit(ti,1); freezeOnSign(p);
-  const t=TEAMS[ti]; t._rot=null; t.top8=t.players.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,8).reduce((s,q)=>s+q.ovr,0)/Math.max(1,Math.min(8,t.players.length));
+  const t=TEAMS[ti];
+  p.contract=[amt, yr+yrs, 'std']; delete p.fa; delete p.rfa; delete p.sheet; joinRoster(t,p); PBYID[p.id]=p; chemHit(ti,1); freezeOnSign(p);
+  t._rot=null; t.top8=t.players.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,8).reduce((s,q)=>s+q.ovr,0)/Math.max(1,Math.min(8,t.players.length));
   return {ok:true, kind:r.kind};
 }
 function teamWinPct(ti){ const S=G.season; const f=S&&S.final&&S.final.find(x=>x.i===ti); return f? f.w/82 : .5; }
@@ -488,7 +489,7 @@ function campFill(){
     // 少于 14 人：用底薪补
     while(t.players.filter(p=>p.contract && p.contract[2]!=='tw').length<14){
       const cand=FREE.slice().sort((a,b)=>b.ovr-a.ovr)[0]; if(!cand) break;
-      const i=FREE.indexOf(cand); FREE.splice(i,1); cand.contract=[C.minSal, yr+1, 'std']; delete cand.fa; delete cand.rfa; delete cand.sheet; freezeOnSign(cand); t.players.push(cand); chemHit(t.i,.5);
+      const i=FREE.indexOf(cand); FREE.splice(i,1); cand.contract=[C.minSal, yr+1, 'std']; delete cand.fa; delete cand.rfa; delete cand.sheet; freezeOnSign(cand); joinRoster(t,cand); chemHit(t.i,.5);
       if(t.i===G.team) log.push(`底薪签下 ${cand.cn}`);
     }
     // 双向合同过期的清掉

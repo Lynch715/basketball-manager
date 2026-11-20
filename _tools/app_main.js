@@ -9,6 +9,25 @@ const esc = s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;
 const clamp=(x,a,b)=>x<a?a:x>b?b:x;
 const sn = p=>!p?'已退役球员':p.cn.includes('·')?p.cn.split('·').pop():p.cn;
 const legendBadge = p=>p?.legendDraft?' <span class="pill legend-badge">传奇</span>':'';
+const JERSEYS=['0','00',...Array.from({length:99},(_,i)=>String(i+1))];
+function jerseyNumber(value){
+  const n=String(value??'').trim();
+  return /^(00|0|[1-9][0-9]?)$/.test(n)?n:null;
+}
+function normalizeTeamJerseys(players){
+  const used=new Set(), pending=[];
+  for(const p of players){
+    const n=jerseyNumber(p.jersey);
+    if(n===null || used.has(n)) pending.push(p);
+    else { p.jersey=n; used.add(n); }
+  }
+  const available=JERSEYS.filter(n=>!used.has(n));
+  pending.forEach((p,i)=>{ p.jersey=available[i]??''; });
+}
+function joinRoster(t,p){
+  t.players.push(p);
+  normalizeTeamJerseys(t.players);
+}
 
 // ---------- 数据 ----------
 // W：联盟层面的状态（年份、选秀权、死钱、选秀、休赛期进度），和球员一起存进「联盟存档」
@@ -25,13 +44,13 @@ function ageOf(p, year){ const [by,bm]=birthYM(p); return (year||W.year)-by-(bm>
 function makePlayer(r){
   const [en,cn,pos,pos2,born,ht,ws,wt,nat,pot,dur,prof,a,c,jersey]=r;
   const A={}; KEYS.forEach((k,i)=>A[k]=a[i]);
-  const p={id:PID++, en, cn, pos, pos2, born, jersey:jersey||'', ht, ws, wt, nat, pot, dur, prof, a:A, contract:c, hist:[], rookieYear:r[15]??null};
+  const p={id:PID++, en, cn, pos, pos2, born, jersey:jersey??'', ht, ws, wt, nat, pot, dur, prof, a:A, contract:c, hist:[], rookieYear:r[15]??null};
   p.age=ageOf(p,2026); p.ovr=calcOvr(p); p.pot=Math.max(p.pot,p.ovr); return p;
 }
 function calcOvr(p){ return E.ovrOf(p,OVR_W,OVR_STRETCH,KEYS); }
 E.setCenters(TEAMS); W.centers=E.C;
 let PBYID={};
-function reindex(){ PBYID={}; TEAMS.forEach(t=>{ t.players.forEach(p=>PBYID[p.id]=p); t.top8=t.players.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,8).reduce((s,p)=>s+p.ovr,0)/Math.max(1,Math.min(8,t.players.length)); t._rot=null; t._rkey=null; });
+function reindex(){ PBYID={}; TEAMS.forEach(t=>{ normalizeTeamJerseys(t.players); t.players.forEach(p=>PBYID[p.id]=p); t.top8=t.players.slice().sort((a,b)=>b.ovr-a.ovr).slice(0,8).reduce((s,p)=>s+p.ovr,0)/Math.max(1,Math.min(8,t.players.length)); t._rot=null; t._rkey=null; });
   (W.retired||[]).forEach(p=>{ if(!PBYID[p.id]) PBYID[p.id]=p; }); FREE.forEach(p=>PBYID[p.id]=p); (W.draftClass||[]).forEach(p=>PBYID[p.id]=p); }
 reindex();
 TEAMS.forEach(t=>{ t.aiRot=E.autoRotation(t); t.aiTac=E.autoTactics(t,t.aiRot); });
@@ -239,7 +258,7 @@ function vRoster(v){
   const year=ctxYear(), C=CFG(year), pay=payroll(t,year);
   v.innerHTML=`<h1>阵容</h1><div class="sub">${t.players.length} 人 · ${W.off?'下季':'本季'}工资 ${money(pay)}（工资帽 ${money(C.cap)}，奢侈税线 ${money(C.tax)}，第二土豪线 ${money(C.apron2)}）· 点表头排序，点球员看详情</div>
    <div class="card tw"><table><thead><tr>${cols.map(([k,n])=>`<th scope="col" class="${k==='cn'||k==='pos'?'':'n'}" data-k="${k}"${SORT.k===k?` aria-sort="${SORT.d<0?'descending':'ascending'}"`:''}><button type="button" class="table-sort">${n}${SORT.k===k?` <span aria-hidden="true">${SORT.d<0?'↓':'↑'}</span>`:''}</button></th>`).join('')}</tr></thead><tbody>
-   ${ps.map(p=>`<tr class="cl" data-id="${p.id}"><td><b>${esc(p.cn)}</b>${legendBadge(p)}${injTag(p)}</td><td class="n">${ratings.get(p.id)?.toFixed(1)??'—'}</td><td>${playerPositions(p)}</td><td class="n">${p.age}</td>
+   ${ps.map(p=>`<tr class="cl" data-id="${p.id}"><td><span class="hint" data-roster-jersey>${p.jersey!==''?'#'+esc(p.jersey):''}</span> <b>${esc(p.cn)}</b>${legendBadge(p)}${injTag(p)}</td><td class="n">${ratings.get(p.id)?.toFixed(1)??'—'}</td><td>${playerPositions(p)}</td><td class="n">${p.age}</td>
      <td class="n">${ovrTag(p.ovr)}</td><td class="n">${p.pot}</td><td class="n">${Math.round(val(p,'cond'))}</td><td class="n">${morTag(p)}</td><td class="n">${val(p,'gp')}</td><td class="n">${val(p,'ppg').toFixed(1)}</td><td class="n">${val(p,'rpg').toFixed(1)}</td><td class="n">${val(p,'apg').toFixed(1)}</td>
      ${['three','finish','pass','perD','intD'].map(k=>`<td class="n" style="color:${attrCol(p.a[k])}">${p.a[k]}</td>`).join('')}
      <td class="n">${p.contract?money(p.contract[0]):'-'}</td><td class="n">${p.contract?p.contract[1]+(p.contract[2]==='tw'?' 双向':p.contract[2]==='rk'?' 新秀':''):'-'}</td></tr>`).join('')}
@@ -257,9 +276,22 @@ function vRoster(v){
   });
   v.querySelectorAll('tr.cl').forEach(tr=>tr.onclick=()=>showPlayer(PBYID[tr.dataset.id]));
 }
-function showPlayer(p){
+function playerLink(p,name){
+  const label=esc(name??p?.cn??sn(p));
+  return p?`<button type="button" class="player-link" data-player="${p.id}">${label}</button>`:label;
+}
+function bindPlayerLinks(root,open){
+  root.querySelectorAll('[data-player]').forEach(button=>button.onclick=()=>{
+    const p=PBYID[button.dataset.player];
+    if(p) open(p);
+  });
+}
+function showPlayer(p,back){
+  if(!p) return;
   const m=document.getElementById('modal');
   const pros=(W.draftClass||[]).includes(p) && !p.drafted;
+  const canEditJersey=myTeam()?.players.includes(p);
+  const number=jerseyNumber(p.jersey);
   const profileYear=pros ? (W.dcYear??W.year+1) : (W.off?.year??W.year);
   const legend=p.legendDraft;
   const historicalPick=Number.isSafeInteger(legend?.year) && Number.isSafeInteger(legend?.pick) && legend.pick>0;
@@ -272,13 +304,51 @@ function showPlayer(p){
     <div style="margin-left:auto;text-align:right">${pros?`<div>总评 <b>${reveal?p.ovr:rangeTxt(p.scout.o)}</b> · 潜力 <b>${reveal?p.pot:rangeTxt(p.scout.p)}</b></div><div class="hint">${reveal?'真实数据':'球探报告，属性也有误差'}</div>`:`<div>潜力 <b>${p.pot}</b></div><div class="hint">${contractTxt(p.contract)}</div>${G.team!=null&&teamOfId(p.id)>=0?`<div class="hint">士气 ${morTag(p)}</div>`:''}`}</div></div>
     ${pros?`<div class="card" style="margin-bottom:10px;padding:10px"><div>原型：<b>${esc(p.arch||'')}</b> · ${esc(preTxt(p))}</div>${reveal?`<div>发展类型 <b>${esc(DEV_CN[p.dev]||'未知')}</b> · 敬业${profCn(p.prof)} · 伤病风险${durCn(p.dur)}</div>`:(W.scoutFocus||[]).includes(p.id)?`<div class="hint" style="margin-top:4px">重点考察：敬业${profCn(p.prof)}，伤病风险${durCn(p.dur)}</div>`:''}</div>`:(p.arch&&p.draft?`<div class="hint" style="margin-bottom:8px">选秀时的原型：${esc(p.arch)}</div>`:'')}
     <div class="row" style="margin-bottom:10px;font-size:12px"><span>身高 <b>${p.ht}</b> cm</span><span>臂展 <b>${p.ws}</b> cm</span><span>体重 <b>${p.wt}</b> kg</span><span>${historicalPick?'游戏内出生':'出生'} ${p.born}</span></div>
+    ${canEditJersey?`<form id="jersey-form" class="jersey-form">
+      <label for="jersey-number">球衣号码</label><input id="jersey-number" type="text" inputmode="numeric" value="${number??''}" aria-describedby="jersey-status">
+      <button type="submit" class="sm">保存号码</button><span class="hint" id="jersey-status" role="status">可用 0–99 或 00</span>
+    </form>`:!pros && number!==null?`<p class="hint">球衣号码 <b>#${number}</b></p>`:''}
     ${historicalPick?`<p class="hint">${legend.year} 年历史选秀 · 第 ${legend.pick} 顺位</p>`:''}
     ${ATTR_GROUPS.map(([g,ks])=>`<h2>${g}</h2><div class="attrs">${ks.map(k=>`<div class="attr"><span>${ATTR_CN[k]}</span><b style="color:${attrCol(p.a[k])}">${p.a[k]}</b></div>`).join('')}</div>`).join('')}
     ${(p.hist&&p.hist.length)?`<h2>生涯数据</h2><div class="tw"><table><thead><tr><th>赛季</th><th>球队</th><th class="n">出场</th><th class="n">时间</th><th class="n">得分</th><th class="n">篮板</th><th class="n">助攻</th><th class="n">抢断</th><th class="n">盖帽</th><th class="n">命中率</th><th class="n">三分%</th></tr></thead><tbody>${p.hist.map(h=>`<tr><td>${h[0]}-${String((h[0]+1)%100).padStart(2,'0')}${h[2]?' 季后赛':''}</td><td>${h[1]>=0&&TEAMS[h[1]]?logo(TEAMS[h[1]],14)+' '+esc(TEAMS[h[1]].nick):''}</td>${h.slice(3).map(x=>`<td class="n">${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:''}${p.draft?`<p class="hint" style="margin-top:8px">${p.draft.year} 年第 ${p.draft.no} 顺位，被${TEAMS[p.draft.team]?TEAMS[p.draft.team].cn:''}选中</p>`:''}
-    <div style="text-align:right;margin-top:14px"><button onclick="closeModal()">关闭</button></div></div></div>`;
+    <div style="text-align:right;margin-top:14px"><button id="profile-close">${back?'返回':'关闭'}</button></div></div></div>`;
+  m.querySelector('#profile-close').onclick=back||closeModal;
   m.querySelector('.modal').onclick=e=>{ if(e.target.classList.contains('modal')) closeModal(); };
+  const form=m.querySelector('#jersey-form');
+  if(form) form.onsubmit=e=>{
+    e.preventDefault();
+    const input=form.querySelector('input'), status=form.querySelector('#jersey-status');
+    const n=jerseyNumber(input.value);
+    const owner=myTeam().players.find(q=>q!==p && q.jersey===n);
+    const message=(text,error=false)=>{
+      status.textContent=text;
+      status.classList.toggle('bad',error);
+      input.setAttribute('aria-invalid',String(error));
+      if(error) input.focus();
+    };
+    if(n===null){ message('请输入 0–99 或 00',true); return; }
+    if(owner){ message(`#${n} 已由 ${owner.cn} 使用`,true); return; }
+    const previous=p.jersey;
+    p.jersey=n;
+    if(!save()){ p.jersey=previous; message('号码保存失败，请重试',true); return; }
+    input.value=n;
+    const cell=document.querySelector(`#view tr[data-id="${p.id}"] [data-roster-jersey]`);
+    if(cell) cell.textContent='#'+n;
+    drawCourt();
+    message(`已保存 #${n}`);
+  };
 }
 function closeModal(){ document.getElementById('modal').innerHTML=''; }
+
+function showOpponentRoster(t,players=t.players){
+  const m=document.getElementById('modal');
+  m.innerHTML=`<div class="modal"><div class="box"><h1>${esc(t.cn)}阵容</h1>
+    <div class="tw"><table><thead><tr><th>号码</th><th>球员</th><th>位置</th><th class="n">总评</th></tr></thead><tbody>
+    ${players.slice().sort((a,b)=>b.ovr-a.ovr).map(p=>`<tr><td>${p.jersey!==''?'#'+esc(p.jersey):'—'}</td><td>${playerLink(p)}${legendBadge(p)}${injTag(p)}</td><td>${playerPositions(p)}</td><td class="n">${ovrTag(p.ovr)}</td></tr>`).join('')}
+    </tbody></table></div><div style="text-align:right;margin-top:14px"><button onclick="closeModal()">关闭</button></div></div></div>`;
+  bindPlayerLinks(m,p=>showPlayer(p,()=>showOpponentRoster(t,players)));
+  m.querySelector('.modal').onclick=e=>{ if(e.target.classList.contains('modal')) closeModal(); };
+}
 
 // ---------- 轮换 ----------
 function vRot(v){
@@ -385,16 +455,23 @@ function startLive(){
   M.userSide = h===G.team?0:1;
   LIVE={M, H:TEAMS[h], A:TEAMS[a], shown:0, playing:false, speed:1, acc:0, last:0, raf:0, tab:'pbp', dots:[], finished:false, label:ug.label||'常规赛', showNames:true};
   LIVE.frame=tipFrame(M); LIVE.pos=Object.assign({},LIVE.frame.pos); LIVE.ball=LIVE.frame.ball.slice(); LIVE.holder=null;
-  G.view='match'; render(); setTimeout(()=>{ if(LIVE?.M===M && G.view==='match') playLive(true); },300);
+  G.view='match'; render();
+  LIVE.autoStart=setTimeout(()=>{ if(LIVE?.M===M && G.view==='match') playLive(true); },300);
 }
 function ugKey(ug){ return ug.g? 'r'+ug.n : ug.key; }
 function quickUserGame(){ if(LIVE || BUSY) return; playDay(null); afterDay(); }
-function stopLive(){ if(LIVE){ cancelAnimationFrame(LIVE.raf); LIVE.playing=false; } }
-function pauseLive(){ if(LIVE){ if(LIVE.playing && LIVE.scene) LIVE.pausedAt=performance.now()-LIVE.sceneStart; LIVE.playing=false; cancelAnimationFrame(LIVE.raf); updCtrl(); } }
+function stopLive(){ if(LIVE){ clearTimeout(LIVE.autoStart); LIVE.autoStart=null; cancelAnimationFrame(LIVE.raf); LIVE.playing=false; } }
+function pauseLive(){ if(LIVE){ if(LIVE.playing && LIVE.scene) LIVE.pausedAt=performance.now()-LIVE.sceneStart; stopLive(); updCtrl(); } }
 function playLive(on){
-  if(!LIVE || LIVE.M.done) return;
-  LIVE.playing=on; updCtrl();
-  if(on){ const now=performance.now(); LIVE.last=now; LIVE.acc=0; if(LIVE.scene && LIVE.pausedAt!=null){ LIVE.sceneStart=now-LIVE.pausedAt; } LIVE.pausedAt=null; LIVE.raf=requestAnimationFrame(tick); } else { if(LIVE.scene) LIVE.pausedAt=performance.now()-LIVE.sceneStart; cancelAnimationFrame(LIVE.raf); }
+  if(!LIVE || LIVE.finished) return;
+  clearTimeout(LIVE.autoStart);
+  LIVE.autoStart=null;
+  if(!on){ pauseLive(); return; }
+  if(LIVE.playing) return;
+  LIVE.playing=true; updCtrl();
+  const now=performance.now(); LIVE.last=now; LIVE.acc=0;
+  if(LIVE.scene && LIVE.pausedAt!=null) LIVE.sceneStart=now-LIVE.pausedAt;
+  LIVE.pausedAt=null; LIVE.raf=requestAnimationFrame(tick);
 }
 function finishLive(){
   const L=LIVE; if(L.finished) return; L.finished=true; L.playing=false;
@@ -404,6 +481,11 @@ function finishLive(){
 
 function nameOf(id){ const p=PBYID[id]; return p?sn(p):'?'; }
 function teamOf(side){ return side===0?LIVE.H:LIVE.A; }
+function openLivePlayer(p){
+  if(!p) return;
+  if(LIVE.playing || LIVE.autoStart!=null) pauseLive();
+  showPlayer(p);
+}
 function clockTxt(q,c){ const m=Math.floor(c/60), s=Math.floor(c%60); return `${q<=4?'第'+q+'节':'加时'+(q-4)} ${m}:${String(s).padStart(2,'0')}`; }
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 function pbpText(e){
@@ -449,7 +531,7 @@ function vLive(v){
    <div id="sbinfo"><span class="hint">${esc(L.label)}</span><span id="clk"></span><span>犯规 <b id="tf">0 / 0</b></span><span>暂停 <b id="tos">7 / 7</b></span></div>
    <div class="row" style="margin-top:10px">
     <div class="col" style="min-width:300px;flex:1.3">
-      <div id="courtwrap"><canvas id="court" width="940" height="500"></canvas></div>
+      <div id="courtwrap"><canvas id="court" width="940" height="500" aria-label="比赛球场" title="点击球员查看资料"></canvas></div>
       <div class="ctrl" id="ctrl"></div>
       <div id="qtable" class="card tw" style="margin-top:10px;padding:8px"></div>
     </div>
@@ -459,6 +541,10 @@ function vLive(v){
     </div>
    </div>`;
   v.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{ L.tab=b.dataset.tab; v.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('on',x===b)); renderTab(true); });
+  const court=v.querySelector('#court');
+  court.onclick=e=>openLivePlayer(courtPlayerAt(e));
+  court.onpointermove=e=>{ court.style.cursor=courtPlayerAt(e)?'pointer':''; };
+  v.querySelector('#tabbody').onfocusin=e=>{ if(e.target.matches('[data-player]') && (L.playing || L.autoStart!=null)) pauseLive(); };
   L.shown=0; L.dots=[]; L.pbpHTML=[];
   sizeCourt(); updLive(true); updCtrl();
 }
@@ -473,7 +559,7 @@ function updCtrl(){
     <div class="seg">${[1,2,4,8].map(s=>`<button class="${L.speed===s?'on':''}" data-sp="${s}">${s}x</button>`).join('')}</div>
     <button id="end">直接出结果</button>
     <button id="to" ${M.timeouts[us]<=0?'disabled':''}>叫暂停（${M.timeouts[us]}）</button>
-    <button id="subs">换人</button><button id="tacb">战术</button><button id="names" class="${L.showNames?'on':''}">名字</button>`;
+    <button id="subs" ${M.done?'disabled':''}>换人</button><button id="tacb">战术</button><button id="opproster">对手阵容</button><button id="names" class="${L.showNames?'on':''}">名字</button>`;
   c.querySelector('#pp').onclick=()=>playLive(!L.playing);
   c.querySelector('#names').onclick=()=>{ L.showNames=!L.showNames; updCtrl(); drawCourt(); };
   c.querySelectorAll('[data-sp]').forEach(b=>b.onclick=()=>{ L.speed=+b.dataset.sp; updCtrl(); });
@@ -481,6 +567,10 @@ function updCtrl(){
   c.querySelector('#to').onclick=()=>{ if(E.timeout(M,us)){ updLive(); pauseLive(); } };
   c.querySelector('#subs').onclick=()=>{ pauseLive(); subsModal(); };
   c.querySelector('#tacb').onclick=()=>{ pauseLive(); tacModal(); };
+  c.querySelector('#opproster').onclick=()=>{
+    pauseLive();
+    showOpponentRoster(teamOf(1-us),M.teams[1-us].men.map(m=>m.p));
+  };
 }
 function updLive(full){
   const L=LIVE, M=L.M; if(!document.getElementById('sc')) return;
@@ -516,17 +606,17 @@ function renderTab(full){
   const bs=E.boxScore(M);
   if(L.tab==='en'){
     b.innerHTML=[0,1].map(s=>{ const T=M.teams[s]; return `<div style="padding:10px"><b>${logo(teamOf(s),16)} ${esc(teamOf(s).nick)}</b><table style="margin-top:6px"><tbody>
-      ${T.men.filter(m=>!m.out||m.secs>0).sort((a,b)=>(T.on.includes(b)-T.on.includes(a))||b.secs-a.secs).map(m=>`<tr><td>${T.on.includes(m)?'<b style="color:var(--acc)">场上</b>':'<span class="hint">板凳</span>'}</td><td>${esc(sn(m.p))}${legendBadge(m.p)}</td>
+      ${T.men.filter(m=>!m.out||m.secs>0).sort((a,b)=>(T.on.includes(b)-T.on.includes(a))||b.secs-a.secs).map(m=>`<tr><td>${T.on.includes(m)?'<b style="color:var(--acc)">场上</b>':'<span class="hint">板凳</span>'}</td><td>${playerLink(m.p,sn(m.p))}${legendBadge(m.p)}</td>
         <td style="width:40%">${bar(m.energy,1,m.energy>.8?'var(--bar-good)':m.energy>.6?'var(--bar-warn)':'var(--bar-bad)')}</td><td class="n">${Math.round(m.secs/60)} / ${Math.round(m.target/60)}′</td><td class="n">${m.pf} 犯</td></tr>`).join('')}</tbody></table></div>`; }).join('');
-    return; }
-  b.innerHTML=boxHTML(bs, s=>teamOf(s), L.finished);
+  }else b.innerHTML=boxHTML(bs, s=>teamOf(s), L.finished);
+  bindPlayerLinks(b,openLivePlayer);
 }
 function boxHTML(bs, tOf, showMvp){
   let mvp=null; bs.forEach((t,side)=>t.players.forEach(p=>{ if(!mvp||p.gs>mvp.gs) mvp=Object.assign({t:side},p); }));
   return (showMvp&&mvp?`<div style="padding:10px 10px 0"><span class="hint">本场最佳</span> <b>${esc(awardName(mvp.id,G.season))}</b> ${mvp.pts} 分 ${mvp.oreb+mvp.dreb} 篮板 ${mvp.ast} 助攻</div>`:'')+
    bs.map((t,side)=>`<div class="tw" style="padding:10px"><b>${logo(tOf(side),16)} ${esc(tOf(side).nick)}</b> <span class="hint">${E.SYSTEMS[t.system].name}，契合度 ${Math.round(t.fit*100)}% · 快攻 ${t.st.fast} · 内线 ${t.st.paint} · 二次进攻 ${t.st.second} · 替补 ${t.st.bench}</span>
     <table style="margin-top:6px"><thead><tr><th>球员</th><th class="n">时间</th><th class="n">得分</th><th class="n">投篮</th><th class="n">三分</th><th class="n">罚球</th><th class="n">篮板</th><th class="n">助攻</th><th class="n">抢断</th><th class="n">盖帽</th><th class="n">失误</th><th class="n">犯规</th><th class="n">+/-</th></tr></thead><tbody>
-    ${t.players.sort((a,b)=>b.starter-a.starter||b.min-a.min).map(p=>`<tr><td>${p.starter?'<b>':''}${esc(sn(PBYID[p.id]))}${p.starter?'</b>':''}${legendBadge(PBYID[p.id])}${p.inj?' <span class="bad">伤</span>':''}</td>
+    ${t.players.sort((a,b)=>b.starter-a.starter||b.min-a.min).map(p=>`<tr><td>${p.starter?'<b>':''}${playerLink(PBYID[p.id],sn(PBYID[p.id]))}${p.starter?'</b>':''}${legendBadge(PBYID[p.id])}${p.inj?' <span class="bad">伤</span>':''}</td>
       <td class="n">${Math.round(p.min)}</td><td class="n"><b>${p.pts}</b></td><td class="n">${p.fgm}-${p.fga}</td><td class="n">${p.tpm}-${p.tpa}</td><td class="n">${p.ftm}-${p.fta}</td>
       <td class="n">${p.oreb+p.dreb}</td><td class="n">${p.ast}</td><td class="n">${p.stl}</td><td class="n">${p.blk}</td><td class="n">${p.tov}</td><td class="n">${p.pf}</td><td class="n">${p.pm>0?'+':''}${p.pm}</td></tr>`).join('')}
     <tr><td class="hint">合计</td><td></td><td class="n"><b>${t.pts}</b></td>${(()=>{const s=k=>t.players.reduce((a,p)=>a+p[k],0); const fg=s('fgm')+'-'+s('fga'), pct=s('fga')?Math.round(s('fgm')/s('fga')*100):0;
@@ -549,17 +639,31 @@ function colorOf(t, side){
 // ---------- 比赛中的弹窗 ----------
 function subsModal(){
   const M=LIVE.M, us=M.userSide, T=M.teams[us]; let out=null;
+  if(M.done) return;
   const draw=()=>{
     const m=document.getElementById('modal');
-    const row=(x,sel)=>`<tr class="selrow ${sel?'sel':''}" data-id="${x.id}"><td>${x.slot?'<b>'+x.slot+'</b>':''}</td><td><b>${esc(x.p.cn)}</b>${legendBadge(x.p)} <span class="hint">${POS_CN[x.p.pos]} ${x.p.ovr}</span></td>
+    const selected=T.byId[out];
+    const row=(x,sel)=>`<tr class="selrow ${sel?'sel':''}" data-id="${x.id}"><td>${x.slot?'<b>'+POS_CN[x.slot]+'</b>':''}</td><td><b><button type="button" class="player-link" aria-pressed="${sel}">${esc(x.p.cn)}</button></b>${legendBadge(x.p)} <span class="hint">${playerPositions(x.p)} · ${x.p.ovr}${selected&&!x.slot?' · 适配 '+Math.round(E.posFit(x.p,selected.slot)*100)+'%':''}</span></td>
       <td style="width:28%">${bar(x.energy,1,x.energy>.8?'var(--bar-good)':x.energy>.6?'var(--bar-warn)':'var(--bar-bad)')}</td><td class="n">${Math.round(x.secs/60)}′/${Math.round(x.target/60)}′</td><td class="n">${x.pts} 分</td><td class="n ${x.pf>=4?'bad':''}">${x.pf} 犯</td></tr>`;
     const bench=T.men.filter(x=>!T.on.includes(x)&&!x.out);
-    m.innerHTML=`<div class="modal"><div class="box"><h1>换人</h1><div class="sub">${out?'再点一个替补换上':'先点要换下的场上球员'}</div>
+    m.innerHTML=`<div class="modal"><div class="box"><h1>换人和调位</h1><div class="sub">${selected?`已选 ${esc(selected.p.cn)}，点替补换人，或点另一名场上球员互换位置`:'先点一名场上球员，再选择换人或调位'}</div>
       <div class="card tw"><h3>场上</h3><table><tbody>${T.on.map(x=>row(x,out===x.id)).join('')}</tbody></table></div>
       <div class="card tw"><h3>板凳</h3><table><tbody>${bench.map(x=>row(x,false)).join('')}</tbody></table></div>
+      <p class="hint">手动换人或调位后，本场切为手动。伤退或六犯离场时，系统会补上空位。</p>
       <div class="row" style="justify-content:space-between;align-items:center"><label class="hint"><input type="checkbox" id="autosub" ${M.autoSubs!==false?'checked':''}> 按轮换表自动换人</label><button class="pri" onclick="closeModal();updLive()">完成</button></div></div></div>`;
-    m.querySelectorAll('.selrow').forEach(tr=>tr.onclick=()=>{ const id=+tr.dataset.id; const onCourt=T.on.some(x=>x.id===id);
-      if(onCourt){ out=id; draw(); } else if(out){ E.manualSub(M,us,out,id); out=null; draw(); } });
+    m.querySelectorAll('.selrow').forEach(tr=>tr.onclick=()=>{
+      const id=+tr.dataset.id, onCourt=T.on.some(x=>x.id===id);
+      if(out===null || id===out){
+        if(onCourt){ out=id===out?null:id; draw(); }
+        return;
+      }
+      const changed=onCourt?E.manualSwap(M,us,out,id):E.manualSub(M,us,out,id);
+      if(changed){
+        out=null;
+        syncLiveLineup();
+        draw();
+      }
+    });
     m.querySelector('#autosub').onchange=e=>{ M.autoSubs=e.target.checked; };
   };
   draw();

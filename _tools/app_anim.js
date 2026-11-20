@@ -160,6 +160,23 @@ const COURT_COLORS={
     rim:'#a63c13', holder:'#392518', ring:'#75482d', name:'#392518'
   }
 };
+function courtSides(){
+  return LIVE.scene?LIVE.scene.sides:LIVE.M.teams.map(T=>T.on.map(m=>m.id));
+}
+function courtPlayerAt(e){
+  const frame=LIVE?.frame;
+  if(!frame) return null;
+  const rect=e.currentTarget.getBoundingClientRect();
+  const x=(e.clientX-rect.left)*94/rect.width, y=(e.clientY-rect.top)*50/rect.height;
+  let hit=null, distance=Math.max(1.8,12*94/rect.width);
+  for(const id of courtSides().flat()){
+    const p=frame.pos[id];
+    if(!p) continue;
+    const d=Math.hypot(p[0]-x,p[1]-y);
+    if(d<distance){ hit=PBYID[id]; distance=d; }
+  }
+  return hit;
+}
 function drawCourt(){
   const c=document.getElementById('court'); if(!c||!LIVE) return; const g=c.getContext('2d'), W=c.width, H=c.height, k=W/94;
   const colors=document.documentElement.dataset.theme==='light'?COURT_COLORS.light:COURT_COLORS.dark;
@@ -188,7 +205,7 @@ function drawCourt(){
   g.globalAlpha=1;
   // 球员和球
   const fr=LIVE.frame; if(!fr) return;
-  const sides=LIVE.scene? LIVE.scene.sides : M.teams.map(T=>T.on.map(m=>m.id));
+  const sides=courtSides();
   sides.forEach((ids,s)=>{ const col=colorOf(teamOf(s),s);
     ids.forEach(id=>{ const p=fr.pos[id]; if(!p) return; const pl=PBYID[id];
       g.beginPath(); g.arc(X(p[0]),Y(p[1]),X(1.45),0,Math.PI*2); g.fillStyle=col; g.fill();
@@ -236,6 +253,13 @@ function tick(now){
 }
 function idleFrame(){ const M=LIVE.M, pos={}; M.teams.forEach((T,s)=>T.on.forEach(m=>{ const sp=(SPOTS[T.tac.system]||SPOTS.bal)[m.slot]||[20,0]; const side=M.poss; const xy= s===side? toXY(side,sp[0],sp[1]) : toXY(side,sp[0]*.7,sp[1]*.8); pos[m.id]=xy; }));
   const h=M.teams[M.poss].on[0]; return {pos, ball:[pos[h.id][0]+.9,pos[h.id][1]-.6,1], holder:h.id}; }
+function syncLiveLineup(){
+  const L=LIVE;
+  L.scene=null; L.revealTo=null; L.pausedAt=null;
+  L.frame=idleFrame();
+  ({pos:L.pos,ball:L.ball,holder:L.holder}=L.frame);
+  updLive();
+}
 function simToEnd(){ if(!LIVE) return; stopLive(); E.run(LIVE.M); LIVE.revealTo=null; LIVE.scene=null; LIVE.frame=idleFrame(); updLive(); finishLive(); }
 
 function tipFrame(M){ // 开场跳球：两名中锋在中圈，其余人围在中圈外

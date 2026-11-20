@@ -58,7 +58,7 @@ function vHome(v){
     gameCard=`<div class="card"><h3>今天有比赛 <span class="r">${esc(ug.label||'常规赛')}</span></h3>
       <div style="display:flex;align-items:center;gap:14px;justify-content:center;margin:6px 0 12px">${logo(TEAMS[h],52)}<b><span class="mfull">${esc(TEAMS[h].cn)}</span><span class="mshort">${esc(TEAMS[h].nick)}</span></b><span class="hint">主</span><span style="font-size:18px;color:var(--dim)">VS</span><span class="hint">客</span><b><span class="mfull">${esc(TEAMS[a].cn)}</span><span class="mshort">${esc(TEAMS[a].nick)}</span></b>${logo(TEAMS[a],52)}</div>
       <div class="hint" style="text-align:center;margin-bottom:10px">${esc(o.cn)} ${orr.w}-${orr.l} · 前 8 人均值 ${o.top8.toFixed(1)}${ug.series?` · 系列赛 ${ug.series.h===G.team?ug.series.hw:ug.series.aw} : ${ug.series.h===G.team?ug.series.aw:ug.series.hw}`:''}</div>
-      ${t.players.filter(p=>!(p.injury>0)).length<5?'<p class="bad">可上场球员不足五人，继续比赛将判负；可先到自由球员页补员。</p>':''}<div style="text-align:center"><button class="pri" id="golive" style="padding:9px 26px">看直播</button> <button id="goquick">直接出结果</button> <button id="gotac">先调战术</button></div></div>`;
+      ${t.players.filter(p=>!(p.injury>0)).length<5?'<p class="bad">可上场球员不足五人，继续比赛将判负；可先到自由球员页补员。</p>':''}<div class="ctrl" style="justify-content:center"><button class="pri" id="golive" style="padding:9px 26px">看直播</button><button id="goquick">直接出结果</button><button id="gotac">先调战术</button><button id="pregame-opp" data-team="${o.i}">对手阵容</button></div></div>`;
   } else {
     gameCard=`<div class="card"><h3>下一场 <span class="r">${ng?esc(ng.label):''}</span></h3>${ng?`<div style="display:flex;align-items:center;gap:10px">${logo(TEAMS[ng.opp],36)}<div><b>${ng.home?'主场':'客场'} 对 ${esc(TEAMS[ng.opp].cn)}</b><div class="hint">${dateTxt(ng.day,true)}</div></div></div>`:'<div class="hint">暂时没有你的比赛</div>'}</div>`;
   }
@@ -89,6 +89,7 @@ function vHome(v){
   if(q('#golive')) q('#golive').onclick=startLive;
   if(q('#goquick')) q('#goquick').onclick=quickUserGame;
   if(q('#gotac')) q('#gotac').onclick=()=>{ G.view='tac'; render(); };
+  if(q('#pregame-opp')) q('#pregame-opp').onclick=e=>showOpponentRoster(TEAMS[e.currentTarget.dataset.team]);
   if(q('#lockerroom')) q('#lockerroom').onclick=()=>{ G.view='train'; render(); };
   if(q('#tooff')) q('#tooff').onclick=()=>{ startOffseason(); G.view='off'; render(); };
   if(q('#newteam')) q('#newteam').onclick=()=>{ G.team=null; G.rot=null; G.tac=null; save(); render(); };
@@ -105,6 +106,7 @@ function showBox(key){
   m.innerHTML=`<div class="modal"><div class="box" style="max-width:980px"><div style="display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:6px">${logo(TEAMS[B.h],36)}<b>${esc(TEAMS[B.h].cn)}</b><span style="font-size:24px;font-weight:800">${B.score[0]} : ${B.score[1]}</span><b>${esc(TEAMS[B.a].cn)}</b>${logo(TEAMS[B.a],36)}</div>
    <div class="hint" style="text-align:center">${B.q[0].map((x,i)=>`${i<4?'第'+(i+1)+'节':'加时'} ${x}-${B.q[1][i]}`).join(' · ')}</div>
    ${boxHTML(B.box, s=>TEAMS[s===0?B.h:B.a], true)}<div style="text-align:right"><button onclick="closeModal()">关闭</button></div></div></div>`;
+  bindPlayerLinks(m,p=>showPlayer(p,()=>showBox(key)));
   m.querySelector('.modal').onclick=e=>{ if(e.target.classList.contains('modal')) closeModal(); };
 }
 

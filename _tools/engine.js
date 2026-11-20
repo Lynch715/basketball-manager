@@ -21,7 +21,7 @@ const P = {
   orebBase: .30, putbackProb: .30,
   fastBase: .10,
   drain: .0038, recover: .012, qBreak: .10, toRecover: .03,
-  subEnergy: .55, injury: .00012,
+  subEnergy: .55, subGap: 60, injury: .00012,
   durK: 1.13,
   gamePaceSD: .05,         // 每场双方共用的节奏波动
   rubber: .0015, rubberFrom: 3, rubberCap: .03,   // 比分效应：领先超过 3 分后，每多 1 分，领先方命中率 −0.15 个百分点，最多 −3 个百分点
@@ -453,76 +453,139 @@ function rebound(M,O,D,dur,type,afterFT){
 }
 
 // ---------- 换人 ----------
+function usesAutoSubs(M,side){ return side!==M.userSide || M.autoSubs!==false; }
+function gameElapsed(M){ return M.q<=4?M.q*720-M.clock:2880+(M.q-4)*300-M.clock; }
+
+function replaceOnCourt(M,T,k,b){
+  const m=T.on[k];
+  b.slot=m.slot; m.slot=null; T.on[k]=b; T.dirty=true;
+  b.lastSubAt=m.lastSubAt=gameElapsed(M);
+  ev(M,{t:T.side,type:'sub',pin:b.id,pout:m.id});
+}
+
+function bestReplacement(candidates,slot,score){
+  let best=null, bestFit=-1, bestScore=-Infinity;
+  for(const b of candidates){
+    const fit=posFit(b.p,slot), tier=fit>=.9?2:fit>=.75?1:0, value=score(b,fit);
+    if(tier>bestFit || (tier===bestFit && value>bestScore)){
+      best=b; bestFit=tier; bestScore=value;
+    }
+  }
+  return best;
+}
+
+function applyLineup(M,T,ids){
+  const prev=T.on, lineup=POS.map((_,i)=>{
+    const m=T.byId[ids[i]];
+    return m && !m.out?m:null;
+  });
+  for(let k=0;k<POS.length;k++){
+    if(lineup[k]) continue;
+    const available=T.men.filter(m=>!m.out && !lineup.includes(m));
+    lineup[k]=bestReplacement(available,POS[k],b=>b.p.ovr*(.8+.2*b.energy));
+  }
+  if(lineup.every((m,k)=>m===prev[k])) return false;
+  const leaving=prev.filter(m=>!lineup.includes(m));
+  for(const [k,m] of lineup.entries()){
+    if(prev.includes(m)) continue;
+    const j=leaving.indexOf(prev[k]), [out]=leaving.splice(j<0?0:j,1);
+    m.lastSubAt=out.lastSubAt=gameElapsed(M);
+    ev(M,{t:T.side,type:'sub',pin:m.id,pout:out.id});
+  }
+  prev.forEach(m=>{ m.slot=null; });
+  lineup.forEach((m,k)=>{ m.slot=POS[k]; });
+  T.on=lineup; T.dirty=true;
+  return true;
+}
+
 function doSubs(M, side){
-  const T=M.teams[side], rng=M.rng;
+  const T=M.teams[side], automatic=usesAutoSubs(M,side);
   if(M.done) return;
+  const forced=T.on.some(m=>m.out);
+  if(!automatic && !forced) return;
   if(T.men.filter(m=>!m.out).length<5){ forfeitMatch(M,side); return; }
-  const elapsed=((Math.min(M.q,4)-1)*720+(720-M.clock))+(M.q>4?(M.q-4)*300:0);
+  const bench=()=>T.men.filter(m=>!T.on.includes(m) && !m.out);
+  if(forced){
+    T.on.forEach((m,k)=>{
+      if(m.out) replaceOnCourt(M,T,k,bestReplacement(bench(),m.slot,b=>b.p.ovr*(.8+.2*b.energy)-b.pf));
+    });
+    return;
+  }
+  const elapsed=gameElapsed(M);
+  const rested=m=>elapsed-(m.lastSubAt??-Infinity)>=P.subGap;
+  const availableBench=()=>bench().filter(rested);
   const g=clamp(elapsed/2880,0,1);
   const diff=M.score[side]-M.score[1-side];
   const garbage = M.q>=4 && M.clock<300 && Math.abs(diff)>=20;
   const clutch = M.q>=4 && M.clock<300 && Math.abs(diff)<=8;
   const foulLim = M.q===1?2 : M.q===2?3 : M.q===3?4 : 5;
-  const bench=()=>T.men.filter(m=>!T.on.includes(m) && !m.out);
-  let changed=false;
-  const swapIn=(ids)=>{ // 把一组人整组换上，按数组顺序对应 PG..C
-    ids.forEach((id,k)=>{ const b=T.byId[id]; if(!b||b.out||T.on.includes(b)) return;
-      const slot=POS[k]; let j=T.on.findIndex(m=>m.slot===slot && !ids.includes(m.id)); if(j<0) j=T.on.findIndex(m=>!ids.includes(m.id)); if(j<0) return;
-      const m=T.on[j]; b.slot=m.slot; m.slot=null; T.on[j]=b; changed=true; ev(M,{t:side,type:'sub',pin:b.id,pout:m.id}); }); };
   const R=T.rot||{};
   // 关门阵容：第 4 节最后 5 分钟、分差 10 分以内
-  if(R.closers && R.closers.length===5 && M.q>=4 && M.clock<300 && Math.abs(diff)<=10 && !T.on.some(m=>m.out)){
-    const ok=R.closers.filter(id=>{ const m=T.byId[id]; return m && !m.out && m.pf<6; });
-    if(ok.length>=4){ swapIn(R.closers.filter(id=>ok.includes(id))); if(changed){ T.dirty=true; } return; }
+  if(R.closers && R.closers.length===5 && M.q>=4 && M.clock<300 && Math.abs(diff)<=10){
+    const healthy=R.closers.filter(id=>T.byId[id] && !T.byId[id].out);
+    if(healthy.length>=4){ applyLineup(M,T,R.closers); return; }
   }
   // 小球阵容：第 2、4 节中段各试一次，五人都在板凳上而且体能够
   if(T.tac.smallOn && R.small && R.small.length===5 && (M.q===2||M.q===4) && M.clock<540 && M.clock>200 && !(M.smallUsed||(M.smallUsed={}))[side+'-'+M.q]){
     const ms=R.small.map(id=>T.byId[id]);
     if(ms.every(m=>m && !m.out && m.energy>.85 && m.pf<5) && ms.filter(m=>T.on.includes(m)).length<=2){
-      M.smallUsed[side+'-'+M.q]=true; swapIn(R.small); if(changed){ T.dirty=true; ev(M,{t:side,type:'small'}); } return; }
+      M.smallUsed[side+'-'+M.q]=true;
+      if(applyLineup(M,T,R.small)) ev(M,{t:side,type:'small'});
+      return;
+    }
   }
   for(let k=0;k<5;k++){
     const m=T.on[k];
+    if(!rested(m)) continue;
     const behind = m.target*g - m.secs;           // 正数表示欠时间
-    let need = m.out
-      || (garbage && m.starter)
+    const need = (garbage && m.starter)
       || (!clutch && m.pf>=foulLim && M.q<=4)
       || (!clutch && m.energy<P.subEnergy)
       || (clutch && m.energy<.6)
       || (!clutch && !garbage && -behind>90)
-      || (m.target===0 && !garbage && !m.out && bench().some(b=>b.target>0));
+      || (m.target===0 && !garbage);
     if(!need) continue;
-    const cands=bench().filter(b=> garbage ? true : (b.target>0 || m.out) );
-    if(!cands.length) continue;
-    const score=b=>{
-      if(garbage) return -b.target + posFit(b.p,m.slot)*10 + b.energy;
-      if(clutch) return b.p.ovr*(.8+.2*b.energy) + posFit(b.p,m.slot)*8 - (b.pf>=5?50:0);
+    const cands=availableBench().filter(b=>(garbage || b.target>0) && (garbage || b.energy>=.8 || b.energy>m.energy));
+    const best=bestReplacement(cands,m.slot,(b,fit)=>{
+      if(garbage) return -b.target + fit*10 + b.energy;
+      if(clutch) return b.p.ovr*(.8+.2*b.energy) + fit*8 - (b.pf>=5?50:0);
       const bb=b.target*g - b.secs;
-      return bb/60 + posFit(b.p,m.slot)*6 + b.energy*4 - (b.pf>=foulLim?20:0) - (b.energy<.85?8:0);
-    };
-    let best=cands[0], bs=-1e9; cands.forEach(b=>{const s=score(b); if(s>bs){bs=s;best=b;}});
-    if(!m.out && !garbage && best.energy<.8 && m.energy>=best.energy) continue;
-    best.slot=m.slot; m.slot=null; T.on[k]=best; changed=true;
-    ev(M,{t:side,type:'sub',pin:best.id,pout:m.id});
+      return bb/60 + fit*6 + b.energy*4 - (b.pf>=foulLim?20:0) - (b.energy<.85?8:0);
+    });
+    if(best) replaceOnCourt(M,T,k,best);
   }
   // 欠时间的替补主动上场
   if(!garbage && !clutch){
-    for(const b of bench()){
+    for(const b of availableBench()){
       const bb=b.target*g - b.secs; if(bb<90 || b.energy<.85) continue;
       let worst=-1, ws=-1e9;
-      T.on.forEach((m,k)=>{ const sur=m.secs-m.target*g; const s=sur/60 + (1-m.energy)*10 + posFit(b.p,m.slot)*3; if(s>ws){ws=s;worst=k;} });
-      if(worst>=0 && ws>2){ const m=T.on[worst]; b.slot=m.slot; m.slot=null; T.on[worst]=b; changed=true; ev(M,{t:side,type:'sub',pin:b.id,pout:m.id}); }
+      T.on.forEach((m,k)=>{
+        const fit=posFit(b.p,m.slot);
+        if(!rested(m) || fit<.75) return;
+        const s=(m.secs-m.target*g)/60 + (1-m.energy)*10 + fit*8;
+        if(s>ws){ ws=s; worst=k; }
+      });
+      if(worst>=0 && ws>7) replaceOnCourt(M,T,worst,b);
     }
   }
-  if(changed) T.dirty=true;
 }
 
 // 玩家手动换人：outId 下、inId 上，接替同一个位置
 function manualSub(M, side, outId, inId){
   const T=M.teams[side], k=T.on.findIndex(m=>m.id===outId), b=T.byId[inId];
-  if(k<0 || !b || T.on.includes(b) || b.out) return false;
-  const m=T.on[k]; b.slot=m.slot; m.slot=null; T.on[k]=b; T.dirty=true;
-  ev(M,{t:side,type:'sub',pin:b.id,pout:m.id}); return true;
+  if(M.done || k<0 || !b || T.on.includes(b) || b.out) return false;
+  replaceOnCourt(M,T,k,b);
+  if(side===M.userSide) M.autoSubs=false;
+  return true;
+}
+
+function manualSwap(M,side,firstId,secondId){
+  const T=M.teams[side], i=T.on.findIndex(m=>m.id===firstId), j=T.on.findIndex(m=>m.id===secondId);
+  if(M.done || i<0 || j<0 || i===j || T.on[i].out || T.on[j].out) return false;
+  [T.on[i],T.on[j]]=[T.on[j],T.on[i]];
+  T.on[i].slot=POS[i]; T.on[j].slot=POS[j]; T.dirty=true;
+  if(side===M.userSide) M.autoSubs=false;
+  return true;
 }
 
 function timeout(M, side){
@@ -544,10 +607,8 @@ function endPeriod(M){
   // 每节开始：第 1、3 节球权按跳球，第 2、4 节给另一方
   M.poss = (M.q===2||M.q===3) ? 1-M.first : M.first; if(M.q>4) M.poss = M.rng()<.5?0:1;
   M.last='eoq';
-  M.teams.forEach(T=>{ // 第 3 节首发回场
-    if(M.q===3) { T.on.forEach(m=>m.slot=null); T.on=T.rot.starters.map((id,i)=>{const m=T.byId[id]; if(m.out) return null; m.slot=POS[i]; return m;});
-      const bench=T.men.filter(m=>!T.on.includes(m)&&!m.out).sort((a,b)=>b.p.ovr-a.p.ovr);
-      T.on=T.on.map((m,i)=>{ if(m) return m; const b=bench.shift(); b.slot=POS[i]; return b; }); T.dirty=true; }
+  M.teams.forEach(T=>{
+    if(M.q===3 && usesAutoSubs(M,T.side)) applyLineup(M,T,T.rot.starters);
     doSubs(M,T.side);
   });
 }
@@ -583,8 +644,7 @@ function step(M){
     [0,1].forEach(s=>{
       // AI 暂停：对方连续得分 ≥ 8
       if(M.run[1-s]>=8 && (s!==M.userSide || M.autoTimeout) && M.timeouts[s]>0 && M.rng()<.6) timeout(M,s);
-      if(s!==M.userSide || M.autoSubs!==false) doSubs(M,s);
-      else if(M.teams[s].on.some(m=>m.out)) doSubs(M,s);   // 玩家一方只在有人伤退/罚下时强制补人
+      doSubs(M,s);
     });
   }
 }
@@ -602,6 +662,6 @@ function boxScore(M){
   }));
 }
 
-const API={P, POS, setCenters, setC(o){ C=o; }, get C(){return C;}, SYSTEMS, composite, posFit, ovrOf, autoRotation, autoTactics, systemFit, createMatch, step, run, timeout, manualSub, doSubs, boxScore, gameScore, mulberry32};
+const API={P, POS, setCenters, setC(o){ C=o; }, get C(){return C;}, SYSTEMS, composite, posFit, ovrOf, autoRotation, autoTactics, systemFit, createMatch, step, run, timeout, manualSub, manualSwap, doSubs, boxScore, gameScore, mulberry32};
 if(typeof module!=='undefined' && module.exports) module.exports=API; else root.BBEngine=API;
 })(typeof window!=='undefined'?window:globalThis);

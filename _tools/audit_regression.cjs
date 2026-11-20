@@ -67,6 +67,67 @@ check('赛前战术随档保存，直播和快速比赛结果一致且只作用�
     score:live.score.join()===quick.score.join(), boxes:JSON.stringify(E.boxScore(live))===JSON.stringify(E.boxScore(quick))})
 `,{matches:true,double:true,nextCleared:true,score:true,boxes:true});
 
+check('临场换人和调位自动接管，跨半场保留，罚下只补空位',`
+  newSeason(2026);
+  const M=createSeasonMatch(0,1,{n:1},true), T=M.teams[0];
+  M.userSide=0;
+  const [first,second,third]=T.on, incoming=T.men.find(m=>!T.on.includes(m));
+  const moved=E.manualSwap(M,0,first.id,second.id);
+  const subbed=E.manualSub(M,0,third.id,incoming.id);
+  const ids=()=>T.on.map(m=>m.id).join();
+  const manual=ids(), autoOff=M.autoSubs===false;
+  M.teams.forEach(t=>{ t.injMul=0; });
+  M.q=2; M.clock=.01;
+  E.step(M);
+  const halftime=M.q===3 && ids()===manual;
+  const prior=T.on.slice();
+  M.q=4; M.clock=100;
+  prior.forEach(m=>{ m.energy=.2; });
+  incoming.out=true; incoming.fouledOut=true;
+  E.doSubs(M,0);
+  const onlyVacancy=T.on.every((m,i)=>i===2?m!==incoming && !m.out:m===prior[i]);
+  ({moved,subbed,autoOff,halftime,onlyVacancy,slots:T.on.map(m=>m.slot)})
+`,{moved:true,subbed:true,autoOff:true,halftime:true,onlyVacancy:true,slots:['PG','SG','SF','PF','C']});
+
+check('自动换人优先匹配位置，刚换人的位置保持稳定，关门阵容按指定位置落位',`
+  newSeason(2026);
+  const M=createSeasonMatch(0,1,{n:1},true), T=M.teams[0];
+  const [guard]=T.on, [good,bad]=T.men.filter(m=>!T.on.includes(m));
+  good.p={...good.p,pos:'SG',pos2:['PG']};
+  bad.p={...bad.p,pos:'C',pos2:[]};
+  T.men.forEach(m=>{ m.target=T.on.includes(m)?1800:0; m.secs=m.target/8; });
+  good.target=120; bad.target=1600; good.energy=bad.energy=1;
+  guard.pf=2; M.clock=360;
+  E.doSubs(M,0);
+  const fit=T.on[0]===good;
+  good.pf=2; guard.pf=0; M.clock-=12;
+  E.doSubs(M,0);
+  const settled=T.on[0]===good && !T.on.includes(guard);
+  const closers=T.on.slice(); [closers[0],closers[1]]=[closers[1],closers[0]];
+  T.rot.closers=closers.map(m=>m.id);
+  M.q=4; M.clock=170;
+  E.doSubs(M,0);
+  ({fit,settled,closers:T.on.every((m,i)=>m===closers[i] && m.slot===POS[i])})
+`,{fit:true,settled:true,closers:true});
+
+check('球衣号码兼容旧档和 0 / 00，签约冲号时保留原队球员号码',`
+  newSeason(2026);
+  const unique=t=>new Set(t.players.map(p=>p.jersey)).size===t.players.length;
+  const fresh=TEAMS.every(unique);
+  const t=myTeam(), [p,q,r]=t.players;
+  t.players.forEach((pl,i)=>{ pl.jersey=String(i+30); });
+  p.jersey=0; q.jersey='00'; r.jersey='00';
+  save(); load();
+  const updated=myTeam(), [first,second,third]=updated.players;
+  const migrated=unique(updated) && first.jersey==='0' && second.jersey==='00' && third.jersey!=='00';
+  updated.players.splice(10);
+  const fa=FREE[0]; fa.jersey='00';
+  const signed=signFA(fa,G.team,CFG().minSal,1,W.year).ok;
+  save(); load();
+  ({fresh,migrated,signed,unique:unique(myTeam()),retained:PBYID[second.id].jersey==='00',
+    newNumber:PBYID[fa.id].jersey===fa.jersey && fa.jersey!=='00'})
+`,{fresh:true,migrated:true,signed:true,unique:true,retained:true,newNumber:true});
+
 check('常规赛无候选奖项和全明星缺员时不会卡住日程',`
   newSeason(2026);
   runAllStar(); const contested=G.season.allStar.game.forfeit==null;
@@ -122,13 +183,13 @@ async function cacheScope(){
   const events={}, deleted=[], claimed=[];
   vm.runInNewContext(fs.readFileSync(path.join(root,'../sw.js'),'utf8'),{
     self:{addEventListener:(name,fn)=>{ events[name]=fn; },clients:{claim:()=>claimed.push(true)}},
-    caches:{keys:async()=>['bbm-v11-audit','bbm-v12-legend-drafts','bbm-v13-2003-draft','bbm-v14-theme','bbm-v15-2003-draft','bbm-v16-list-layout','bbm-v17-roster-ratings','bbm-v18-trade-finder','other-game-v3'],
+    caches:{keys:async()=>['bbm-v11-audit','bbm-v12-legend-drafts','bbm-v13-2003-draft','bbm-v14-theme','bbm-v15-2003-draft','bbm-v16-list-layout','bbm-v17-roster-ratings','bbm-v18-trade-finder','bbm-v19-live-lineup','other-game-v3'],
       delete:async key=>deleted.push(key)}
   });
   let complete;
   events.activate({waitUntil:p=>{ complete=p; }});
   await complete;
-  assert.deepEqual(deleted,['bbm-v11-audit','bbm-v12-legend-drafts','bbm-v13-2003-draft','bbm-v14-theme','bbm-v15-2003-draft','bbm-v16-list-layout','bbm-v17-roster-ratings']);
+  assert.deepEqual(deleted,['bbm-v11-audit','bbm-v12-legend-drafts','bbm-v13-2003-draft','bbm-v14-theme','bbm-v15-2003-draft','bbm-v16-list-layout','bbm-v17-roster-ratings','bbm-v18-trade-finder']);
   assert.equal(claimed.length,1);
   console.log('PASS 篮球经理更新只清理自己的旧缓存');
 }
